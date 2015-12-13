@@ -5,8 +5,8 @@ import cats.Monad
 import cats.free.Free
 
 /** Helper to deal with the CommandEffect monad. */
-case class CommandSyntax[Command[_], Event, State]() {
-  type Op[A] = CommandEffect.CommandOp[Event, State, A]
+case class CommandSyntax[Command[_], Event, State, Error]() {
+  type Op[A] = CommandEffect.CommandOp[Event, State, Error, A]
   type Effect[A] = Free[Op, A]
 
   import CommandEffect._
@@ -17,18 +17,18 @@ case class CommandSyntax[Command[_], Event, State]() {
   /** Emit an event. */
   def emit(event: Event) = Free.liftF[Op, Unit](Emit(event))
   /** Let the command fail. */
-  def fail(reason: String) = Free.liftF[Op, Nothing](Fail(reason))
+  def fail(error: Error) = Free.liftF[Op, Nothing](Fail(error))
   /** Does nothing (useful i.e. for else-branches). */
   def noop = Monad[Effect].pure(())
 
   /** Checks a condition. If the condition is false then the command fails. */
-  def failIf(condition: Boolean, reason: ⇒ String) =
-    if (condition) fail(reason) else noop
+  def failIf(condition: Boolean, error: ⇒ Error) =
+    if (condition) fail(error) else noop
 
   /** Requires something to be true about the current state. If the condition is false then the command fails. */
-  def precondition(precond: State ⇒ Boolean, description: String) = for {
+  def precondition(precond: State ⇒ Boolean, orElse: Error) = for {
     s ← current
-    _ ← failIf(precond(s), s"Precondition failed: $description")
+    _ ← failIf(precond(s), orElse)
   } yield ()
 
   /** Executes the action only if the condition is true. */

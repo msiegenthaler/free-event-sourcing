@@ -31,10 +31,16 @@ object Events {
   case class Credited(amount: Int, newBalance: Int) extends Event(account ⇒ account.copy(balance = newBalance))
 }
 
+object Errors {
+  sealed trait Error
+  case class InsufficientFunds(required: Int) extends Error
+  case object AccountNotOpen extends Error
+}
+
+import Commands._, Events._, Errors._
 
 private object CommandHandler {
-  import Commands._, Events._
-  val syntax = CommandSyntax[Command, Event, Account]
+  val syntax = CommandSyntax[Command, Event, Account, Error]
   import syntax._
 
   def id(cmd: Command[_]) = cmd match {
@@ -62,16 +68,17 @@ private object CommandHandler {
     case Debit(_, amount) ⇒
       for {
         _ ← mustBeOpen
-        _ ← precondition(_.balance >= amount, s"need at least $amount in the account")
+        _ ← precondition(_.balance >= amount, InsufficientFunds(amount))
         _ ← emitS(c ⇒ Debited(amount, c.balance - amount))
       } yield ()
   }
 
-  private def mustBeOpen = precondition(_.open, s"accounts need to be open")
+  private def mustBeOpen = precondition(_.open, AccountNotOpen)
 }
 
+
 object AccountAggregate {
-  val tpe = AggregateType[Id, Account, Commands.Command, Events.Event](
+  val tpe = AggregateType[Id, Account, Command, Event, Error](
     "Account",
     Account.create,
     CommandHandler.id _,
