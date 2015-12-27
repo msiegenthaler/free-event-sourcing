@@ -12,16 +12,25 @@ object Example {
     type s = Open :+: Close :+: CNil
   }
 
-  object Handler extends CommandHandler[Command.s] {
+  object Event {
+    case class Opened(owner: String)
+    case class Closed()
+    case class Balanced()
+
+    type s = Opened :+: Closed :+: Balanced :+: CNil
+  }
+
+  object Handler extends CommandHandler[Command.s, Event.s] {
     import Command._
+    import Event._
 
     implicit val open = on[Open] { c ⇒
-      c.success
+      c.success(Opened(c.owner))
     }
 
     implicit val close = on[Close] { c ⇒
       if (c.force) c.fail("failed, too much force used")
-      else c.success
+      else c.success(Closed() :: Balanced() :: HNil)
     }
   }
 
