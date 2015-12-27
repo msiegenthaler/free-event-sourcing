@@ -8,12 +8,12 @@ import shapeless.ops.coproduct.Inject
 import CoproductConstraint._
 
 
-trait CommandHandler[Commands <: Coproduct, Events <: Coproduct] extends Poly1 {
+trait CommandHandler[State, Commands <: Coproduct, Events <: Coproduct] extends Poly1 {
   type Result[Cmd <: {type Error}] = Xor[Cmd#Error, Seq[Events]]
   type IsEvent[Event] = Inject[Events, Event]
 
-  def on[Cmd <: {type Error}](f: Cmd ⇒ Result[Cmd])(implicit ev: Inject[Commands, Cmd]): Case.Aux[Cmd, Result[Cmd]] =
-    at(f)
+  def on[Cmd <: {type Error}](f: Cmd ⇒ State ⇒ Result[Cmd])(implicit ev: Inject[Commands, Cmd]): Case.Aux[Cmd, State ⇒ Result[Cmd]] =
+    at(c ⇒ s ⇒ f(c)(s))
 
   def liftEvent[Event](event: Event)(implicit inject: Inject[Events, Event]): Events = inject(event)
 
