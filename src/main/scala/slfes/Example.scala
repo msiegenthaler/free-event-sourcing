@@ -56,7 +56,15 @@ object Example {
     implicit val balanced = on[Balanced] { e ⇒ identity }
   }
 
-  def seed(id: Id) = Account(id, None, false)
-  def handle(cmd: Command.s) = cmd.fold(Handle)
-  def apply(event: Event.s) = event.fold(Apply)
+
+  AggregateType[Id, Account, Command.s, Event.s](
+    name = "Accout",
+    seed = seed,
+    handleCommand = handle,
+    applyEvent = apply
+  )
+  private def seed(id: Id) = Account(id, None, false)
+  private def handle(cmd: Command.s) = cmd.fold(Handle)
+  private def apply(event: Event.s) = event.fold(Apply)
+
 }
