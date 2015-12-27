@@ -29,7 +29,7 @@ object Example {
     type s = Opened :+: Closed :+: Balanced :+: CNil
   }
 
-  object Handler extends CommandHandler[Account, Command.s, Event.s] {
+  object Handle extends CommandHandler[Account, Command.s, Event.s] {
     import Command._
     import Event._
     import Error._
