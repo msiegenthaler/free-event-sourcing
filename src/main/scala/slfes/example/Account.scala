@@ -61,14 +61,12 @@ object AccountImplementation {
     implicit val balanced = on[Balanced] { e ⇒ identity }
   }
 
+  private def seed(id: Id) = State(id, None, false)
 
-  val aggregateType = AggregateType(
+  val aggregateType = AggregateType[Id, State, Commands.Type, Events.Type](
     name = "Accout",
     seed = seed,
-    handleCommand = handle,
-    applyEvent = apply
+    handleCommand = _.fold(Handle),
+    applyEvent = _.fold(Apply)
   )
-  private def seed(id: Id) = State(id, None, false)
-  private def handle(cmd: Commands.Type) = cmd.fold(Handle)
-  private def apply(event: Events.Type) = event.fold(Apply)
 }
