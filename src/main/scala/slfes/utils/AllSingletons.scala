@@ -1,7 +1,8 @@
-package slfes
+package slfes.utils
+
+import shapeless._
 
 import scala.language.implicitConversions
-import shapeless._
 
 //from https://github.com/milessabin/shapeless/blob/master/examples/src/main/scala/shapeless/examples/enum.scala
 // resp. http://stackoverflow.com/questions/25838411/cant-prove-that-singleton-types-are-singleton-types-while-generating-type-class

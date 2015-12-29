@@ -1,6 +1,7 @@
 package slfes
 
 import cats.{MonadCombine, Functor, Monad}
+import slfes.utils.CoproductConstraint
 
 import scala.language.higherKinds
 import scala.language.implicitConversions

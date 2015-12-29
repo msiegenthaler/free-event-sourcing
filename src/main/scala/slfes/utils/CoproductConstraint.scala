@@ -1,7 +1,7 @@
-package slfes
+package slfes.utils
 
 import shapeless.ops.coproduct
-import shapeless.{::, CNil, Coproduct, HList, HNil}
+import shapeless.{::, Coproduct, HList, HNil}
 
 import scala.annotation.implicitNotFound
 

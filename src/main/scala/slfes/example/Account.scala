@@ -2,6 +2,7 @@ package slfes.example
 
 import shapeless._
 import slfes._
+import slfes.utils.{CoproductFromBase, AllSingletons}
 
 object Account {
   object Command {

@@ -1,4 +1,4 @@
-package slfes
+package slfes.utils
 
 import shapeless.Generic
 
