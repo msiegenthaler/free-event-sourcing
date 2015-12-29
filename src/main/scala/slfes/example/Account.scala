@@ -6,10 +6,14 @@ import slfes.utils.{CoproductFromBase, AllSingletons}
 
 object Account {
   object Command {
-    sealed trait Base
+    sealed trait Base extends Cmd
     import Error._
-    case class Open(owner: String) extends Base with Command[AlreadyOpen :+: CNil]
-    case class Close(force: Boolean) extends Base with Command[NotOpen :+: CNil]
+    case class Open(owner: String) extends Base {
+      type Errors = AlreadyOpen :+: CNil
+    }
+    case class Close(force: Boolean) extends Base {
+      type Errors = NotOpen :+: CNil
+    }
   }
   object Commands extends CoproductFromBase {
     val generic = Generic[Command.Base]
