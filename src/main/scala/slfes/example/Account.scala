@@ -33,11 +33,21 @@ object Account {
   case class State(id: Id, owner: Option[String], open: Boolean)
 }
 
+
 object AccountImplementation {
   import Account._
   import Command._
   import Error._
   import Event._
+
+  private sealed trait Invariant extends (State ⇒ Boolean)
+  private object Invariant {
+    object OpenAccountMustHaveOwner extends Invariant {
+      def apply(s: State) = if (s.open) s.owner.isDefined else true
+    }
+
+    val All: Set[Invariant] = AllSingletons
+  }
 
   private object Handle extends CommandHandler[State, Commands.Type, Events.Type] {
     implicit val open = on[Open] { c ⇒ s ⇒
@@ -67,6 +77,7 @@ object AccountImplementation {
     name = "Accout",
     seed = seed,
     handleCommand = _.fold(Handle),
-    applyEvent = _.fold(Apply)
+    applyEvent = _.fold(Apply),
+    invariants = Invariant.All
   )
 }
