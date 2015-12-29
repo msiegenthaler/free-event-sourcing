@@ -3,24 +3,20 @@ package slfes.example
 import shapeless._
 import slfes._
 
-object Example {
-  case class Id(id: Long)
-
-  case class Account(id: Id, owner: Option[String], open: Boolean)
-
-  object Errors {
-    case class AlreadyOpen()
-    case class NotOpen()
-  }
-
+object Account {
   object Command {
-    import Errors._
     sealed trait Base
+    import Error._
     case class Open(owner: String) extends Base with Command[AlreadyOpen :+: CNil]
     case class Close(force: Boolean) extends Base with Command[NotOpen :+: CNil]
   }
   object Commands extends CoproductFromBase {
     val generic = Generic[Command.Base]
+  }
+
+  object Error {
+    case class AlreadyOpen()
+    case class NotOpen()
   }
 
   object Event {
@@ -33,11 +29,17 @@ object Example {
     val generic = Generic[Event.Base]
   }
 
-  object Handle extends CommandHandler[Account, Commands.Type, Events.Type] {
-    import Command._
-    import Errors._
-    import Event._
+  case class Id(id: Long)
+  case class State(id: Id, owner: Option[String], open: Boolean)
+}
 
+object AccountImplementation {
+  import Account._
+  import Command._
+  import Error._
+  import Event._
+
+  private object Handle extends CommandHandler[State, Commands.Type, Events.Type] {
     implicit val open = on[Open] { c ⇒ s ⇒
       if (!s.open) c.success(Opened(c.owner))
       else c.fail(AlreadyOpen())
@@ -49,8 +51,7 @@ object Example {
     } yield ())
   }
 
-  object Apply extends EventApplicator[Account, Events.Type] {
-    import Event._
+  private object Apply extends EventApplicator[State, Events.Type] {
     implicit val opened = on[Opened] { e ⇒ s ⇒
       s.copy(open = true, owner = Some(e.owner))
     }
@@ -61,13 +62,13 @@ object Example {
   }
 
 
-  AggregateType(
+  val aggregateType = AggregateType(
     name = "Accout",
     seed = seed,
     handleCommand = handle,
     applyEvent = apply
   )
-  private def seed(id: Id) = Account(id, None, false)
+  private def seed(id: Id) = State(id, None, false)
   private def handle(cmd: Commands.Type) = cmd.fold(Handle)
   private def apply(event: Events.Type) = event.fold(Apply)
 }
