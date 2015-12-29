@@ -1,6 +1,6 @@
 package slfes.example
 
-import slfes.{AggregateWithInvariants, EventApplicator, CommandHandler}
+import slfes._
 import slfes.utils.AllSingletons
 import slfes.example.Account._
 import Command._
@@ -19,6 +19,9 @@ private class AccountAggregate {
   }
 
   object Handle extends CommandHandler[State, Commands.Type, Events.Type] {
+    import plain._
+    import monadic._
+
     implicit val open = on[Open] { c ⇒ s ⇒
       if (!s.open) c.success(Opened(c.owner))
       else c.fail(AlreadyOpen())
