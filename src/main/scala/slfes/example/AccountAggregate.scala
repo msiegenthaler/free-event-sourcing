@@ -1,6 +1,6 @@
 package slfes.example
 
-import slfes.{AggregateType, EventApplicator, CommandHandler}
+import slfes.{AggregateWithInvariants, EventApplicator, CommandHandler}
 import slfes.utils.AllSingletons
 import slfes.example.Account._
 import Command._
@@ -15,6 +15,7 @@ private class AccountAggregate {
     }
 
     val All: Set[Invariant] = AllSingletons
+    def error(failed: Invariant) = Failed(failed.getClass.getSimpleName)
   }
 
   object Handle extends CommandHandler[State, Commands.Type, Events.Type] {
@@ -41,12 +42,13 @@ private class AccountAggregate {
 
   def seed(id: Id) = State(id, None, false)
 
-  val description = AggregateType[Id, State, Commands.Type, Events.Type](
-    name = "Accout",
+  val description = AggregateWithInvariants.apply[Id, State, Commands.Type, Events.Type, Invariant](
+    name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),
     applyEvent = _.fold(Apply),
-    invariants = Invariant.All
+    invariants = Invariant.All,
+    onInvariantFailed = Invariant.error
   )
 }
 

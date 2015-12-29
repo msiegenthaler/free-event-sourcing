@@ -8,11 +8,13 @@ object Account {
   object Command {
     sealed trait Base extends Cmd
     import Error._
+    type Err = Failed :+: CNil
+
     case class Open(owner: String) extends Base {
-      type Errors = AlreadyOpen :+: CNil
+      type Errors = AlreadyOpen :+: Err
     }
     case class Close(force: Boolean) extends Base {
-      type Errors = NotOpen :+: CNil
+      type Errors = NotOpen :+: Err
     }
   }
   object Commands extends CoproductFromBase {
@@ -22,6 +24,7 @@ object Account {
   object Error {
     case class AlreadyOpen()
     case class NotOpen()
+    case class Failed(reason: String)
   }
 
   object Event {

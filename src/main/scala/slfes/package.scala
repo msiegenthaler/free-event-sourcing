@@ -1,3 +1,4 @@
+import cats.data.Xor
 import shapeless.Coproduct
 
 package object slfes {
@@ -5,4 +6,9 @@ package object slfes {
   trait Cmd {
     type Errors <: Coproduct
   }
+
+  type CmdResult[Events] = Xor[Any, Seq[Events]]
+
+  /** Type for invariants. */
+  type Inv[State] = (State ⇒ Boolean)
 }
