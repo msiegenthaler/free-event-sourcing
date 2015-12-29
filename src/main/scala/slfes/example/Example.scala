@@ -1,38 +1,42 @@
-package slfes
+package slfes.example
 
 import shapeless._
-
+import slfes._
 
 object Example {
   case class Id(id: Long)
 
   case class Account(id: Id, owner: Option[String], open: Boolean)
 
-  object Error {
+  object Errors {
     case class AlreadyOpen()
     case class NotOpen()
   }
 
   object Command {
-    import Error._
-    case class Open(owner: String) extends Command[AlreadyOpen :+: CNil]
-    case class Close(force: Boolean) extends Command[NotOpen :+: CNil]
-
-    type s = Open :+: Close :+: CNil
+    import Errors._
+    sealed trait Base
+    case class Open(owner: String) extends Base with Command[AlreadyOpen :+: CNil]
+    case class Close(force: Boolean) extends Base with Command[NotOpen :+: CNil]
+  }
+  object Commands extends CoproductFromBase {
+    val generic = Generic[Command.Base]
   }
 
   object Event {
-    case class Opened(owner: String)
-    case class Closed()
-    case class Balanced()
-
-    type s = Opened :+: Closed :+: Balanced :+: CNil
+    sealed trait Base
+    case class Opened(owner: String) extends Base
+    case class Closed() extends Base
+    case class Balanced() extends Base
+  }
+  object Events extends CoproductFromBase {
+    val generic = Generic[Event.Base]
   }
 
-  object Handle extends CommandHandler[Account, Command.s, Event.s] {
+  object Handle extends CommandHandler[Account, Commands.Type, Events.Type] {
     import Command._
+    import Errors._
     import Event._
-    import Error._
 
     implicit val open = on[Open] { c ⇒ s ⇒
       if (!s.open) c.success(Opened(c.owner))
@@ -45,7 +49,7 @@ object Example {
     } yield ())
   }
 
-  object Apply extends EventApplicator[Account, Event.s] {
+  object Apply extends EventApplicator[Account, Events.Type] {
     import Event._
     implicit val opened = on[Opened] { e ⇒ s ⇒
       s.copy(open = true, owner = Some(e.owner))
@@ -57,14 +61,13 @@ object Example {
   }
 
 
-  AggregateType[Id, Account, Command.s, Event.s](
+  AggregateType(
     name = "Accout",
     seed = seed,
     handleCommand = handle,
     applyEvent = apply
   )
   private def seed(id: Id) = Account(id, None, false)
-  private def handle(cmd: Command.s) = cmd.fold(Handle)
-  private def apply(event: Event.s) = event.fold(Apply)
-
+  private def handle(cmd: Commands.Type) = cmd.fold(Handle)
+  private def apply(event: Events.Type) = event.fold(Apply)
 }
