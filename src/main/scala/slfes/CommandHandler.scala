@@ -25,7 +25,7 @@ trait CommandHandler[State, Commands <: Coproduct, Events <: Coproduct] extends 
     at(c ⇒ s ⇒ f(c)(s))
 
   def onM[Cmd <: ACmd : IsCommand](f: CommandContext[Cmd] ⇒ CommandMonad[Cmd, Unit]): Case.Aux[Cmd, State ⇒ Result[Cmd]] = {
-    at(c ⇒ s ⇒ f(CommandContext[Cmd]).run(c).run(s).run.map(_._1))
+    at(c ⇒ s ⇒ f(CommandContext(c, s)).run.map(_._1))
   }
 
   def liftEvent[Event](event: Event)(implicit inject: Inject[Events, Event]): Events = inject(event)
@@ -48,28 +48,31 @@ trait CommandHandler[State, Commands <: Coproduct, Events <: Coproduct] extends 
       Xor.Left(inject(error))
   }
 
+  type CommandMonad[Cmd <: ACmd, A] = WriterT[Xor[Cmd#Error, ?], List[Events], A]
 
-  type CommandMonad[Cmd <: ACmd, A] = ReaderT[ReaderT[WriterT[Xor[Cmd#Error, ?], List[Events], ?], State, ?], Cmd, A]
+  implicit def listMonoid = list.listAlgebra[Events]
 
-  case class CommandContext[Cmd <: ACmd]() {
+  case class CommandContext[Cmd <: ACmd](command: Cmd, state: State) {
     //Help the compiler a bit..
-    type CM1[A] = Xor[Cmd#Error, A]
-    type CM2[A] = WriterT[CM1, List[Events], A]
-    type CM3[A] = ReaderT[CM2, State, A]
-    type CM[A] = ReaderT[CM3, Cmd, A]
-    implicit def listMonoid = list.listAlgebra[Events]
-    implicit def cm2: Monad[CM2] = WriterT.writerTMonad[CM1, List[Events]]
+    type M1[A] = Xor[Cmd#Error, A]
+    type CM[A] = WriterT[M1, List[Events], A]
+    type IsError[E] = Inject[Cmd#Error, E]
 
     // Verbs for the CommandMonad
-    /** Aggregate state to command is handled in. */
-    def state: CM[State] = ???
-    /** The command to handle. */
-    def command: CM[Cmd] = ???
     /** Fail the command handling with the error. */
-    def fail[E](error: E)(implicit inject: Inject[Cmd#Error, E]): CM[Unit] = ???
+    def fail[Error: IsError](error: Error): CM[Unit] = {
+      val l: M1[Unit] = Xor.left(Inject[Cmd#Error, Error].apply(error))
+      WriterT.valueT(l)
+    }
     /** Emit an event (in case the command handling is successful. */
-    def emit[Event: IsEvent](event: Event): CM[Unit] = ???
+    def emit[Event: IsEvent](event: Event): CM[Unit] = {
+      val e = Inject[Events, Event].apply(event) :: Nil
+      WriterT.tell(e)
+    }
     /** Do nothing */
-    def noop: CM[Unit] = ???
+    def noop: CM[Unit] = Monad[CM].pure(())
+
+    def failIf[Error: IsError](cond: Boolean, error: ⇒ Error): CM[Unit] =
+      if (cond) fail(error) else noop
   }
 }

@@ -39,32 +39,10 @@ object Example {
       else c.fail(AlreadyOpen())
     }
 
-    //    implicit val close = onM[Close](
-    //      new CommandXXX[Close]() {
-    //        for {
-    //          s ← state
-    //          _ ← if (!s.open) fail(NotOpen()) else noop
-    //        } yield ()
-    //      }.d
-    //    )
-
-    implicit val close = onM[Close] { m ⇒
-      import m._
-      for {
-        s ← m.state
-        _ ← if (!s.open) fail(NotOpen()) else noop
-        _ ← emit(Closed())
-      } yield ()
-    }
-
-    //      for {
-    //        _ ← state
-    //      } yield ())
-
-    //    implicit val close = on[Close] { c ⇒ s ⇒
-    //      if (s.open) c.success(Closed() :: Balanced() :: HNil)
-    //      else c.fail(NotOpen())
-    //    }
+    implicit val close = onM[Close](c ⇒ for {
+      _ ← if (!c.state.open) c.fail(NotOpen()) else c.noop
+      _ ← c.emit(Closed())
+    } yield ())
   }
 
   object Apply extends EventApplicator[Account, Event.s] {
