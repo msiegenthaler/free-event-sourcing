@@ -13,16 +13,16 @@ object Account {
     case class Open(owner: String) extends Command {
       type Errors = AlreadyOpen :+: InvariantsViolated
     }
-    case class BlockFunds(tx: Txid, amount: Amount) extends Command {
+    case class BlockFunds(tx: Transaction.Id, amount: Amount) extends Command {
       type Errors = InsufficientFunds :+: InvariantsViolated
     }
-    case class AnnounceDeposit(tx: Txid, amount: Amount) extends Command {
+    case class AnnounceDeposit(tx: Transaction.Id, amount: Amount) extends Command {
       type Errors = InvariantsViolated :+: InvariantsViolated
     }
-    case class ConfirmTransaction(tx: Txid) extends Command {
+    case class ConfirmTransaction(tx: Transaction.Id) extends Command {
       type Errors = TxNotFound :+: InvariantsViolated
     }
-    case class AbortTransaction(tx: Txid) extends Command {
+    case class AbortTransaction(tx: Transaction.Id) extends Command {
       type Errors = TxNotFound :+: InvariantsViolated
     }
     case class Close() extends Command {
@@ -34,20 +34,20 @@ object Account {
   object Error {
     case class AlreadyOpen()
     case class InsufficientFunds()
-    case class TxNotFound(tx: Txid)
+    case class TxNotFound(tx: Transaction.Id)
     case class Failed(reason: String)
     case class NotOpen()
     case class NotEmpty()
-    case class HasPendingTx(txs: Set[Txid])
+    case class HasPendingTx(txs: Set[Transaction.Id])
   }
 
   sealed trait Event
   object Event {
     case class Opened(owner: String) extends Event
-    case class Blocked(by: Txid, amount: Amount, unblockedBalance: Amount) extends Event
-    case class Announced(by: Txid, amount: Amount) extends Event
-    case class Confirmed(tx: Txid, amount: Amount, isDebit: Boolean, newBalance: Amount) extends Event
-    case class Aborted(tx: Txid) extends Event
+    case class Blocked(by: Transaction.Id, amount: Amount, unblockedBalance: Amount) extends Event
+    case class Announced(by: Transaction.Id, amount: Amount) extends Event
+    case class Confirmed(tx: Transaction.Id, amount: Amount, isDebit: Boolean, newBalance: Amount) extends Event
+    case class Aborted(tx: Transaction.Id) extends Event
     case class Closed() extends Event
   }
   object Events extends CoproductFromBase(Generic[Event])

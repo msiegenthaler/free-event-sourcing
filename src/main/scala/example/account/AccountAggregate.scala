@@ -10,10 +10,10 @@ import Event._
 
 object AccountAggregate {
   /** State */
-  case class State(id: Id, owner: Option[String], open: Boolean, pending: Map[Txid, PendingTx], balance: Amount) {
+  case class State(id: Id, owner: Option[String], open: Boolean, pending: Map[Transaction.Id, PendingTx], balance: Amount) {
     def unblockedBalance = balance - pending.values.filter(_.isDebit).map(_.amount).sum
   }
-  case class PendingTx(id: Txid, amount: Amount, isDebit: Boolean)
+  case class PendingTx(id: Transaction.Id, amount: Amount, isDebit: Boolean)
 
 
   /** Apply the events. */
