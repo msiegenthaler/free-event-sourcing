@@ -103,6 +103,12 @@ object AccountAggregate {
     case object `Balance including the blockings must not be negative` extends Invariant {
       def apply(s: State) = s.unblockedBalance >= 0
     }
+    case object `Must have a balance of zero if closed` extends Invariant {
+      def apply(s: State) = s.open || s.balance == 0
+    }
+    case object `Must have no outstanding transactions if closed` extends Invariant {
+      def apply(s: State) = s.open || s.pending.isEmpty
+    }
 
     val All: Set[Invariant] = AllSingletons
   }
