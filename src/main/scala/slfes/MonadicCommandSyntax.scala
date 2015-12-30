@@ -41,6 +41,9 @@ case class MonadicCommandContext[State, Events <: Coproduct, C <: Cmd](command: 
   /** Do nothing */
   def noop: CM[Unit] = Monad[CM].pure(())
 
-  def failIf[Error: IsError](cond: Boolean, error: ⇒ Error): CM[Unit] =
+  def failIf[Error: IsError](cond: Boolean)(error: ⇒ Error): CM[Unit] =
     if (cond) fail(error) else noop
+
+  def assertThat[Error: IsError](cond: Boolean)(error: ⇒ Error): CM[Unit] =
+    failIf(!cond)(error)
 }

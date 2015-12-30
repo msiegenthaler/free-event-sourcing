@@ -7,32 +7,50 @@ import Command._
 import Error._
 import Event._
 
-private class AccountAggregate {
-  sealed trait Invariant extends (State ⇒ Boolean)
-  object Invariant {
-    object `open Account must have an owner` extends Invariant {
-      def apply(s: State) = if (s.open) s.owner.isDefined else true
-    }
 
-    val All: Set[Invariant] = AllSingletons
+object AccountAggregate {
+  /** State */
+  case class State(id: Id, owner: Option[String], open: Boolean, pending: Map[Txid, PendingTx], balance: Amount) {
+    def unblockedBalance = balance - pending.values.filter(_.isDebit).map(_.amount).sum
   }
+  case class PendingTx(id: Txid, amount: Amount, isDebit: Boolean)
 
-  object Apply extends EventApplicator[State, Events.Type] {
+
+  /** Apply the events. */
+  private object Apply extends EventApplicator[State, Events.Type] {
     implicit val opened = on[Opened] { e ⇒ s ⇒
       s.copy(open = true, owner = Some(e.owner))
+    }
+    implicit val blocked = on[Blocked] { e ⇒ s ⇒
+      val tx = PendingTx(e.by, e.amount, true)
+      s.copy(pending = s.pending + (tx.id → tx))
+    }
+    implicit val announced = on[Announced] { e ⇒ s ⇒
+      val tx = PendingTx(e.by, e.amount, false)
+      s.copy(pending = s.pending + (tx.id → tx))
+    }
+    implicit val confirmed = on[Confirmed] { e ⇒ s ⇒
+      s.copy(pending = s.pending - (e.tx), balance = e.newBalance)
+    }
+    implicit val aborted = on[Aborted] { e ⇒ s ⇒
+      s.copy(pending = s.pending - (e.tx))
     }
     implicit val closed = on[Closed] { e ⇒ s ⇒
       s.copy(open = false)
     }
-    implicit val balanced = on[Balanced] { e ⇒ identity }
   }
 
-  object Handle extends CommandHandlerWithInvariants[State, Commands.Type, Events.Type, Invariant, Failed] {
+
+  /** Handle the commands. */
+  private object Handle extends CommandHandlerWithInvariants[State, Commands.Type, Events.Type, Invariant, InvariantsViolated] {
     import plain._
     import monadic._
 
     def invariants = Invariant.All
-    def invariantError(failed: Invariant) = Failed(InvariantShow.show(failed))
+    def invariantError(failed: Invariant) = failed match {
+      case Invariant.`Must be open for transactions to happen` ⇒ NotOpen()
+      case failed ⇒ Failed(InvariantShow.show(failed))
+    }
     def applyEvent = _.fold(Apply)
 
     implicit val open = on[Open] { c ⇒ s ⇒
@@ -40,22 +58,62 @@ private class AccountAggregate {
       else c.fail(AlreadyOpen())
     }
 
+    implicit val blockFunds = onM[BlockFunds](c ⇒ for {
+      _ ← c.failIf(c.state.unblockedBalance < c.command.amount)(InsufficientFunds())
+      _ ← c.emit(Blocked(c.command.tx, c.command.amount, c.state.unblockedBalance - c.command.amount))
+    } yield ())
+
+    implicit val announceDeposit = on[AnnounceDeposit] { c ⇒ s ⇒
+      c.success(Announced(c.tx, c.amount))
+    }
+
+    implicit val confirmTx = onM[ConfirmTransaction](c ⇒ for {
+      _ ← c.assertThat(c.state.pending.contains(c.command.tx))(TxNotFound(c.command.tx))
+      tx = c.state.pending.get(c.command.tx).get
+      newBalance = c.state.balance * (if (tx.isDebit) -1 else 1)
+      _ ← c.emit(Confirmed(tx.id, tx.amount, tx.isDebit, newBalance))
+    } yield ())
+
+    implicit val abortTx = onM[AbortTransaction](c ⇒ for {
+      _ ← c.assertThat(c.state.pending.contains(c.command.tx))(TxNotFound(c.command.tx))
+      _ ← c.emit(Aborted(c.command.tx))
+    } yield ())
+
     implicit val close = onM[Close](c ⇒ for {
-      _ ← if (!c.state.open) c.fail(NotOpen()) else c.noop
+      _ ← c.assertThat(c.state.open)(NotOpen())
+      _ ← c.assertThat(c.state.balance != 0)(NotEmpty())
+      _ ← c.assertThat(c.state.pending.isEmpty)(HasPendingTx(c.state.pending.keySet))
       _ ← c.emit(Closed())
     } yield ())
   }
 
-  def seed(id: Id) = State(id, None, false)
 
-  val description = AggregateType.apply[Id, State, Commands.Type, Events.Type](
+  /** Requirements for valid states. */
+  private sealed trait Invariant extends (State ⇒ Boolean)
+  private object Invariant {
+    case object `Must have an owner if open` extends Invariant {
+      def apply(s: State) = s.owner.isDefined || !s.open
+    }
+    case object `Must be open for transactions to happen` extends Invariant {
+      def apply(s: State) = s.open || (s.pending.isEmpty && s.balance == 0)
+    }
+    case object `Balance must not be negative` extends Invariant {
+      def apply(s: State) = s.balance >= 0
+    }
+    case object `Balance including the blockings must not be negative` extends Invariant {
+      def apply(s: State) = s.unblockedBalance >= 0
+    }
+
+    val All: Set[Invariant] = AllSingletons
+  }
+
+  /** Create a new instance. */
+  private def seed(id: Id) = State(id, None, false, Map.empty, 0)
+
+
+  val description = AggregateType[Id, State, Commands.Type, Events.Type](
     name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),
     applyEvent = _.fold(Apply))
-}
-
-object AccountAggregate {
-  private val impl = new AccountAggregate
-  val description = impl.description
 }
