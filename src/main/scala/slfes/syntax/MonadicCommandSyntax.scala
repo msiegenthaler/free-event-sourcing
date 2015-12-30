@@ -27,7 +27,15 @@ case class MonadicCommandContext[State, Events <: Coproduct, C <: Cmd](command: 
   type IsEvent[Event] = Inject[Events, Event]
   private implicit def listMonoid = list.listAlgebra[Events]
 
+  def cmd = command
+
   // Verbs for the CommandMonad
+  /** Get the command. Sometimes more usefull than simply #command. */
+  def commandM: CM[C] = Monad[CM].pure(command)
+  def cmdM: CM[C] = Monad[CM].pure(command)
+  /** Get the state. Sometimes more usefull than simply #state. */
+  def stateM: CM[State] = Monad[CM].pure(state)
+
   /** Fail the command handling with the error. */
   def fail[Error: IsError](error: Error): CM[Unit] = {
     val l: M1[Unit] = Xor.left(Inject[C#Errors, Error].apply(error))
@@ -41,9 +49,13 @@ case class MonadicCommandContext[State, Events <: Coproduct, C <: Cmd](command: 
   /** Do nothing */
   def noop: CM[Unit] = Monad[CM].pure(())
 
-  def failIf[Error: IsError](cond: Boolean)(error: ⇒ Error): CM[Unit] =
+  def failIf[Error: IsError](cond: ⇒ Boolean)(error: ⇒ Error): CM[Unit] =
     if (cond) fail(error) else noop
-
-  def assertThat[Error: IsError](cond: Boolean)(error: ⇒ Error): CM[Unit] =
+  def assertThat[Error: IsError](cond: ⇒ Boolean)(error: ⇒ Error): CM[Unit] =
     failIf(!cond)(error)
+
+  def emitIf[Event: IsEvent](cond: ⇒ Boolean)(event: ⇒ Event): CM[Unit] =
+    if (cond) emit(event) else noop
+  def emitUnless[Event: IsEvent](cond: ⇒ Boolean)(event: ⇒ Event): CM[Unit] =
+    emitIf(!cond)(event)
 }
