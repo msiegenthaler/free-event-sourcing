@@ -1,8 +1,8 @@
-package slfes
+package example
 
 import java.util.UUID
 
-package object example {
+package object account {
   type Amount = Int
   type Txid = UUID
 }

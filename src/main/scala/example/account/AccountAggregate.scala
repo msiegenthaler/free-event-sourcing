@@ -1,12 +1,12 @@
-package slfes.example
+package example.account
 
-import slfes._
-import slfes.utils.AllSingletons
-import slfes.example.Account._
+import slfes.AggregateType
+import slfes.syntax.{EventApplicator, CommandHandlerWithInvariants}
+import slfes.utils.{InvariantShow, AllSingletons}
+import Account._
 import Command._
 import Error._
 import Event._
-
 
 object AccountAggregate {
   /** State */

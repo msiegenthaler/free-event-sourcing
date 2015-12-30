@@ -1,7 +1,7 @@
-package slfes.example
+package example.account
 
-import shapeless._
-import slfes._
+import shapeless.{:+:, CNil, Generic}
+import slfes.Cmd
 import slfes.utils.CoproductFromBase
 
 object Account {

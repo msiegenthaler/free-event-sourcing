@@ -1,11 +1,11 @@
-package slfes
+package slfes.syntax
 
 import scala.language.implicitConversions
-import cats.std.list
 import cats.data.{WriterT, Xor}
+import cats.std.list
 import shapeless.ops.coproduct.{Basis, Inject}
-import shapeless.{Poly1, Coproduct}
-
+import shapeless.{Coproduct, Poly1}
+import slfes.{Cmd, Inv}
 
 case class InvariantCommandSyntax[State, Commands <: Coproduct, Events <: Coproduct, In <: Inv[State], InErrs <: Coproduct, T <: Poly1](applyEvent: Events ⇒ State ⇒ State, invariants: Traversable[In], onInvariantFailed: In ⇒ InErrs)(val poly: T) {
   type Result[C <: Cmd] = Xor[C#Errors, Seq[Events]]
@@ -18,9 +18,6 @@ case class InvariantCommandSyntax[State, Commands <: Coproduct, Events <: Coprod
       invariants.find(inv ⇒ !inv(s2)).map(mkError).getOrElse(Xor.right(events))
     }
   }
-
-  //TODO `on` that overwrites onInvariantFailed
-
 
   implicit def commandSyntaxResponse[E <: Coproduct](cmd: Cmd {type Errors = E}): CommandSyntaxResponse[E, Events] =
     CommandSyntaxResponse(cmd)
@@ -37,8 +34,6 @@ case class InvariantMonadicCommandSyntax[State, Commands <: Coproduct, Events <:
       invariants.find(inv ⇒ !inv(s2)).map(mkError).getOrElse(Xor.right(events))
     }
   }
-
-  //TODO `onM` that overwrites onInvariantFailed
 
   implicit def listMonoid = list.listAlgebra[Events]
   type CommandMonad[C <: Cmd, A] = WriterT[Xor[C#Errors, ?], List[Events], A]

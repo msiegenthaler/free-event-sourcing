@@ -1,11 +1,12 @@
-package slfes
+package slfes.syntax
 
 import scala.language.implicitConversions
 import cats.data.Xor
 import shapeless.ops.coproduct.Inject
-import shapeless.{HList, Poly1, Coproduct}
+import shapeless.{Coproduct, HList, Poly1}
+import slfes.Cmd
 import slfes.utils.CoproductConstraint
-import slfes.utils.CoproductConstraint._
+import CoproductConstraint._
 
 
 case class CommandSyntax[State, Commands <: Coproduct, Events <: Coproduct, T <: Poly1](poly: T) {

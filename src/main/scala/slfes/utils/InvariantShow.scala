@@ -1,7 +1,8 @@
-package slfes
+package slfes.utils
 
 import scala.reflect.NameTransformer
 import cats.Show
+import slfes.Inv
 
 /** Renders an invariant to its pretty classname (i.e. for object 'Bad thing' extends Inv[S]). */
 object InvariantShow {

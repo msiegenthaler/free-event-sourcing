@@ -1,9 +1,9 @@
-package slfes
+package slfes.syntax
 
-import scala.language.higherKinds
-import scala.language.implicitConversions
-import shapeless.{Coproduct, Poly1}
+import scala.language.{higherKinds, implicitConversions}
 import shapeless.ops.coproduct.Inject
+import shapeless.{Coproduct, Poly1}
+import slfes.Inv
 
 trait CommandHandler[State, Commands <: Coproduct, Events <: Coproduct] extends Poly1 {
   val plain = CommandSyntax[State, Commands, Events, this.type](this)
