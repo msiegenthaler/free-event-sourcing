@@ -5,21 +5,19 @@ import slfes._
 import slfes.utils.CoproductFromBase
 
 object Account {
+  sealed trait Command extends Cmd
   object Command {
-    sealed trait Base extends Cmd
     import Error._
     type Err = Failed :+: CNil
 
-    case class Open(owner: String) extends Base {
+    case class Open(owner: String) extends Command {
       type Errors = AlreadyOpen :+: Err
     }
-    case class Close(force: Boolean) extends Base {
+    case class Close(force: Boolean) extends Command {
       type Errors = NotOpen :+: Err
     }
   }
-  object Commands extends CoproductFromBase {
-    val generic = Generic[Command.Base]
-  }
+  object Commands extends CoproductFromBase(Generic[Command])
 
   object Error {
     case class AlreadyOpen()
@@ -27,15 +25,13 @@ object Account {
     case class Failed(reason: String)
   }
 
+  sealed trait Event
   object Event {
-    sealed trait Base
-    case class Opened(owner: String) extends Base
-    case class Closed() extends Base
-    case class Balanced() extends Base
+    case class Opened(owner: String) extends Event
+    case class Closed() extends Event
+    case class Balanced() extends Event
   }
-  object Events extends CoproductFromBase {
-    val generic = Generic[Event.Base]
-  }
+  object Events extends CoproductFromBase(Generic[Event])
 
   case class Id(id: Long)
   case class State(id: Id, owner: Option[String], open: Boolean)

@@ -2,7 +2,8 @@ package slfes.utils
 
 import shapeless.Generic
 
-trait CoproductFromBase {
-  val generic: Generic[_]
+/** Allow for easier declaration of Generic Reprs.
+  * Usage: object Commands extends CoproductFromBase(Generic[Command]) */
+class CoproductFromBase[G <: Generic[_]](val generic: G) {
   type Type = generic.Repr
 }
