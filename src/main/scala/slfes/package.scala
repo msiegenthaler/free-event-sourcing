@@ -1,4 +1,5 @@
 import cats.data.Xor
+import cats.free.Free
 import shapeless.Coproduct
 
 package object slfes {
@@ -11,4 +12,6 @@ package object slfes {
 
   /** Type for invariants. */
   type Inv[State] = (State ⇒ Boolean)
+
+  type Process[A] = Free[ProcessAction, A]
 }
