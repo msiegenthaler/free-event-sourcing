@@ -20,7 +20,7 @@ case class CommandSyntax[State, Commands <: Coproduct, Events <: Coproduct, T <:
     CommandSyntaxResponse(cmd)
 }
 
-case class CommandSyntaxResponse[E <: Coproduct, Events <: Coproduct](val cmd: Cmd {type Errors = E}) {
+case class CommandSyntaxResponse[E <: Coproduct, Events <: Coproduct](cmd: Cmd {type Errors = E}) {
   private type Res = Xor[cmd.type#Errors, Seq[Events]]
   type IsEvent[Event] = Inject[Events, Event]
 

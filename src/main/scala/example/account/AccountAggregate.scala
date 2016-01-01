@@ -22,18 +22,18 @@ object AccountAggregate {
       s.copy(open = true, owner = Some(e.owner))
     }
     implicit val blocked = on[Blocked] { e ⇒ s ⇒
-      val tx = PendingTx(e.by, e.amount, true)
+      val tx = PendingTx(e.by, e.amount, isDebit = true)
       s.copy(pending = s.pending + (tx.id → tx))
     }
     implicit val announced = on[Announced] { e ⇒ s ⇒
-      val tx = PendingTx(e.by, e.amount, false)
+      val tx = PendingTx(e.by, e.amount, isDebit = false)
       s.copy(pending = s.pending + (tx.id → tx))
     }
     implicit val confirmed = on[Confirmed] { e ⇒ s ⇒
-      s.copy(pending = s.pending - (e.tx), balance = e.newBalance)
+      s.copy(pending = s.pending - e.tx, balance = e.newBalance)
     }
     implicit val aborted = on[Aborted] { e ⇒ s ⇒
-      s.copy(pending = s.pending - (e.tx))
+      s.copy(pending = s.pending - e.tx)
     }
     implicit val closed = on[Closed] { e ⇒ s ⇒
       s.copy(open = false)
@@ -49,7 +49,7 @@ object AccountAggregate {
     def invariants = Invariant.All
     def invariantError(failed: Invariant) = failed match {
       case Invariant.`Must be open for transactions to happen` ⇒ NotOpen()
-      case failed ⇒ Failed(InvariantShow.show(failed))
+      case _ ⇒ Failed(InvariantShow.show(failed))
     }
     def applyEvent = _.fold(Apply)
 
@@ -114,7 +114,7 @@ object AccountAggregate {
   }
 
   /** Create a new instance. */
-  private def seed(id: Id) = State(id, None, false, Map.empty, 0)
+  private def seed(id: Id) = State(id, None, open = false, pending = Map.empty, balance = 0)
 
 
   val description = AggregateType[Id, State, Commands.Type, Events.Type](
