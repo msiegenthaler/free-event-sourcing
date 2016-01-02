@@ -1,16 +1,25 @@
 package example.account
 
-import slfes._
+import slfes.Process
 import slfes.syntax.ProcessSyntax._
+import Aggregates._
+import Transaction.Event._
+import Account.Command._
 
 class TransactionResultProcess {
-  import Aggregates._
+  def start(id: Transaction.Id): Process[Unit] = {
+    awaitM(from(id)
+      .event[Confirmed](confirm(id))
+      .event[Canceled](cancel(id)))
+  }
 
-  def xxx(id: Transaction.Id): Process[Unit] = for {
-    accounts ← await(from(id).
-      event[Transaction.Event.Confirmed](e ⇒ (e.from, e.to)).
-      event[Transaction.Event.Canceled](e ⇒ (e.from, e.to)))
-    _ ← execute(accounts._1, Account.Command.ConfirmTransaction(id))
-    _ ← execute(accounts._2, Account.Command.ConfirmTransaction(id))
+  def confirm(id: Transaction.Id)(e: Confirmed) = for {
+    _ ← execute(e.from, ConfirmTransaction(id))
+    _ ← execute(e.to, ConfirmTransaction(id))
+  } yield ()
+
+  def cancel(id: Transaction.Id)(e: Canceled) = for {
+    _ ← execute(e.from, AbortTransaction(id))
+    _ ← execute(e.to, AbortTransaction(id))
   } yield ()
 }

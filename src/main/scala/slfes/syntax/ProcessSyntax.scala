@@ -18,7 +18,11 @@ object ProcessSyntax {
 
   /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */
   def await[A <: Aggregate, For <: Coproduct, R](handler: Handler[A, For, R]): Process[R] =
-    Free.liftF(Await[A, R](handler.id, handler.handle))
+    Free.liftF(Await(handler.id, handler.handle))
+
+  /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */
+  def awaitM[A <: Aggregate, For <: Coproduct, R](handler: Handler[A, For, Process[R]]): Process[R] =
+    Free.liftF(Await(handler.id, handler.handle)).flatMap((r) ⇒ r)
 
   // Inner syntax
 
