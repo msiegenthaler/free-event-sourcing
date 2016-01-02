@@ -39,10 +39,28 @@ trait CommandsFromId[I] {
   def aggregate: Aggregate
 }
 object CommandsFromId {
+  def apply[Id](implicit a: CommandsFromId[Id]): CommandsFromId[Id]#Aggregate = a.aggregate
   type Aux[I, C <: Coproduct] = CommandsFromId[I] {type Commands = C}
   type Aux2[I, C <: Coproduct, A <: Aggregate {type Id = I; type Command = C}] = CommandsFromId[I] {type Commands = C; type Aggregate = A}
   implicit def fromId[I](implicit a: Aggregate {type Id = I}): Aux2[I, a.Command, a.type] = new CommandsFromId[I] {
     type Commands = a.Command
+    type Aggregate = a.type
+    def aggregate = a
+  }
+}
+
+/** Gets the events from the type of the aggregate's id. */
+trait EventsFromId[I] {
+  type Events <: Coproduct
+  type Aggregate <: slfes.Aggregate {type Id = I; type Event = Events}
+  def aggregate: Aggregate
+}
+object EventsFromId {
+  def apply[Id](implicit a: EventsFromId[Id]): EventsFromId[Id]#Aggregate = a.aggregate
+  type Aux[I, E <: Coproduct] = EventsFromId[I] {type Events = E}
+  type Aux2[I, E <: Coproduct, A <: Aggregate {type Id = I; type Event = E}] = EventsFromId[I] {type Events = E; type Aggregate = A}
+  implicit def fromId[I](implicit a: Aggregate {type Id = I}): Aux2[I, a.Event, a.type] = new EventsFromId[I] {
+    type Events = a.Event
     type Aggregate = a.type
     def aggregate = a
   }
