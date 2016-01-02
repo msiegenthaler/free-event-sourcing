@@ -34,6 +34,7 @@ sealed trait ProcessAction[+A]
 object ProcessAction {
   type CommandResult[C <: Cmd] = C#Errors Xor Unit
 
+  case class Await[A <: Aggregate, R](id: A#Id, handler: A#Event ⇒ Option[R]) extends ProcessAction[R]
   case class Receive[A <: Aggregate](from: A#Id) extends ProcessAction[A#Event]
   case class Command[A <: Aggregate, C <: Cmd](to: A#Id, command: C)(implicit i: Inject[A#Command, C]) extends ProcessAction[CommandResult[C]]
   case object End extends ProcessAction[Nothing]
