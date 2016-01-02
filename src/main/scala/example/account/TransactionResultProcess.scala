@@ -1,6 +1,6 @@
 package example.account
 
-import slfes.{ProcessType, ProcessBody}
+import slfes.ProcessBody
 import slfes.syntax.ProcessSyntax._
 import Aggregates._
 import Transaction.Event._
@@ -8,7 +8,7 @@ import Account.Command._
 
 object TransactionResultProcess {
   val description = processStartedAt(transaction)
-    .on[Created](_.from.asInstanceOf[Transaction.Id])
+    .on[Created].withMetadata(_.from)
     .withBody(body)
 
   def body(id: Transaction.Id): ProcessBody = {

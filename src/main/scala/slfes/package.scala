@@ -15,4 +15,6 @@ package object slfes {
 
   type ProcessBody = ProcessBodyM[Unit]
   type ProcessBodyM[A] = Free[ProcessBodyAction, A]
+
+  type AggregateEvt[A <: Aggregate] = Evt[A#Event, A]
 }

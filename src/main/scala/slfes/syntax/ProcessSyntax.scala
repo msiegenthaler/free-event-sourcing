@@ -32,19 +32,24 @@ object ProcessSyntax {
   }
   case class OnFirst[A <: Aggregate, E](id: A#Id) {
     def apply[R](f: E ⇒ R)(implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil]): Handler[A, E :+: CNil, R] =
-      Handler[A, E :+: CNil, R](id, s(_).map(f))
+      withMetadata[R](e ⇒ f(e.event))
+    def withMetadata[R](f: Evt[E, A] ⇒ R)(implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil]): Handler[A, E :+: CNil, R] =
+      Handler[A, E :+: CNil, R](id, Evt.select(_).map(f))
   }
-  case class Handler[A <: Aggregate, For <: Coproduct, R](id: A#Id, handle: A#Event ⇒ Option[R]) {
+  case class Handler[A <: Aggregate, For <: Coproduct, R](id: A#Id, handle: AggregateEvt[A] ⇒ Option[R]) {
     def event[E] = OnChain[A, For, E, R](id, handle)
   }
-  case class OnChain[A <: Aggregate, For <: Coproduct, E, R1](id: A#Id, handle: A#Event ⇒ Option[R1]) {
+  case class OnChain[A <: Aggregate, For <: Coproduct, E, R1](id: A#Id, handle: AggregateEvt[A] ⇒ Option[R1]) {
     def apply[R2, ROut](f: E ⇒ R2)
+      (implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil], b2: Basis[A#Event, For],
+        p: Prepend[For, E :+: CNil], l: Lub[R1, R2, ROut]) = withMetadata(e ⇒ f(e.event))
+    def withMetadata[R2, ROut](f: Evt[E, A] ⇒ R2)
       (implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil], b2: Basis[A#Event, For],
         p: Prepend[For, E :+: CNil], l: Lub[R1, R2, ROut]): Handler[A, p.Out, ROut] = {
       Handler[A, p.Out, ROut](id, (event) ⇒
-        b1.apply(event) match {
+        b1.apply(event.event) match {
           case Left(e) ⇒ handle(event).map(l.left)
-          case Right(e) ⇒ s(event).map(f).map(l.right)
+          case Right(e) ⇒ Evt.select(event).map(f).map(l.right)
         }
       )
     }
@@ -67,9 +72,11 @@ object ProcessSyntax {
   }
   case class ProcessSpawnOn[A <: Aggregate, E](aggregate: A) {
     def apply[Id](f: E ⇒ Id)(implicit s: Selector[A#Event, E]) =
-      ProcessWithBody[A, E, Id](aggregate, s(_).map(f))
+      withMetadata(e ⇒ f(e.event))
+    def withMetadata[Id](f: Evt[E, A] ⇒ Id)(implicit s: Selector[A#Event, E]) =
+      ProcessWithBody[A, E, Id](aggregate, Evt.select[E, A](_).map(f))
   }
-  case class ProcessWithBody[A <: Aggregate, E, Id](aggregate: A, spawn: A#Event ⇒ Option[Id]) {
+  case class ProcessWithBody[A <: Aggregate, E, Id](aggregate: A, spawn: AggregateEvt[A] ⇒ Option[Id]) {
     def withBody(body: Id ⇒ ProcessBody) = ProcessType[A, Id](aggregate)(spawn, body)
   }
 }
