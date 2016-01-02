@@ -4,6 +4,7 @@ import shapeless.{:+:, CNil, Generic}
 import slfes.Cmd
 import slfes.utils.CoproductFromBase
 
+/** Banking account. Holds money and keeps track on it, is modified using transactions. */
 object Account {
   sealed trait Command extends Cmd
   object Command {

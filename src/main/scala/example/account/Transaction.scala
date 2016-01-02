@@ -4,6 +4,7 @@ import shapeless.{Generic, :+:, CNil}
 import slfes.Cmd
 import slfes.utils.CoproductFromBase
 
+/** A transaction transfers funds between two accounts. */
 object Transaction {
   sealed trait Command extends Cmd
   object Command {
