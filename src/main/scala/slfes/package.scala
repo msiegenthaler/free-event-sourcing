@@ -13,5 +13,6 @@ package object slfes {
   /** Type for invariants. */
   type Inv[State] = (State ⇒ Boolean)
 
-  type Process[A] = Free[ProcessAction, A]
+  type ProcessBody = ProcessBodyM[Unit]
+  type ProcessBodyM[A] = Free[ProcessBodyAction, A]
 }
