@@ -1,5 +1,6 @@
 package slfes.syntax
 
+import cats.Monad
 import cats.free.Free
 import shapeless.{Lub, CNil, :+:, Coproduct}
 import shapeless.ops.coproduct.{Inject, Prepend, Basis, Selector}
@@ -7,6 +8,8 @@ import slfes._
 import slfes.ProcessBodyAction._
 
 object ProcessSyntax {
+  def noop: ProcessBody = Monad[ProcessBodyM].pure(())
+
   /** Send a command to an aggregate. */
   def execute[A <: Aggregate, C <: Cmd : Inject[A#Command, ?]](to: A#Id, command: C) =
     Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command(to, command))
