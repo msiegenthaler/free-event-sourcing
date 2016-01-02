@@ -2,14 +2,25 @@ package slfes.syntax
 
 import cats.free.Free
 import shapeless.{Lub, CNil, :+:, Coproduct}
-import shapeless.ops.coproduct.{Prepend, Basis, Selector}
-import slfes.{AggregateFromId, Aggregate}
-import slfes.Process
+import shapeless.ops.coproduct.{Inject, Prepend, Basis, Selector}
+import slfes._
 import slfes.ProcessAction._
 
 object ProcessSyntax {
+  /** Send a command to an aggregate. */
+  def execute[A <: Aggregate, C <: Cmd : Inject[A#Command, ?]](to: A#Id, command: C) =
+    Free.liftF[ProcessAction, CommandResult[Cmd]](Command(to, command))
+
+  /** Send a command to an aggregate.
+        Use this if the automatic conversion from Id to Aggregate does not work. */
+  def execute[Id, C <: Cmd, CS <: Coproduct](to: Id, command: C)(implicit ev: CommandsFromId.Aux[Id, CS], i: Inject[CS, C]) =
+    Free.liftF[ProcessAction, CommandResult[Cmd]](Command[ev.Aggregate, C](to, command)(i))
+
+  /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */
   def await[A <: Aggregate, For <: Coproduct, R](handler: Handler[A, For, R]): Process[R] =
     Free.liftF(Await[A, R](handler.id, handler.handle))
+
+  // Inner syntax
 
   def from[Id](id: Id)(implicit a: AggregateFromId[Id]): From[a.Out] =
     From[a.Out](id)
