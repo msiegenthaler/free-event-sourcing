@@ -7,17 +7,16 @@ import Transaction.Event._
 import Account.Command._
 
 object TransactionResultProcess {
-  val description = ProcessType.create(transaction)(spawn, start)
+  val description = processStartedAt(transaction)
+    .on[Created](_.from.asInstanceOf[Transaction.Id])
+    .withBody(body)
 
-  def spawn(event: transaction.Event): Option[Transaction.Id] = {
-    ???
-  }
-
-  def start(id: Transaction.Id): ProcessBody = {
+  def body(id: Transaction.Id): ProcessBody = {
     awaitM(from(id)
       .event[Confirmed](confirm(id))
       .event[Canceled](cancel(id)))
   }
+
   def confirm(id: Transaction.Id)(e: Confirmed) = for {
     _ ← execute(e.from, ConfirmTransaction(id))
     _ ← execute(e.to, ConfirmTransaction(id))

@@ -24,11 +24,9 @@ object ProcessSyntax {
   def awaitM[A <: Aggregate, For <: Coproduct, R](handler: Handler[A, For, ProcessBodyM[R]]): ProcessBodyM[R] =
     Free.liftF(Await(handler.id, handler.handle)).flatMap((r) ⇒ r)
 
-  // Inner syntax
 
-  def from[Id](id: Id)(implicit a: AggregateFromId[Id]): From[a.Out] =
-    From[a.Out](id)
-
+  /** Used inside await. */
+  def from[Id](id: Id)(implicit a: AggregateFromId[Id]): From[a.Out] = From[a.Out](id)
   case class From[A <: Aggregate](id: A#Id) {
     def event[E]: OnFirst[A, E] = new OnFirst[A, E](id)
   }
@@ -50,5 +48,28 @@ object ProcessSyntax {
         }
       )
     }
+  }
+
+  /** Selector to start a process. */
+  def spawnFor[A <: Aggregate](aggregate: A) = SpawnFor(aggregate)
+  case class SpawnFor[A <: Aggregate](aggregate: A) {
+    def on[E] = SpawnOn[A, E](aggregate)
+  }
+  case class SpawnOn[A <: Aggregate, E](aggregate: A) {
+    def apply[Id](f: E ⇒ Id)(implicit s: Selector[A#Event, E]): (A#Event ⇒ Option[Id]) =
+      s(_).map(f)
+  }
+
+  /** A fluent way to write the complete process definition. */
+  def processStartedAt[A <: Aggregate](aggregate: A) = ProcessStartedAt(aggregate)
+  case class ProcessStartedAt[A <: Aggregate](aggregate: A) {
+    def on[E] = ProcessSpawnOn[A, E](aggregate)
+  }
+  case class ProcessSpawnOn[A <: Aggregate, E](aggregate: A) {
+    def apply[Id](f: E ⇒ Id)(implicit s: Selector[A#Event, E]) =
+      ProcessWithBody[A, E, Id](aggregate, s(_).map(f))
+  }
+  case class ProcessWithBody[A <: Aggregate, E, Id](aggregate: A, spawn: A#Event ⇒ Option[Id]) {
+    def withBody(body: Id ⇒ ProcessBody) = ProcessType[A, Id](aggregate)(spawn, body)
   }
 }

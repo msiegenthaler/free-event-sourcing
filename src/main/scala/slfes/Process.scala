@@ -9,7 +9,7 @@ trait ProcessType[A <: Aggregate, Id] {
   val body: Id ⇒ ProcessBody
 }
 object ProcessType {
-  def create[A <: Aggregate, Id](source: A)(spawn: A#Event ⇒ Option[Id], body: Id ⇒ ProcessBody): ProcessType[A, Id] = {
+  def apply[A <: Aggregate, Id](source: A)(spawn: A#Event ⇒ Option[Id], body: Id ⇒ ProcessBody): ProcessType[A, Id] = {
     val so = source
     val sp = spawn
     val bo = body
