@@ -8,7 +8,7 @@ import Account.Command._
 
 /** Updates the account when txs are confirmed or aborted. */
 object TransactionResultProcess {
-  val definition = processStartedAt(transaction)
+  val definition = process("transactionResult").startedAt(transaction)
     .on[Created].withMetadata(_.from)
     .withBody(body)
 

@@ -69,17 +69,20 @@ object ProcessSyntax {
   }
 
   /** A fluent way to write the complete process definition. */
-  def processStartedAt[A <: Aggregate](aggregate: A) = ProcessStartedAt(aggregate)
-  case class ProcessStartedAt[A <: Aggregate](aggregate: A) {
-    def on[E] = ProcessSpawnOn[A, E](aggregate)
+  def process(name: String) = ProcessName(name)
+  case class ProcessName(name: String) {
+    def startedAt[A <: Aggregate](aggregate: A) = ProcessStartedAt(name, aggregate)
   }
-  case class ProcessSpawnOn[A <: Aggregate, E](aggregate: A) {
+  case class ProcessStartedAt[A <: Aggregate](name: String, aggregate: A) {
+    def on[E] = ProcessSpawnOn[A, E](name, aggregate)
+  }
+  case class ProcessSpawnOn[A <: Aggregate, E](name: String, aggregate: A) {
     def apply[Id](f: E ⇒ Id)(implicit s: Selector[A#Event, E]) =
       withMetadata(e ⇒ f(e.event))
     def withMetadata[Id](f: Evt[E, A] ⇒ Id)(implicit s: Selector[A#Event, E]) =
-      ProcessWithBody[A, E, Id](aggregate, Evt.select[E, A](_).map(f))
+      ProcessWithBody[A, E, Id](name, aggregate, Evt.select[E, A](_).map(f))
   }
-  case class ProcessWithBody[A <: Aggregate, E, Id](aggregate: A, spawn: AggregateEvt[A] ⇒ Option[Id]) {
-    def withBody(body: Id ⇒ ProcessBody) = ProcessType[A, Id](aggregate)(spawn, body)
+  case class ProcessWithBody[A <: Aggregate, E, Id](name: String, aggregate: A, spawn: AggregateEvt[A] ⇒ Option[Id]) {
+    def withBody(body: Id ⇒ ProcessBody) = ProcessType[A, Id](name, aggregate)(spawn, body)
   }
 }
