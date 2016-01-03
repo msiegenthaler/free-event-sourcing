@@ -82,7 +82,7 @@ object TransactionAggregate {
   /** Create a new instance. */
   private def seed(id: Id) = None
 
-  val description = AggregateType[Id, State, Commands, Events](
+  val definition = AggregateType[Id, State, Commands, Events](
     name = "Transaction",
     seed = seed,
     handleCommand = _.fold(Handle),

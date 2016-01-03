@@ -2,9 +2,9 @@ package example.account
 
 import slfes.ProcessBody
 import slfes.syntax.ProcessSyntax._
-import Aggregates._
 import Account.Command._
 import Transaction.Event.Created
+import AccountProcessing._
 
 /** Blocks the funds in the debited account and confirms/aborts the tx based on the result.
   * Updating the accounts then happens in the separate TransactionResultProcess. */

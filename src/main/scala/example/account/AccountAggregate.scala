@@ -122,7 +122,7 @@ object AccountAggregate {
   private def seed(id: Id) = State(id, None, open = false, pending = Map.empty, balance = 0)
 
 
-  val description = AggregateType[Id, State, Commands, Events](
+  val definition = AggregateType[Id, State, Commands, Events](
     name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),

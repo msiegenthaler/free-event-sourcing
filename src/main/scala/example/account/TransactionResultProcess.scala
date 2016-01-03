@@ -1,10 +1,10 @@
 package example.account
 
-import example.account.Aggregates._
 import slfes._
 import slfes.syntax.ProcessSyntax._
 import Transaction.Event._
 import Account.Command._
+import example.account.AccountProcessing._
 
 /** Updates the account when txs are confirmed or aborted. */
 object TransactionResultProcess {
