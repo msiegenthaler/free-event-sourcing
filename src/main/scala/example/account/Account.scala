@@ -1,8 +1,7 @@
 package example.account
 
-import shapeless.{:+:, CNil, Generic}
+import shapeless.{:+:, CNil}
 import slfes.Cmd
-import slfes.utils.CoproductFromBase
 
 /** Banking account. Holds money and keeps track on it, is modified using transactions. */
 object Account {
@@ -30,7 +29,6 @@ object Account {
       type Errors = NotOpen :+: NotEmpty :+: HasPendingTx :+: InvariantsViolated
     }
   }
-  object Commands extends CoproductFromBase(Generic[Command])
 
   object Error {
     case class AlreadyOpen()
@@ -51,7 +49,6 @@ object Account {
     case class Aborted(tx: Transaction.Id) extends Event
     case class Closed() extends Event
   }
-  object Events extends CoproductFromBase(Generic[Event])
 
   case class Id(id: Long)
 }

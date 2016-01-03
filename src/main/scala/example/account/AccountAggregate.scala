@@ -1,8 +1,9 @@
 package example.account
 
+import shapeless.Generic
 import slfes.AggregateType
 import slfes.syntax.{EventApplicator, CommandHandlerWithInvariants}
-import slfes.utils.{InvariantShow, AllSingletons}
+import slfes.utils.{CoproductFromBase, InvariantShow, AllSingletons}
 import Account._
 import Command._
 import Error._
@@ -15,9 +16,13 @@ object AccountAggregate {
   }
   case class PendingTx(id: Transaction.Id, amount: Amount, isDebit: Boolean)
 
+  val commands = new CoproductFromBase(Generic[Command])
+  type Commands = commands.Type
+  val events = new CoproductFromBase(Generic[Event])
+  type Events = events.Type
 
   /** Apply the events. */
-  private object Apply extends EventApplicator[State, Events.Type] {
+  private object Apply extends EventApplicator[State, Events] {
     implicit val opened = on[Opened] { e ⇒ s ⇒
       s.copy(open = true, owner = Some(e.owner))
     }
@@ -42,7 +47,7 @@ object AccountAggregate {
 
 
   /** Handle the commands. */
-  private object Handle extends CommandHandlerWithInvariants[State, Commands.Type, Events.Type, Invariant, InvariantsViolated] {
+  private object Handle extends CommandHandlerWithInvariants[State, Commands, Events, Invariant, InvariantsViolated] {
     import plain._
     import monadic._
 
@@ -117,7 +122,7 @@ object AccountAggregate {
   private def seed(id: Id) = State(id, None, open = false, pending = Map.empty, balance = 0)
 
 
-  val description = AggregateType[Id, State, Commands.Type, Events.Type](
+  val description = AggregateType[Id, State, Commands, Events](
     name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),

@@ -1,8 +1,7 @@
 package example.account
 
-import shapeless.{Generic, :+:, CNil}
+import shapeless.{:+:, CNil}
 import slfes.Cmd
-import slfes.utils.CoproductFromBase
 
 /** A transaction transfers funds between two accounts. */
 object Transaction {
@@ -20,7 +19,6 @@ object Transaction {
       type Errors = AlreadyConfirmed :+: InvariantsViolated
     }
   }
-  object Commands extends CoproductFromBase(Generic[Command])
 
   sealed trait Event
   object Event {
@@ -28,7 +26,6 @@ object Transaction {
     case class Confirmed(from: Account.Id, to: Account.Id, amount: Amount) extends Event
     case class Canceled(from: Account.Id, to: Account.Id) extends Event
   }
-  object Events extends CoproductFromBase(Generic[Event])
 
   object Error {
     case class InvalidAmount()
