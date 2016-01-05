@@ -86,5 +86,5 @@ object TransactionAggregate {
     name = "Transaction",
     seed = seed,
     handleCommand = _.fold(Handle),
-    applyEvent = _.fold(Apply))
+    applyEvent = _.fold(Apply)).aggregateType
 }

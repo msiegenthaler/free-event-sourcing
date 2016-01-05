@@ -1,12 +1,12 @@
 package example.account
 
-import shapeless.HNil
+import shapeless._
 import slfes.BoundedContextType
 
 /** Bounded context for account processing. */
 object AccountProcessing {
-  implicit val account = AccountAggregate.definition.aggregateType.interface
-  implicit val transaction = TransactionAggregate.definition.aggregateType.interface
+  implicit val account = AccountAggregate.definition.interface
+  implicit val transaction = TransactionAggregate.definition.interface
 
   val contextType = BoundedContextType("account processing",
     aggregates =

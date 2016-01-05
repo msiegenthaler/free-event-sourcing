@@ -83,6 +83,6 @@ object ProcessSyntax {
       ProcessWithBody[A, E, Id](name, aggregate, Evt.select[E, A](_).map(f))
   }
   case class ProcessWithBody[A <: AggregateInterface, E, Id](name: String, aggregate: A, spawn: AggregateEvt[A] ⇒ Option[Id]) {
-    def withBody(body: Id ⇒ ProcessBody) = ProcessType[A, Id](name, aggregate, spawn, body)
+    def withBody(body: Id ⇒ ProcessBody) = ProcessDefinition[A, Id](name, aggregate, spawn, body).processType
   }
 }

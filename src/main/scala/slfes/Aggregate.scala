@@ -7,7 +7,7 @@ case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](name: Strin
   seed: I ⇒ S,
   handleCommand: C ⇒ S ⇒ CmdResult[E],
   applyEvent: E ⇒ S ⇒ S) {
-  private val outer = this
+  private def outer = this
 
   val aggregateType = new AggregateType {
     type Interface = AggregateInterface.Aux[I, C, E]
@@ -34,8 +34,8 @@ case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](name: Strin
 
 sealed trait AggregateType {
   type Interface <: AggregateInterface
-  type Implementation <: AggregateImplementation
   val interface: Interface
+  type Implementation <: AggregateImplementation
   val implementation: Implementation
 }
 

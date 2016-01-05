@@ -126,5 +126,5 @@ object AccountAggregate {
     name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),
-    applyEvent = _.fold(Apply))
+    applyEvent = _.fold(Apply)).aggregateType
 }
