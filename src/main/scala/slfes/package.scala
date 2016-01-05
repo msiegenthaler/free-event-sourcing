@@ -1,6 +1,7 @@
 import cats.data.Xor
 import cats.free.Free
 import shapeless.Coproduct
+import shapeless.ops.coproduct.Inject
 
 package object slfes {
   /** Super trait for all commands. */
@@ -17,4 +18,6 @@ package object slfes {
   type ProcessBodyM[A] = Free[ProcessBodyAction, A]
 
   type AggregateEvt[A <: AggregateInterface] = Evt[A#Event, A]
+
+  type CommandFor[A <: AggregateInterface] = {type λ[C] = Inject[A#Command, C]}
 }

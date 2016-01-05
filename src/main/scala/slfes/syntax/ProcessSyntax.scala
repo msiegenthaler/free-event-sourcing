@@ -11,12 +11,12 @@ object ProcessSyntax {
   def noop: ProcessBody = Monad[ProcessBodyM].pure(())
 
   /** Send a command to an aggregate.    */
-  def execute[Id, C <: Cmd, CS <: Coproduct](to: Id, command: C)(implicit cfi: CommandForId[Id, C]) =
+  def execute[Id, C <: Cmd](to: Id, command: C)(implicit cfi: CommandForId[Id, C]) =
     Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command[cfi.Aggregate, C](to, command)(cfi.inject))
 
   /** Send a command to an aggregate.
       Use this if the automatic conversion from Id to Aggregate does not work. */
-  def execute[A <: AggregateInterface, C <: Cmd : A#IsCommand](to: A#Id, command: C) =
+  def execute[A <: AggregateInterface, C <: Cmd : CommandFor[A]#λ](to: A#Id, command: C) =
     Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command(to, command))
 
   /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */

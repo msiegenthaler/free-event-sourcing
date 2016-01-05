@@ -53,8 +53,6 @@ sealed trait AggregateInterface {
   type Id
   type Command <: Coproduct
   type Event <: Coproduct
-
-  type IsCommand[C <: Cmd] = Inject[Command, C]
 }
 object AggregateInterface {
   type Aux[I, C <: Coproduct, E <: Coproduct] = AggregateInterface {
