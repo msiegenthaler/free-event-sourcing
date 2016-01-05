@@ -21,13 +21,10 @@ sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
   protected val aggregateInterfaces: AggregateInterfaces
   private def outer = this
   val boundedContext = new BoundedContextType {
-    //TODO interfaces for process
     type Interface = BoundedContextInterface.Aux[AggregateInterfaces, PS]
     val interface = new BoundedContextInterface {
       type Aggregates = AggregateInterfaces
       val aggregates = aggregateInterfaces
-      type Processes = PS
-      val processes = outer.processes //TODO interfaces
     }
   }
 }
@@ -59,9 +56,6 @@ sealed trait BoundedContextInterface {
   type Aggregates <: HList
   val aggregates: Aggregates
 
-  type Processes <: HList
-  val processes: Processes
-
   type IsAggregate[A <: AggregateInterface] = Selector[Aggregates, A]
 
   type Monad[A] = BoundedContextInterface.BoundedContextM[this.type, A]
@@ -78,15 +72,11 @@ sealed trait BoundedContextInterface {
     lift[F, CommandResult[C]](action)
   }
 
-  def exec[I, C <: Cmd](to: I, cmd: C)
-    (implicit cfi: CommandForIdInList[Aggregates, I, C]): Monad[CommandResult[C]] = ???
-
   private def lift[F[_], A](op: Action[A])(implicit inject: cats.free.Inject[Action, F]) = Free.liftF(inject.inj(op))
 }
 object BoundedContextInterface {
   type Aux[A <: HList, P <: HList] = BoundedContextInterface {
     type Aggregates = A
-    type Processes = P
   }
 
   type BoundedContextM[BC <: BoundedContextInterface, A] = Free[BoundedContextAction[BC, ?], A]
