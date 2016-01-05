@@ -21,21 +21,21 @@ object AggregateFromId {
 
 /** Checks if the Id and the Command belong to the same aggregate. The aggragate type must be made visible in the
   * implicit scope. */
-sealed trait CommandForId[I, C <: Cmd] {
+sealed trait CommandForId[Id, C <: Cmd] {
   type Command <: Coproduct
-  type Aggregate <: AggregateInterface.AuxIC[I, Command]
-  val inject: Inject[Aggregate#Command, C]
-  def apply(command: C): Aggregate#Command = inject(command)
+  type Aggregate <: AggregateInterface.AuxIC[Id, Command]
+  val inject: Inject[Command, C]
+  def apply(command: C): Command = inject(command)
 }
 object CommandForId {
   def apply[Id, C <: Cmd](implicit cfi: CommandForId[Id, C]) = cfi
-  type Aux[I, C <: Cmd, A <: AggregateInterface.AuxIC[I, C], CP <: Coproduct] = CommandForId[I, C] {
+  type Aux[I, C <: Cmd, A <: AggregateInterface.AuxIC[I, CP], CP <: Coproduct] = CommandForId[I, C] {
     type Aggregate = A
-    type Cmds = CP
+    type Command = CP
   }
   implicit def valid[Id, C <: Cmd, CP <: Coproduct](implicit ev: CommandsFromId.Aux[Id, CP],
     i: Inject[CP, C]): Aux[Id, C, ev.Aggregate, CP] = new CommandForId[Id, C] {
-    type Cmds = CP
+    type Command = CP
     type Aggregate = ev.Aggregate
     val inject = i
   }
@@ -48,8 +48,11 @@ trait CommandsFromId[Id] {
 }
 object CommandsFromId {
   def apply[Id](implicit a: CommandsFromId[Id]): CommandsFromId[Id]#Aggregate = a.aggregate
-  type Aux[I, C <: Coproduct] = CommandsFromId[I] {type Commands = C}
-  type Aux2[I, C <: Coproduct, A <: AggregateInterface.AuxIC[I, C]] = CommandsFromId[I] {type Command = C; type Aggregate = A}
+  type Aux[I, C <: Coproduct] = CommandsFromId[I] {type Command = C}
+  type Aux2[I, C <: Coproduct, A <: AggregateInterface.AuxIC[I, C]] = CommandsFromId[I] {
+    type Command = C
+    type Aggregate = A
+  }
   implicit def fromId[I](implicit a: AggregateInterface.WithId[I]): Aux2[I, a.Command, a.type] = new CommandsFromId[I] {
     type Command = a.Command
     type Aggregate = a.type
@@ -67,10 +70,11 @@ sealed trait CommandForIdInList[L <: HList, Id, C <: Cmd] {
   def aggregate(l: L): Aggregate = aggregateSelector(l)
 }
 object CommandForIdInList {
+  def apply[L <: HList, I, C <: Cmd](implicit c: CommandForIdInList[L, I, C]) = c
   type Aux[L <: HList, I, C <: Cmd, A <: slfes.AggregateInterface.WithId[I]] = CommandForIdInList[L, I, C] {
     type Aggregate = A
   }
-  implicit def valid[L <: HList, I, C <: Cmd, CP <: Coproduct](ev: CommandsFromIdInList.Aux[L, I, CP],
+  implicit def valid[L <: HList, I, C <: Cmd, CP <: Coproduct](implicit ev: CommandsFromIdInList.Aux[L, I, CP],
     i: Inject[CP, C]): Aux[L, I, C, ev.Aggregate] = new CommandForIdInList[L, I, C] {
     type Command = CP
     type Aggregate = ev.Aggregate

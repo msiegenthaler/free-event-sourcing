@@ -14,7 +14,7 @@ sealed trait BoundedContext {
   type Aggregates <: HList
   type Processes <: HList
 
-  type Contains[A <: AggregateInterface] = Selector[Aggregates, A]
+  type IsAggregate[A <: AggregateInterface] = Selector[Aggregates, A]
 
   type Monad[A] = BoundedContext.BoundedContextM[this.type, A]
   type Action[+A] = BoundedContextAction[this.type, A]
@@ -46,7 +46,7 @@ case class BoundedContextType[AS <: HList : <<:[AggregateType]#λ , PS <: HList 
 
 sealed trait BoundedContextAction[BC <: BoundedContext, +A]
 object BoundedContextAction {
-  case class Command[BC <: BoundedContext, A <: Aggregate : BC#Contains, C <: Cmd : Inject[A#Command, ?]](to: A#Id,
+  case class Command[BC <: BoundedContext, A <: AggregateInterface : BC#IsAggregate, C <: Cmd : Inject[A#Command, ?]](to: A#Id,
     command: C)
     extends BoundedContextAction[BC, CommandResult[C]]
 
