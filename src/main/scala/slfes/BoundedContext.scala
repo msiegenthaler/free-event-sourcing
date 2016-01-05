@@ -6,47 +6,97 @@ import cats.free.Free
 import shapeless.LUBConstraint.<<:
 import shapeless.{HList, ::}
 import shapeless.ops.coproduct.Inject
-import shapeless.ops.hlist.Selector
+import shapeless.ops.hlist.{Mapper, Selector}
 import slfes.ProcessBodyAction.CommandResult
 
+sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
+  val name: String
+  val aggregates: Aggregates
+  val processes: Processes
+
+  type Aggregates <: AS
+  type Processes <: PS
+  type AggregateInterfaces <: HList
+
+  protected val aggregateInterfaces: AggregateInterfaces
+  private def outer = this
+  val boundedContext = new BoundedContextType {
+    //TODO interfaces for process
+    type Interface = BoundedContextInterface.Aux[AggregateInterfaces, PS]
+    val interface = new BoundedContextInterface {
+      type Aggregates = AggregateInterfaces
+      val aggregates = aggregateInterfaces
+      type Processes = PS
+      val processes = outer.processes //TODO interfaces
+    }
+  }
+}
+object BoundedContextDefinition {
+  def apply[AS <: HList : <<:[AggregateType]#λ, PS <: HList : <<:[ProcessType]#λ](name: String, aggregates: AS,
+    processes: PS)(implicit ai: Mapper[AggregateType.ToAggregateInterface.type, AS]) = {
+    def n = name
+    def a = aggregates
+    def p = processes
+    new BoundedContextDefinition[AS, PS] {
+      val name = n
+      val aggregates = a
+      val processes = p
+      protected val aggregateInterfaces = aggregates.map(AggregateType.ToAggregateInterface)
+      type Aggregates = AS
+      type Processes = PS
+      type AggregateInterfaces = ai.Out
+    }
+  }
+}
+
+sealed trait BoundedContextType {
+  type Interface <: BoundedContextInterface
+  val interface: Interface
+}
+
 /** Model of a subdomain of the problem (i.e. inventory or customer relationship mangement). */
-sealed trait BoundedContext {
+sealed trait BoundedContextInterface {
   type Aggregates <: HList
+  val aggregates: Aggregates
+
   type Processes <: HList
+  val processes: Processes
 
   type IsAggregate[A <: AggregateInterface] = Selector[Aggregates, A]
 
-  type Monad[A] = BoundedContext.BoundedContextM[this.type, A]
+  type Monad[A] = BoundedContextInterface.BoundedContextM[this.type, A]
   type Action[+A] = BoundedContextAction[this.type, A]
   type Exec[F[_]] = cats.free.Inject[Action, F]
   type BoundedContext = this.type
 
   def noop[F[_] : Exec]: Free[F, Unit] = Monad[Free[F, ?]].pure(())
 
-  def exec[F[_] : Exec, I, C <: Cmd](to: I, command: C)
+  def execute[F[_] : Exec, I, C <: Cmd](to: I, command: C)
     (implicit cfi: CommandForIdInList[Aggregates, I, C]): Free[F, CommandResult[C]] = {
     import cfi._
     val action = BoundedContextAction.Command[BoundedContext, cfi.Aggregate, C](to, command)
     lift[F, CommandResult[C]](action)
   }
 
+  def exec[I, C <: Cmd](to: I, cmd: C)
+    (implicit cfi: CommandForIdInList[Aggregates, I, C]): Monad[CommandResult[C]] = ???
+
   private def lift[F[_], A](op: Action[A])(implicit inject: cats.free.Inject[Action, F]) = Free.liftF(inject.inj(op))
 }
-object BoundedContext {
-  type BoundedContextM[BC <: BoundedContext, A] = Free[BoundedContextAction[BC, ?], A]
-}
-
-case class BoundedContextType[AS <: HList : <<:[AggregateType]#λ , PS <: HList : <<:[ProcessType]#λ](name: String, aggregates: AS, processes: PS) {
-
-  def boundedContext = new BoundedContext {
-    override type Aggregates = AS
-    override type Processes = PS
+object BoundedContextInterface {
+  type Aux[A <: HList, P <: HList] = BoundedContextInterface {
+    type Aggregates = A
+    type Processes = P
   }
+
+  type BoundedContextM[BC <: BoundedContextInterface, A] = Free[BoundedContextAction[BC, ?], A]
 }
 
-sealed trait BoundedContextAction[BC <: BoundedContext, +A]
+
+sealed trait BoundedContextAction[BC <: BoundedContextInterface, +A]
 object BoundedContextAction {
-  case class Command[BC <: BoundedContext, A <: AggregateInterface : BC#IsAggregate, C <: Cmd : Inject[A#Command, ?]](to: A#Id,
+  case class Command[BC <: BoundedContextInterface, A <: AggregateInterface : BC#IsAggregate, C <: Cmd : Inject[A#Command, ?]](
+    to: A#Id,
     command: C)
     extends BoundedContextAction[BC, CommandResult[C]]
 
