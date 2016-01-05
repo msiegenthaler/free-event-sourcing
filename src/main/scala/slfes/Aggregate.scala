@@ -1,6 +1,7 @@
 package slfes
 
 import shapeless._
+import shapeless.ops.coproduct.Inject
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
 case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](name: String,
@@ -53,7 +54,7 @@ sealed trait AggregateInterface {
   type Command <: Coproduct
   type Event <: Coproduct
 
-  type IsCommand[C <: Cmd] = CommandForAggregate[this.type, C]
+  type IsCommand[C <: Cmd] = Inject[Command, C]
 }
 object AggregateInterface {
   type Aux[I, C <: Coproduct, E <: Coproduct] = AggregateInterface {

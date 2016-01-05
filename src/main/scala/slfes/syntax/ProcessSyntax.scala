@@ -12,7 +12,7 @@ object ProcessSyntax {
 
   /** Send a command to an aggregate.    */
   def execute[Id, C <: Cmd, CS <: Coproduct](to: Id, command: C)(implicit cfi: CommandForId[Id, C]) =
-    Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command[cfi.Aggregate, C](to, command))
+    Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command[cfi.Aggregate, C](to, command)(cfi.inject))
 
   /** Send a command to an aggregate.
       Use this if the automatic conversion from Id to Aggregate does not work. */
