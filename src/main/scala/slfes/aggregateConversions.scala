@@ -1,6 +1,7 @@
 package slfes
 
 import shapeless.Coproduct
+import shapeless.ops.coproduct.Inject
 
 /** Gets the aggregate from the type of the id. */
 trait AggregateFromId[I] {
@@ -30,7 +31,6 @@ object AggregateFromCommands {
     def aggregate = a
   }
 }
-
 
 /** Gets the commands from the type of the aggregate's id. */
 trait CommandsFromId[I] {
@@ -64,4 +64,33 @@ object EventsFromId {
     type Aggregate = a.type
     def aggregate = a
   }
+}
+
+/** Checks that a command applies to an aggregate and allows lifting the command. */
+sealed trait CommandForAggregate[A <: Aggregate, C <: Cmd] {
+  def inject(command: C): A#Command
+}
+object CommandForAggregate {
+  def apply[A <: Aggregate, C <: Cmd](implicit cfa: CommandForAggregate[A, C]) = cfa
+  implicit def valid[A <: Aggregate, C <: Cmd](implicit i: Inject[A#Command, C]): CommandForAggregate[A, C] = new CommandForAggregate[A, C] {
+    def inject(command: C) = i(command)
+  }
+  implicit def fromCfi[I, C <: Cmd](implicit cfi: CommandForId[I, C]) = cfi.toCfa
+}
+
+/** Same as CommandForAggregate, but on aggregate's id instead of on the aggregate itself. */
+sealed trait CommandForId[I, C <: Cmd] {
+  type Aggregate <: slfes.Aggregate {type Id = I}
+  def inject(command: C): Aggregate#Command
+  private def inject2(command: C) = inject(command)
+  def toCfa[A <: Aggregate {type Command = Aggregate#Command}] = {
+    new CommandForAggregate[A, C] {
+      def inject(command: C) = inject2(command)
+    }
+  }
+}
+object CommandForId {
+  def apply[Id, C <: Cmd](implicit cfi: CommandForId[Id, C]) = cfi
+  type Aux[I, C <: Cmd, A <: Aggregate {type Id = I}] = CommandForId[I, C] {type Aggregate = A}
+  implicit def valid[Id, C <: Cmd, CP <: Coproduct](implicit ev: CommandsFromId[Id], i: Inject[CP, C]): Aux[Id, C, ev.Aggregate] = ???
 }

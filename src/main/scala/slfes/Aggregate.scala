@@ -24,4 +24,6 @@ sealed trait Aggregate {
   type Id
   type Command <: Coproduct
   type Event <: Coproduct
+
+  type IsCommand[C <: Cmd] = CommandForAggregate[this.type, C]
 }
