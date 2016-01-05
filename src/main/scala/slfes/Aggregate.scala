@@ -55,6 +55,16 @@ object AggregateInterface {
     type Command = C
     type Event = E
   }
+  type AuxIC[I, C <: Coproduct] = AggregateInterface {
+    type Id = I
+    type Command = C
+  }
+  type AuxIE[I, E <: Coproduct] = AggregateInterface {
+    type Id = I
+    type Event = E
+  }
+  type WithId[I] = AggregateInterface {type Id = I}
+  type WithCommand[C <: Coproduct] = AggregateInterface {type Command = C}
 }
 
 /** Implementation of the aggregate. */

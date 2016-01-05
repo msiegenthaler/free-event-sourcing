@@ -4,14 +4,14 @@ import shapeless.Coproduct
 import shapeless.ops.coproduct.Inject
 
 /** Gets the aggregate from the type of the id. */
-trait AggregateFromId[I] {
-  type Out <: AggregateInterface {type Id = I}
+trait AggregateFromId[Id] {
+  type Out <: AggregateInterface.WithId[Id]
   def aggregate: Out
 }
 object AggregateFromId {
   def apply[Id](implicit a: AggregateFromId[Id]): AggregateFromId[Id]#Out = a.aggregate
-  type Aux[A, I] = AggregateFromId[I] {type Out = A}
-  implicit def fromId[I](implicit a: AggregateInterface {type Id = I}): Aux[a.type, I] = new AggregateFromId[I] {
+  type Aux[A <: AggregateInterface.WithId[I], I] = AggregateFromId[I] {type Out = A}
+  implicit def fromId[Id](implicit a: AggregateInterface.WithId[Id]): Aux[a.type, Id] = new AggregateFromId[Id] {
     type Out = a.type
     def aggregate = a
   }
@@ -20,47 +20,47 @@ object AggregateFromId {
 
 /** Gets the aggregate from the type of the command (the coproduct). */
 trait AggregateFromCommands[C <: Coproduct] {
-  type Out <: AggregateInterface {type Command = C}
+  type Out <: AggregateInterface.WithCommand[C]
   def aggregate: Out
 }
 object AggregateFromCommands {
   def apply[C <: Coproduct](implicit a: AggregateFromCommands[C]): AggregateFromCommands[C]#Out = a.aggregate
-  type Aux[A, C <: Coproduct] = AggregateFromCommands[C] {type Out = A}
-  implicit def fromCommands[A <: AggregateInterface {type Command = C}, C <: Coproduct](implicit a: A): Aux[A, C] = new AggregateFromCommands[C] {
+  type Aux[A <: AggregateInterface.WithCommand[C], C <: Coproduct] = AggregateFromCommands[C] {type Out = A}
+  implicit def fromCommands[A <: AggregateInterface.WithCommand[C], C <: Coproduct](implicit a: A): Aux[A, C] = new AggregateFromCommands[C] {
     type Out = A
     def aggregate = a
   }
 }
 
 /** Gets the commands from the type of the aggregate's id. */
-trait CommandsFromId[I] {
-  type Commands <: Coproduct
-  type Aggregate <: slfes.AggregateInterface {type Id = I; type Command = Commands}
+trait CommandsFromId[Id] {
+  type Command <: Coproduct
+  type Aggregate <: slfes.AggregateInterface.AuxIC[Id, Command]
   def aggregate: Aggregate
 }
 object CommandsFromId {
   def apply[Id](implicit a: CommandsFromId[Id]): CommandsFromId[Id]#Aggregate = a.aggregate
   type Aux[I, C <: Coproduct] = CommandsFromId[I] {type Commands = C}
-  type Aux2[I, C <: Coproduct, A <: AggregateInterface {type Id = I; type Command = C}] = CommandsFromId[I] {type Commands = C; type Aggregate = A}
-  implicit def fromId[I](implicit a: AggregateInterface {type Id = I}): Aux2[I, a.Command, a.type] = new CommandsFromId[I] {
-    type Commands = a.Command
+  type Aux2[I, C <: Coproduct, A <: AggregateInterface.AuxIC[I, C]] = CommandsFromId[I] {type Command = C; type Aggregate = A}
+  implicit def fromId[I](implicit a: AggregateInterface.WithId[I]): Aux2[I, a.Command, a.type] = new CommandsFromId[I] {
+    type Command = a.Command
     type Aggregate = a.type
     def aggregate = a
   }
 }
 
 /** Gets the events from the type of the aggregate's id. */
-trait EventsFromId[I] {
-  type Events <: Coproduct
-  type Aggregate <: slfes.AggregateInterface {type Id = I; type Event = Events}
+trait EventsFromId[Id] {
+  type Event <: Coproduct
+  type Aggregate <: slfes.AggregateInterface.AuxIE[Id, Event]
   def aggregate: Aggregate
 }
 object EventsFromId {
   def apply[Id](implicit a: EventsFromId[Id]): EventsFromId[Id]#Aggregate = a.aggregate
   type Aux[I, E <: Coproduct] = EventsFromId[I] {type Events = E}
-  type Aux2[I, E <: Coproduct, A <: AggregateInterface {type Id = I; type Event = E}] = EventsFromId[I] {type Events = E; type Aggregate = A}
-  implicit def fromId[I](implicit a: AggregateInterface {type Id = I}): Aux2[I, a.Event, a.type] = new EventsFromId[I] {
-    type Events = a.Event
+  type Aux2[I, E <: Coproduct, A <: AggregateInterface.AuxIE[I, E]] = EventsFromId[I] {type Event = E; type Aggregate = A}
+  implicit def fromId[Id](implicit a: AggregateInterface.WithId[Id]): Aux2[Id, a.Event, a.type] = new EventsFromId[Id] {
+    type Event = a.Event
     type Aggregate = a.type
     def aggregate = a
   }
@@ -79,8 +79,8 @@ object CommandForAggregate {
 }
 
 /** Same as CommandForAggregate, but on aggregate's id instead of on the aggregate itself. */
-sealed trait CommandForId[I, C <: Cmd] {
-  type Aggregate <: slfes.AggregateInterface {type Id = I}
+sealed trait CommandForId[Id, C <: Cmd] {
+  type Aggregate <: slfes.AggregateInterface.WithId[Id]
   def inject(command: C): Aggregate#Command
   private def inject2(command: C) = inject(command)
   def toCfa[A <: Aggregate {type Command = Aggregate#Command}] = {
@@ -91,6 +91,6 @@ sealed trait CommandForId[I, C <: Cmd] {
 }
 object CommandForId {
   def apply[Id, C <: Cmd](implicit cfi: CommandForId[Id, C]) = cfi
-  type Aux[I, C <: Cmd, A <: AggregateInterface {type Id = I}] = CommandForId[I, C] {type Aggregate = A}
+  type Aux[Id, C <: Cmd, A <: AggregateInterface.WithId[Id]] = CommandForId[Id, C] {type Aggregate = A}
   implicit def valid[Id, C <: Cmd, CP <: Coproduct](implicit ev: CommandsFromId[Id], i: Inject[CP, C]): Aux[Id, C, ev.Aggregate] = ???
 }
