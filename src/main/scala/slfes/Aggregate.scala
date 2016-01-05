@@ -3,27 +3,77 @@ package slfes
 import shapeless._
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
-case class AggregateType[I, S, C <: Coproduct, E <: Coproduct](name: String,
+case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](name: String,
   seed: I ⇒ S,
   handleCommand: C ⇒ S ⇒ CmdResult[E],
   applyEvent: E ⇒ S ⇒ S) {
-  type Id = I
-  type State = S
-  type Command = C
-  type Event = E
+  private val outer = this
 
+  val aggregateType = new AggregateType {
+    type Interface = AggregateInterface.Aux[I, C, E]
+    val interface: Interface = new AggregateInterface {
+      val name = outer.name
+      type Id = I
+      type Command = C
+      type Event = E
+    }
 
-  val aggregate = new Aggregate {
+    type Implementation = AggregateImplementation.Aux[I, S, C, E]
+    val implementation: Implementation = new AggregateImplementation {
+      val name: String = outer.name
+      val seed: (Id) ⇒ State = outer.seed
+      val handleCommand: (Command) ⇒ (State) ⇒ CmdResult[Event] = outer.handleCommand
+      val applyEvent: (Event) ⇒ (State) ⇒ State = outer.applyEvent
+      type Id = I
+      type Command = C
+      type State = S
+      type Event = E
+    }
+  }
+}
+
+sealed trait AggregateType {
+  type Interface <: AggregateInterface
+  type Implementation <: AggregateImplementation
+  val interface: Interface
+  val implementation: Implementation
+}
+
+/** Public interface of an aggregate. */
+sealed trait AggregateInterface {
+  val name: String
+
+  type Id
+  type Command <: Coproduct
+  type Event <: Coproduct
+
+  type IsCommand[C <: Cmd] = CommandForAggregate[this.type, C]
+}
+object AggregateInterface {
+  type Aux[I, C <: Coproduct, E <: Coproduct] = AggregateInterface {
     type Id = I
     type Command = C
     type Event = E
   }
 }
 
-sealed trait Aggregate {
+/** Implementation of the aggregate. */
+sealed trait AggregateImplementation {
+  val name: String
+  val seed: Id ⇒ State
+  val handleCommand: Command ⇒ State ⇒ CmdResult[Event]
+  val applyEvent: Event ⇒ State ⇒ State
+
   type Id
+  type State
   type Command <: Coproduct
   type Event <: Coproduct
-
-  type IsCommand[C <: Cmd] = CommandForAggregate[this.type, C]
+}
+object AggregateImplementation {
+  type Aux[I, S, C <: Coproduct, E <: Coproduct] = AggregateImplementation {
+    type Id = I
+    type State = S
+    type Command = C
+    type Event = E
+  }
 }

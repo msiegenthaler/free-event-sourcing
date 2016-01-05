@@ -1,7 +1,7 @@
 package example.account
 
 import shapeless.{CNil, :+:, Generic}
-import slfes.AggregateType
+import slfes.AggregateDefinition
 import slfes.syntax.{CommandHandlerWithInvariants, EventApplicator}
 import slfes.utils.{InvariantShow, AllSingletons, CoproductFromBase}
 import example.account.Transaction._
@@ -82,7 +82,7 @@ object TransactionAggregate {
   /** Create a new instance. */
   private def seed(id: Id) = None
 
-  val definition = AggregateType[Id, State, Commands, Events](
+  val definition = AggregateDefinition[Id, State, Commands, Events](
     name = "Transaction",
     seed = seed,
     handleCommand = _.fold(Handle),

@@ -5,8 +5,8 @@ import slfes.BoundedContextType
 
 /** Bounded context for account processing. */
 object AccountProcessing {
-  implicit val account = AccountAggregate.definition.aggregate
-  implicit val transaction = TransactionAggregate.definition.aggregate
+  implicit val account = AccountAggregate.definition.aggregateType.interface
+  implicit val transaction = TransactionAggregate.definition.aggregateType.interface
 
   val contextType = BoundedContextType("account processing",
     aggregates =

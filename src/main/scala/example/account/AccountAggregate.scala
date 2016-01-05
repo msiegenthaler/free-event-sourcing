@@ -1,7 +1,7 @@
 package example.account
 
 import shapeless.Generic
-import slfes.AggregateType
+import slfes.AggregateDefinition
 import slfes.syntax.{EventApplicator, CommandHandlerWithInvariants}
 import slfes.utils.{CoproductFromBase, InvariantShow, AllSingletons}
 import Account._
@@ -122,7 +122,7 @@ object AccountAggregate {
   private def seed(id: Id) = State(id, None, open = false, pending = Map.empty, balance = 0)
 
 
-  val definition = AggregateType[Id, State, Commands, Events](
+  val definition = AggregateDefinition[Id, State, Commands, Events](
     name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),
