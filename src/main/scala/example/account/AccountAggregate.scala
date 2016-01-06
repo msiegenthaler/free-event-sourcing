@@ -1,9 +1,9 @@
 package example.account
 
-import shapeless.Generic
 import slfes.AggregateDefinition
 import slfes.syntax.{EventApplicator, CommandHandlerWithInvariants}
-import slfes.utils.{CoproductFromBase, InvariantShow, AllSingletons}
+import slfes.utils.{InvariantShow, AllSingletons}
+import shapeless.{CNil, :+:}
 import Account._
 import Command._
 import Error._
@@ -16,10 +16,8 @@ object AccountAggregate {
   }
   case class PendingTx(id: Transaction.Id, amount: Amount, isDebit: Boolean)
 
-  val commands = new CoproductFromBase(Generic[Command])
-  type Commands = commands.Type
-  val events = new CoproductFromBase(Generic[Event])
-  type Events = events.Type
+  type Commands = Open :+: BlockFunds :+: AnnounceDeposit :+: ConfirmTransaction :+: AbortTransaction :+: Close :+: CNil
+  type Events = Opened :+: Blocked :+: Announced :+: Confirmed :+: Aborted :+: Closed :+: CNil
 
   /** Apply the events. */
   private object Apply extends EventApplicator[State, Events] {
