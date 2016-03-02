@@ -10,5 +10,5 @@ resolvers += "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositor
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.2.5"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.0"
 libraryDependencies += "org.spire-math" %% "cats" % "0.4.0-SNAPSHOT"
