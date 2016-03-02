@@ -3,7 +3,7 @@ package example.account
 import shapeless.{CNil, :+:, Generic}
 import slfes.AggregateDefinition
 import slfes.syntax.{CommandHandlerWithInvariants, EventApplicator}
-import slfes.utils.{InvariantShow, AllSingletons, CoproductFromBase}
+import slfes.utils.{InvariantShow, AllSingletons}
 import example.account.Transaction._
 import Command._
 import Event._
@@ -38,7 +38,6 @@ object TransactionAggregate {
 
   /** Handle the commands. */
   private object Handle extends CommandHandlerWithInvariants[State, Commands, Events, Invariant, InvariantsViolated] {
-    import plain._
     import monadic._
 
     def invariants = Invariant.All

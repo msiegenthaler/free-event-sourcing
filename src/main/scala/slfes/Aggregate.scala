@@ -1,7 +1,6 @@
 package slfes
 
 import shapeless._
-import shapeless.ops.coproduct.Inject
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
 case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](name: String,
