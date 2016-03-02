@@ -3,6 +3,7 @@ package slfes
 import shapeless.ops.hlist.Selector
 import shapeless.{::, HList, Coproduct}
 import shapeless.ops.coproduct.Inject
+import scala.annotation.implicitNotFound
 
 /** Gets the aggregate from the type of the id. */
 trait AggregateFromId[Id] {
@@ -60,8 +61,8 @@ object CommandsFromId {
   }
 }
 
-
 /** Checks if the Id and the Command belong to the same aggregate the is a member of the list L. */
+@implicitNotFound("command ${C} does not apply to aggregate with id ${Id} or unknown id type")
 sealed trait CommandForIdInList[L <: HList, Id, C <: Cmd] {
   type Aggregate <: AggregateInterface.WithId[Id]
   implicit val inject: Inject[Aggregate#Command, C]
