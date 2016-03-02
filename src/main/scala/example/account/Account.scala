@@ -5,27 +5,26 @@ import slfes.Cmd
 
 /** Banking account. Holds money and keeps track on it, is modified using transactions. */
 object Account {
-  sealed trait Command extends Cmd
   object Command {
     import Error._
     type InvariantsViolated = Failed :+: NotOpen :+: CNil
 
-    case class Open(owner: String) extends Command {
+    case class Open(owner: String) extends Cmd {
       type Errors = AlreadyOpen :+: InvariantsViolated
     }
-    case class BlockFunds(tx: Transaction.Id, amount: Amount) extends Command {
+    case class BlockFunds(tx: Transaction.Id, amount: Amount) extends Cmd {
       type Errors = InsufficientFunds :+: InvariantsViolated
     }
-    case class AnnounceDeposit(tx: Transaction.Id, amount: Amount) extends Command {
+    case class AnnounceDeposit(tx: Transaction.Id, amount: Amount) extends Cmd {
       type Errors = InvariantsViolated :+: InvariantsViolated
     }
-    case class ConfirmTransaction(tx: Transaction.Id) extends Command {
+    case class ConfirmTransaction(tx: Transaction.Id) extends Cmd {
       type Errors = TxNotFound :+: InvariantsViolated
     }
-    case class AbortTransaction(tx: Transaction.Id) extends Command {
+    case class AbortTransaction(tx: Transaction.Id) extends Cmd {
       type Errors = TxNotFound :+: InvariantsViolated
     }
-    case class Close() extends Command {
+    case class Close() extends Cmd {
       type Errors = NotOpen :+: NotEmpty :+: HasPendingTx :+: InvariantsViolated
     }
   }
@@ -40,14 +39,13 @@ object Account {
     case class HasPendingTx(txs: Set[Transaction.Id])
   }
 
-  sealed trait Event
   object Event {
-    case class Opened(owner: String) extends Event
-    case class Blocked(by: Transaction.Id, amount: Amount, unblockedBalance: Amount) extends Event
-    case class Announced(by: Transaction.Id, amount: Amount) extends Event
-    case class Confirmed(tx: Transaction.Id, amount: Amount, isDebit: Boolean, newBalance: Amount) extends Event
-    case class Aborted(tx: Transaction.Id) extends Event
-    case class Closed() extends Event
+    case class Opened(owner: String)
+    case class Blocked(by: Transaction.Id, amount: Amount, unblockedBalance: Amount)
+    case class Announced(by: Transaction.Id, amount: Amount)
+    case class Confirmed(tx: Transaction.Id, amount: Amount, isDebit: Boolean, newBalance: Amount)
+    case class Aborted(tx: Transaction.Id)
+    case class Closed()
   }
 
   case class Id(id: Long)

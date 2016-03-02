@@ -5,26 +5,24 @@ import slfes.Cmd
 
 /** A transaction transfers funds between two accounts. */
 object Transaction {
-  sealed trait Command extends Cmd
   object Command {
     import Error._
     type InvariantsViolated = Failed :+: CNil
-    case class Create(from: Account.Id, to: Account.Id, amount: Amount) extends Command {
+    case class Create(from: Account.Id, to: Account.Id, amount: Amount) extends Cmd {
       type Errors = InvalidAmount :+: InvariantsViolated
     }
-    case class Confirm() extends Command {
+    case class Confirm() extends Cmd {
       type Errors = AlreadyCanceled :+: InvariantsViolated
     }
-    case class Cancel() extends Command {
+    case class Cancel() extends Cmd {
       type Errors = AlreadyConfirmed :+: InvariantsViolated
     }
   }
 
-  sealed trait Event
   object Event {
-    case class Created(from: Account.Id, to: Account.Id, amount: Amount) extends Event
-    case class Confirmed(from: Account.Id, to: Account.Id, amount: Amount) extends Event
-    case class Canceled(from: Account.Id, to: Account.Id) extends Event
+    case class Created(from: Account.Id, to: Account.Id, amount: Amount)
+    case class Confirmed(from: Account.Id, to: Account.Id, amount: Amount)
+    case class Canceled(from: Account.Id, to: Account.Id)
   }
 
   object Error {
