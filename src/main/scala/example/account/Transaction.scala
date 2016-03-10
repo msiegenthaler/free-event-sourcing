@@ -1,6 +1,6 @@
 package example.account
 
-import shapeless.{:+:, CNil}
+import shapeless.{ :+:, CNil }
 import slfes.Cmd
 
 /** A transaction transfers funds between two accounts. */

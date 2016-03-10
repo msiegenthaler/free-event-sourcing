@@ -1,9 +1,9 @@
 package example.account
 
 import slfes.AggregateDefinition
-import slfes.syntax.{EventApplicator, CommandHandlerWithInvariants}
-import slfes.utils.{InvariantShow, AllSingletons}
-import shapeless.{CNil, :+:}
+import slfes.syntax.{ EventApplicator, CommandHandlerWithInvariants }
+import slfes.utils.{ InvariantShow, AllSingletons }
+import shapeless.{ CNil, :+: }
 import Account._
 import Command._
 import Error._
@@ -42,7 +42,6 @@ object AccountAggregate {
       s.copy(open = false)
     }
   }
-
 
   /** Handle the commands. */
   private object Handle extends CommandHandlerWithInvariants[State, Commands, Events, Invariant, InvariantsViolated] {
@@ -90,7 +89,6 @@ object AccountAggregate {
     } yield ())
   }
 
-
   /** Requirements for valid states. */
   private sealed trait Invariant extends (State ⇒ Boolean)
   private object Invariant {
@@ -119,10 +117,10 @@ object AccountAggregate {
   /** Create a new instance. */
   private def seed(id: Id) = State(id, None, open = false, pending = Map.empty, balance = 0)
 
-
   val definition = AggregateDefinition[Id, State, Commands, Events](
     name = "Account",
     seed = seed,
     handleCommand = _.fold(Handle),
-    applyEvent = _.fold(Apply)).aggregateType
+    applyEvent = _.fold(Apply)
+  ).aggregateType
 }

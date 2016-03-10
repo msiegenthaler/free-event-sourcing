@@ -3,10 +3,12 @@ package slfes
 import shapeless._
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
-case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](name: String,
-  seed: I ⇒ S,
-  handleCommand: C ⇒ S ⇒ CmdResult[E],
-  applyEvent: E ⇒ S ⇒ S) {
+case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](
+    name: String,
+    seed: I ⇒ S,
+    handleCommand: C ⇒ S ⇒ CmdResult[E],
+    applyEvent: E ⇒ S ⇒ S
+) {
   private def outer = this
 
   val aggregateType = new AggregateType {
@@ -67,8 +69,8 @@ object AggregateInterface {
     type Id = I
     type Event = E
   }
-  type WithId[I] = AggregateInterface {type Id = I}
-  type WithCommand[C <: Coproduct] = AggregateInterface {type Command = C}
+  type WithId[I] = AggregateInterface { type Id = I }
+  type WithCommand[C <: Coproduct] = AggregateInterface { type Command = C }
 }
 
 /** Implementation of the aggregate. */

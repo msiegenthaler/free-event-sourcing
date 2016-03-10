@@ -2,8 +2,8 @@ package slfes.syntax
 
 import cats.Monad
 import cats.free.Free
-import shapeless.{Lub, CNil, :+:, Coproduct}
-import shapeless.ops.coproduct.{Inject, Prepend, Basis, Selector}
+import shapeless.{ Lub, CNil, :+:, Coproduct }
+import shapeless.ops.coproduct.{ Inject, Prepend, Basis, Selector }
 import slfes._
 import slfes.ProcessBodyAction._
 
@@ -15,8 +15,9 @@ object ProcessSyntax {
     Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command[cfi.Aggregate, C](to, command)(cfi.inject))
 
   /** Send a command to an aggregate.
-      Use this if the automatic conversion from Id to Aggregate does not work. */
-  def execute[A <: AggregateInterface, C <: Cmd : CommandFor[A]#λ](to: A#Id, command: C) =
+   *  Use this if the automatic conversion from Id to Aggregate does not work.
+   */
+  def execute[A <: AggregateInterface, C <: Cmd: CommandFor[A]#λ](to: A#Id, command: C) =
     Free.liftF[ProcessBodyAction, CommandResult[Cmd]](Command(to, command))
 
   /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */
@@ -26,7 +27,6 @@ object ProcessSyntax {
   /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */
   def awaitM[A <: AggregateInterface, For <: Coproduct, R](handler: Handler[A, For, ProcessBodyM[R]]): ProcessBodyM[R] =
     Free.liftF(Await(handler.id, handler.handle)).flatMap((r) ⇒ r)
-
 
   /** Used inside await. */
   def from[Id](id: Id)(implicit a: AggregateFromId[Id]): From[a.Out] = From[a.Out](id)
@@ -43,18 +43,15 @@ object ProcessSyntax {
     def event[E] = OnChain[A, For, E, R](id, handle)
   }
   case class OnChain[A <: AggregateInterface, For <: Coproduct, E, R1](id: A#Id, handle: AggregateEvt[A] ⇒ Option[R1]) {
-    def apply[R2, ROut](f: E ⇒ R2)
-      (implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil], b2: Basis[A#Event, For],
-        p: Prepend[For, E :+: CNil], l: Lub[R1, R2, ROut]) = withMetadata(e ⇒ f(e.event))
-    def withMetadata[R2, ROut](f: Evt[E, A] ⇒ R2)
-      (implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil], b2: Basis[A#Event, For],
-        p: Prepend[For, E :+: CNil], l: Lub[R1, R2, ROut]): Handler[A, p.Out, ROut] = {
+    def apply[R2, ROut](f: E ⇒ R2)(implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil], b2: Basis[A#Event, For],
+      p: Prepend[For, E :+: CNil], l: Lub[R1, R2, ROut]) = withMetadata(e ⇒ f(e.event))
+    def withMetadata[R2, ROut](f: Evt[E, A] ⇒ R2)(implicit s: Selector[A#Event, E], b1: Basis[A#Event, E :+: CNil], b2: Basis[A#Event, For],
+      p: Prepend[For, E :+: CNil], l: Lub[R1, R2, ROut]): Handler[A, p.Out, ROut] = {
       Handler[A, p.Out, ROut](id, (event) ⇒
         b1.apply(event.event) match {
-          case Left(e) ⇒ handle(event).map(l.left)
+          case Left(e)  ⇒ handle(event).map(l.left)
           case Right(e) ⇒ Evt.select(event).map(f).map(l.right)
-        }
-      )
+        })
     }
   }
 

@@ -1,6 +1,6 @@
 package example.account
 
-import shapeless.{:+:, CNil}
+import shapeless.{ :+:, CNil }
 import slfes.Cmd
 
 /** Banking account. Holds money and keeps track on it, is modified using transactions. */

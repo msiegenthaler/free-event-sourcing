@@ -4,9 +4,9 @@ import scala.language.higherKinds
 import cats.Monad
 import cats.free.Free
 import shapeless.LUBConstraint.<<:
-import shapeless.{HList, ::}
+import shapeless.{ HList, :: }
 import shapeless.ops.coproduct.Inject
-import shapeless.ops.hlist.{Mapper, Selector}
+import shapeless.ops.hlist.{ Mapper, Selector }
 import slfes.ProcessBodyAction.CommandResult
 
 sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
@@ -29,7 +29,7 @@ sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
   }
 }
 object BoundedContextDefinition {
-  def apply[AS <: HList : <<:[AggregateType]#λ, PS <: HList : <<:[ProcessType]#λ](name: String, aggregates: AS,
+  def apply[AS <: HList: <<:[AggregateType]#λ, PS <: HList: <<:[ProcessType]#λ](name: String, aggregates: AS,
     processes: PS)(implicit ai: Mapper[AggregateType.ToAggregateInterface.type, AS]) = {
     def n = name
     def a = aggregates
@@ -63,10 +63,9 @@ sealed trait BoundedContextInterface {
   type Exec[F[_]] = cats.free.Inject[Action, F]
   type BoundedContext = this.type
 
-  def noop[F[_] : Exec]: Free[F, Unit] = Monad[Free[F, ?]].pure(())
+  def noop[F[_]: Exec]: Free[F, Unit] = Monad[Free[F, ?]].pure(())
 
-  def execute[F[_] : Exec, I, C <: Cmd](to: I, command: C)
-    (implicit cfi: CommandForIdInList[Aggregates, I, C]): Free[F, CommandResult[C]] = {
+  def execute[F[_]: Exec, I, C <: Cmd](to: I, command: C)(implicit cfi: CommandForIdInList[Aggregates, I, C]): Free[F, CommandResult[C]] = {
     import cfi._
     val action = BoundedContextAction.Command[BoundedContext, cfi.Aggregate, C](to, command)
     lift[F, CommandResult[C]](action)
@@ -82,12 +81,12 @@ object BoundedContextInterface {
   type BoundedContextM[BC <: BoundedContextInterface, A] = Free[BoundedContextAction[BC, ?], A]
 }
 
-
 sealed trait BoundedContextAction[BC <: BoundedContextInterface, +A]
 object BoundedContextAction {
-  case class Command[BC <: BoundedContextInterface, A <: AggregateInterface : BC#IsAggregate, C <: Cmd : Inject[A#Command, ?]](
+  case class Command[BC <: BoundedContextInterface, A <: AggregateInterface: BC#IsAggregate, C <: Cmd: Inject[A#Command, ?]](
     to: A#Id,
-    command: C)
-    extends BoundedContextAction[BC, CommandResult[C]]
+    command: C
+  )
+      extends BoundedContextAction[BC, CommandResult[C]]
 
 }

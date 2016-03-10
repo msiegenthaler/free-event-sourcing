@@ -18,8 +18,7 @@ object AllSingletons {
   }
 
   object MkValues {
-    implicit def values[T, Repr <: Coproduct]
-    (implicit gen: Generic.Aux[T, Repr], v: Aux[T, Repr]): MkValues[T] =
+    implicit def values[T, Repr <: Coproduct](implicit gen: Generic.Aux[T, Repr], v: Aux[T, Repr]): MkValues[T] =
       new MkValues[T] {
         def values = v.values
       }

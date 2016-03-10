@@ -1,6 +1,6 @@
 package slfes
 
-import shapeless.ops.coproduct.{Selector, Inject}
+import shapeless.ops.coproduct.{ Selector, Inject }
 
 case class EventMetadata[A <: AggregateInterface](from: A#Id, sequence: Long, aggregate: A)
 

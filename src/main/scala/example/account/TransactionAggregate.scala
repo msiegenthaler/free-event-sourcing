@@ -1,9 +1,9 @@
 package example.account
 
-import shapeless.{CNil, :+:, Generic}
+import shapeless.{ CNil, :+:, Generic }
 import slfes.AggregateDefinition
-import slfes.syntax.{CommandHandlerWithInvariants, EventApplicator}
-import slfes.utils.{InvariantShow, AllSingletons}
+import slfes.syntax.{ CommandHandlerWithInvariants, EventApplicator }
+import slfes.utils.{ InvariantShow, AllSingletons }
 import example.account.Transaction._
 import Command._
 import Event._
@@ -21,7 +21,6 @@ object TransactionAggregate {
   type State = Option[Tx]
   type Commands = Create :+: Confirm :+: Cancel :+: CNil
   type Events = Created :+: Confirmed :+: Canceled :+: CNil
-
 
   /** Apply the events. */
   private object Apply extends EventApplicator[State, Events] {
@@ -85,5 +84,6 @@ object TransactionAggregate {
     name = "Transaction",
     seed = seed,
     handleCommand = _.fold(Handle),
-    applyEvent = _.fold(Apply)).aggregateType
+    applyEvent = _.fold(Apply)
+  ).aggregateType
 }

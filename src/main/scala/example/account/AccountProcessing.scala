@@ -9,7 +9,8 @@ object AccountProcessing {
   implicit val account = AccountAggregate.definition.interface
   implicit val transaction = TransactionAggregate.definition.interface
 
-  val definition = BoundedContextDefinition("account processing",
+  val definition = BoundedContextDefinition(
+    "account processing",
     aggregates = AccountAggregate.definition :: TransactionAggregate.definition :: HNil,
     processes = BlockFundsProcess.definition :: TransactionResultProcess.definition :: HNil
   ).boundedContext

@@ -12,3 +12,13 @@ addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.0"
 libraryDependencies += "org.spire-math" %% "cats" % "0.4.0-SNAPSHOT"
+
+
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import scalariform.formatter.preferences._
+
+ScalariformKeys.preferences := ScalariformKeys.preferences.value
+  .setPreference(AlignSingleLineCaseStatements, true)
+  .setPreference(MultilineScaladocCommentsStartOnFirstLine, true)
+  .setPreference(RewriteArrowSymbols, true)
+  .setPreference(PreserveDanglingCloseParenthesis, true)

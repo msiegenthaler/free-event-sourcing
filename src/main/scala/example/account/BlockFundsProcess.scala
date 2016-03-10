@@ -7,7 +7,8 @@ import Transaction.Event.Created
 import AccountProcessing._
 
 /** Blocks the funds in the debited account and confirms/aborts the tx based on the result.
-  * Updating the accounts then happens in the separate TransactionResultProcess. */
+ *  Updating the accounts then happens in the separate TransactionResultProcess.
+ */
 object BlockFundsProcess {
   val definition = process("blockFunds").startedAt(transaction)
     .on[Created].withMetadata(_.from)

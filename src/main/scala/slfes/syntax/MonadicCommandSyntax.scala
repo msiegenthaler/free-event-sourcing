@@ -1,17 +1,17 @@
 package slfes.syntax
 
 import cats.Monad
-import cats.data.{WriterT, Xor}
+import cats.data.{ WriterT, Xor }
 import cats.std.list
 import shapeless.ops.coproduct.Inject
-import shapeless.{Coproduct, Poly1}
+import shapeless.{ Coproduct, Poly1 }
 import slfes.Cmd
 
 case class MonadicCommandSyntax[State, Commands <: Coproduct, Events <: Coproduct, T <: Poly1](poly: T) {
   type Result[C <: Cmd] = Xor[C#Errors, Seq[Events]]
   type IsCommand[C] = Inject[Commands, C]
 
-  def onM[C <: Cmd : IsCommand](f: MonadicCommandContext[State, Events, C] ⇒ CommandMonad[C, Unit]): poly.Case.Aux[C, State ⇒ Result[C]] = {
+  def onM[C <: Cmd: IsCommand](f: MonadicCommandContext[State, Events, C] ⇒ CommandMonad[C, Unit]): poly.Case.Aux[C, State ⇒ Result[C]] = {
     poly.at(c ⇒ s ⇒ f(MonadicCommandContext(c, s)).run.map(_._1))
   }
 

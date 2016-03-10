@@ -1,8 +1,8 @@
 package slfes.syntax
 
-import scala.language.{higherKinds, implicitConversions}
+import scala.language.{ higherKinds, implicitConversions }
 import shapeless.ops.coproduct.Inject
-import shapeless.{Coproduct, Poly1}
+import shapeless.{ Coproduct, Poly1 }
 import slfes.Inv
 
 trait CommandHandler[State, Commands <: Coproduct, Events <: Coproduct] extends Poly1 {

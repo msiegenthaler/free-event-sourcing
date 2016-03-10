@@ -1,7 +1,7 @@
 package slfes.syntax
 
 import shapeless.ops.coproduct.Inject
-import shapeless.{Coproduct, Poly1}
+import shapeless.{ Coproduct, Poly1 }
 
 trait EventApplicator[State, Events <: Coproduct] extends Poly1 {
   type IsEvent[Event] = Inject[Events, Event]

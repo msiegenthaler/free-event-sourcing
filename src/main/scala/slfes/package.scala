@@ -14,5 +14,5 @@ package object slfes {
 
   type AggregateEvt[A <: AggregateInterface] = Evt[A#Event, A]
 
-  type CommandFor[A <: AggregateInterface] = {type λ[C] = Inject[A#Command, C]}
+  type CommandFor[A <: AggregateInterface] = { type λ[C] = Inject[A#Command, C] }
 }
