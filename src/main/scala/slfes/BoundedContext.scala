@@ -57,7 +57,7 @@ sealed trait BoundedContextInterface {
   type Aggregates <: HList
   val aggregates: Aggregates
 
-  type IsAggregate[A <: AggregateInterface] = Selector[Aggregates, A]
+  type IsAggregate[A <: Aggregate] = Selector[Aggregates, A]
 
   type Monad[A] = BoundedContextInterface.BoundedContextM[this.type, A]
   type Action[+A] = BoundedContextAction[this.type, A]

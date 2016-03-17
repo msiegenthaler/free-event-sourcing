@@ -12,8 +12,8 @@ case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](
   private def outer = this
 
   val aggregateType = new AggregateType {
-    type Interface = AggregateInterface.Aux[I, C, E]
-    val interface: Interface = new AggregateInterface {
+    type Interface = Aggregate.Aux[I, C, E]
+    val interface: Interface = new Aggregate {
       val name = outer.name
       type Id = I
       type Command = C
@@ -35,7 +35,7 @@ case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](
 }
 
 sealed trait AggregateType {
-  type Interface <: AggregateInterface
+  type Interface <: Aggregate
   val interface: Interface
   type Implementation <: AggregateImplementation
   val implementation: Implementation
@@ -48,29 +48,29 @@ object AggregateType {
 }
 
 /** Public interface of an aggregate. */
-sealed trait AggregateInterface {
+sealed trait Aggregate {
   val name: String
 
   type Id
   type Command <: Coproduct
   type Event <: Coproduct
 }
-object AggregateInterface {
-  type Aux[I, C <: Coproduct, E <: Coproduct] = AggregateInterface {
+object Aggregate {
+  type Aux[I, C <: Coproduct, E <: Coproduct] = Aggregate {
     type Id = I
     type Command = C
     type Event = E
   }
-  type AuxIC[I, C <: Coproduct] = AggregateInterface {
+  type AuxIC[I, C <: Coproduct] = Aggregate {
     type Id = I
     type Command = C
   }
-  type AuxIE[I, E <: Coproduct] = AggregateInterface {
+  type AuxIE[I, E <: Coproduct] = Aggregate {
     type Id = I
     type Event = E
   }
-  type WithId[I] = AggregateInterface { type Id = I }
-  type WithCommand[C <: Coproduct] = AggregateInterface { type Command = C }
+  type WithId[I] = Aggregate { type Id = I }
+  type WithCommand[C <: Coproduct] = Aggregate { type Command = C }
 }
 
 /** Implementation of the aggregate. */

@@ -7,13 +7,13 @@ import scala.annotation.implicitNotFound
 
 /** Gets the aggregate from the type of the id. */
 trait AggregateFromId[Id] {
-  type Out <: AggregateInterface.WithId[Id]
+  type Out <: Aggregate.WithId[Id]
   def aggregate: Out
 }
 object AggregateFromId {
   def apply[Id](implicit a: AggregateFromId[Id]): AggregateFromId[Id]#Out = a.aggregate
-  type Aux[A <: AggregateInterface.WithId[I], I] = AggregateFromId[I] { type Out = A }
-  implicit def fromId[Id](implicit a: AggregateInterface.WithId[Id]): Aux[a.type, Id] = new AggregateFromId[Id] {
+  type Aux[A <: Aggregate.WithId[I], I] = AggregateFromId[I] { type Out = A }
+  implicit def fromId[Id](implicit a: Aggregate.WithId[Id]): Aux[a.type, Id] = new AggregateFromId[Id] {
     type Out = a.type
     def aggregate = a
   }
@@ -24,13 +24,13 @@ object AggregateFromId {
  */
 sealed trait CommandForId[Id, C <: Cmd] {
   type Command <: Coproduct
-  type Aggregate <: AggregateInterface.AuxIC[Id, Command]
+  type Aggregate <: Aggregate.AuxIC[Id, Command]
   val inject: Inject[Command, C]
   def apply(command: C): Command = inject(command)
 }
 object CommandForId {
   def apply[Id, C <: Cmd](implicit cfi: CommandForId[Id, C]) = cfi
-  type Aux[I, C <: Cmd, A <: AggregateInterface.AuxIC[I, CP], CP <: Coproduct] = CommandForId[I, C] {
+  type Aux[I, C <: Cmd, A <: Aggregate.AuxIC[I, CP], CP <: Coproduct] = CommandForId[I, C] {
     type Aggregate = A
     type Command = CP
   }
@@ -45,17 +45,17 @@ object CommandForId {
 /** Gets the commands from the type of the aggregate's id. */
 trait CommandsFromId[Id] {
   type Command <: Coproduct
-  type Aggregate <: AggregateInterface.AuxIC[Id, Command]
+  type Aggregate <: Aggregate.AuxIC[Id, Command]
   def aggregate: Aggregate
 }
 object CommandsFromId {
   def apply[Id](implicit a: CommandsFromId[Id]): CommandsFromId[Id]#Aggregate = a.aggregate
   type Aux[I, C <: Coproduct] = CommandsFromId[I] { type Command = C }
-  type Aux2[I, C <: Coproduct, A <: AggregateInterface.AuxIC[I, C]] = CommandsFromId[I] {
+  type Aux2[I, C <: Coproduct, A <: Aggregate.AuxIC[I, C]] = CommandsFromId[I] {
     type Command = C
     type Aggregate = A
   }
-  implicit def fromId[I](implicit a: AggregateInterface.WithId[I]): Aux2[I, a.Command, a.type] = new CommandsFromId[I] {
+  implicit def fromId[I](implicit a: Aggregate.WithId[I]): Aux2[I, a.Command, a.type] = new CommandsFromId[I] {
     type Command = a.Command
     type Aggregate = a.type
     def aggregate = a
@@ -65,7 +65,7 @@ object CommandsFromId {
 /** Checks if the Id and the Command belong to the same aggregate the is a member of the list L. */
 @implicitNotFound("command ${C} does not apply to aggregate with id ${Id} or unknown id type")
 sealed trait CommandForIdInList[L <: HList, Id, C <: Cmd] {
-  type Aggregate <: AggregateInterface.WithId[Id]
+  type Aggregate <: Aggregate.WithId[Id]
   implicit val inject: Inject[Aggregate#Command, C]
   implicit val aggregateSelector: Selector[L, Aggregate]
   def apply(command: C): Aggregate#Command = inject(command)
@@ -73,7 +73,7 @@ sealed trait CommandForIdInList[L <: HList, Id, C <: Cmd] {
 }
 object CommandForIdInList {
   def apply[L <: HList, I, C <: Cmd](implicit c: CommandForIdInList[L, I, C]) = c
-  type Aux[L <: HList, I, C <: Cmd, A <: slfes.AggregateInterface.WithId[I]] = CommandForIdInList[L, I, C] {
+  type Aux[L <: HList, I, C <: Cmd, A <: slfes.Aggregate.WithId[I]] = CommandForIdInList[L, I, C] {
     type Aggregate = A
   }
   implicit def valid[L <: HList, I, C <: Cmd, CP <: Coproduct](implicit
@@ -89,7 +89,7 @@ object CommandForIdInList {
 }
 /** Helper for CommandForIdInList. Extracts the command coproduct of the aggregate with the given Id-type. */
 sealed trait CommandsFromIdInList[L <: HList, Id] {
-  type Aggregate <: AggregateInterface.WithId[Id]
+  type Aggregate <: Aggregate.WithId[Id]
   type Commands <: Coproduct
   implicit val selector: Selector[L, Aggregate]
   def aggregate(l: L): Aggregate = selector(l)
@@ -98,11 +98,11 @@ sealed trait CommandsFromIdInList[L <: HList, Id] {
 object CommandsFromIdInList {
   def apply[L <: HList, Id](implicit a: CommandsFromIdInList[L, Id]): CommandsFromIdInList[L, Id] = a
   type Aux[L <: HList, I, C <: Coproduct] = CommandsFromIdInList[L, I] { type Commands = C }
-  type Aux2[L <: HList, I, C <: Coproduct, A <: AggregateInterface.WithId[I]] = CommandsFromIdInList[L, I] {
+  type Aux2[L <: HList, I, C <: Coproduct, A <: Aggregate.WithId[I]] = CommandsFromIdInList[L, I] {
     type Commands = C
     type Aggregate = A
   }
-  implicit def head[H <: AggregateInterface.WithId[I], T <: HList, I]: Aux2[H :: T, I, H#Command, H] = new CommandsFromIdInList[H :: T, I] {
+  implicit def head[H <: Aggregate.WithId[I], T <: HList, I]: Aux2[H :: T, I, H#Command, H] = new CommandsFromIdInList[H :: T, I] {
     type Commands = H#Command
     type Aggregate = H
     val selector = Selector.select[H, T]

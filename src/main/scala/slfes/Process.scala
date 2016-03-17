@@ -1,6 +1,6 @@
 package slfes
 
-case class ProcessDefinition[A <: AggregateInterface, I](name: String, source: A, spawn: AggregateEvt[A] ⇒ Option[I],
+case class ProcessDefinition[A <: Aggregate, I](name: String, source: A, spawn: AggregateEvt[A] ⇒ Option[I],
     body: I ⇒ ProcessBody) {
   private def outer = this
   val processType = new ProcessType {
@@ -27,11 +27,11 @@ sealed trait ProcessImplementation {
   val spawn: AggregateEvt[Source] ⇒ Option[Id]
   val body: Id ⇒ ProcessBody
 
-  type Source <: AggregateInterface
+  type Source <: Aggregate
   type Id
 }
 object ProcessImplementation {
-  type Aux[S <: AggregateInterface, I] = ProcessImplementation {
+  type Aux[S <: Aggregate, I] = ProcessImplementation {
     type Source = S
     type Id = I
   }
@@ -39,8 +39,8 @@ object ProcessImplementation {
 
 sealed trait ProcessBodyAction[+A]
 object ProcessBodyAction {
-  case class Await[A <: AggregateInterface, R](id: A#Id, handler: AggregateEvt[A] ⇒ Option[R])
+  case class Await[A <: Aggregate, R](id: A#Id, handler: AggregateEvt[A] ⇒ Option[R])
     extends ProcessBodyAction[R]
-  case class Command[A <: AggregateInterface, C <: Cmd: CommandFor[A]#λ](to: A#Id, command: C)
+  case class Command[A <: Aggregate, C <: Cmd: CommandFor[A]#λ](to: A#Id, command: C)
     extends ProcessBodyAction[Unit]
 }
