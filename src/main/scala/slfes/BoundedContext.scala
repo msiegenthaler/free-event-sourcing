@@ -2,12 +2,13 @@ package slfes
 
 import scala.language.higherKinds
 import cats.Monad
+import cats.data.Xor
 import cats.free.Free
 import shapeless.LUBConstraint.<<:
-import shapeless.{ HList, :: }
+import shapeless.{ ::, HList }
 import shapeless.ops.coproduct.Inject
 import shapeless.ops.hlist.{ Mapper, Selector }
-import slfes.ProcessBodyAction.CommandResult
+import slfes.BoundedContextAction.CommandResult
 
 sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
   val name: String
@@ -83,10 +84,9 @@ object BoundedContextInterface {
 
 sealed trait BoundedContextAction[BC <: BoundedContextInterface, +A]
 object BoundedContextAction {
-  case class Command[BC <: BoundedContextInterface, A <: AggregateInterface: BC#IsAggregate, C <: Cmd: Inject[A#Command, ?]](
+  case class Command[BC <: BoundedContextInterface, A <: Aggregate: BC#IsAggregate, C <: Cmd: Inject[A#Command, ?]](
     to: A#Id,
     command: C
-  )
-      extends BoundedContextAction[BC, CommandResult[C]]
-
+  ) extends BoundedContextAction[BC, CommandResult[C]]
+  type CommandResult[C <: Cmd] = C#Errors Xor Unit
 }
