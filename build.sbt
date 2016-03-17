@@ -11,7 +11,7 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.fu
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.0"
-libraryDependencies += "org.spire-math" %% "cats" % "0.4.0-SNAPSHOT"
+libraryDependencies += "org.typelevel" %% "cats" % "0.4.1"
 
 
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
