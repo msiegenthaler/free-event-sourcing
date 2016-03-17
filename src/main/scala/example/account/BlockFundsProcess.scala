@@ -18,7 +18,6 @@ object BlockFundsProcess {
     c ← await(from(id).event[Created](identity))
     _ ← execute(c.from, BlockFunds(id, c.amount))
     _ ← execute(c.to, AnnounceDeposit(id, c.amount))
-    //TODO handle the command results => If fails then abort
     _ ← awaitBlocking(id, c.from)
     _ ← execute(id, Transaction.Command.Confirm())
   } yield ()

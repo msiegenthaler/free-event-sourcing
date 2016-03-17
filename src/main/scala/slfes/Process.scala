@@ -1,7 +1,5 @@
 package slfes
 
-import cats.data.Xor
-
 case class ProcessDefinition[A <: AggregateInterface, I](name: String, source: A, spawn: AggregateEvt[A] ⇒ Option[I],
     body: I ⇒ ProcessBody) {
   private def outer = this
@@ -44,6 +42,5 @@ object ProcessBodyAction {
   case class Await[A <: AggregateInterface, R](id: A#Id, handler: AggregateEvt[A] ⇒ Option[R])
     extends ProcessBodyAction[R]
   case class Command[A <: AggregateInterface, C <: Cmd: CommandFor[A]#λ](to: A#Id, command: C)
-    extends ProcessBodyAction[CommandResult[C]]
-  type CommandResult[C <: Cmd] = C#Errors Xor Unit
+    extends ProcessBodyAction[Unit]
 }
