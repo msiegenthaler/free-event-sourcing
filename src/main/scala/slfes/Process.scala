@@ -1,6 +1,7 @@
 package slfes
 
 import cats.Show
+import shapeless.Poly1
 
 case class ProcessDefinition[A <: Aggregate, I](name: String, source: A, spawn: AggregateEvt[A] ⇒ Option[I],
     body: I ⇒ ProcessBody) {
@@ -21,6 +22,11 @@ case class ProcessDefinition[A <: Aggregate, I](name: String, source: A, spawn: 
 sealed trait ProcessType {
   type Implementation <: ProcessImplementation
   val implementation: Implementation
+}
+object ProcessType {
+  object ToImplementation extends Poly1 {
+    implicit def tpe[PT <: ProcessType] = at[PT](_.implementation)
+  }
 }
 
 sealed trait ProcessImplementation {

@@ -18,20 +18,39 @@ sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
   type Aggregates <: AS
   type Processes <: PS
   type AggregateInterfaces <: HList
+  type AggregateImplementations <: HList
+  type ProcessImplementations <: HList
 
   protected val aggregateInterfaces: AggregateInterfaces
+  protected val aggregateImplementations: AggregateImplementations
+  protected val processImplementations: ProcessImplementations
   private def outer = this
   val boundedContext = new BoundedContextType {
     type Interface = BoundedContext.Aux[AggregateInterfaces, PS]
     val interface = new BoundedContext {
+      val name = outer.name
       type Aggregates = AggregateInterfaces
       val aggregates = aggregateInterfaces
+    }
+    type Implementation = BoundedContextImplementation.Aux[AggregateImplementations, ProcessImplementations]
+    val implementation = new BoundedContextImplementation {
+      val name = outer.name
+      type Aggregates = AggregateImplementations
+      val aggregates = aggregateImplementations
+      type Processes = ProcessImplementations
+      val processes = processImplementations
     }
   }
 }
 object BoundedContextDefinition {
-  def apply[AS <: HList: <<:[AggregateType]#λ, PS <: HList: <<:[ProcessType]#λ](name: String, aggregates: AS,
-    processes: PS)(implicit ai: Mapper[AggregateType.ToAggregateInterface.type, AS]) = {
+  def apply[AS <: HList: <<:[AggregateType]#λ, PS <: HList: <<:[ProcessType]#λ](
+    name: String,
+    aggregates: AS,
+    processes: PS
+  )(implicit
+    ai: Mapper[AggregateType.ToInterface.type, AS],
+    aimpl: Mapper[AggregateType.ToImplementation.type, AS],
+    pimpl: Mapper[ProcessType.ToImplementation.type, PS]) = {
     def n = name
     def a = aggregates
     def p = processes
@@ -39,10 +58,14 @@ object BoundedContextDefinition {
       val name = n
       val aggregates = a
       val processes = p
-      protected val aggregateInterfaces = aggregates.map(AggregateType.ToAggregateInterface)
+      protected val aggregateInterfaces = aggregates.map(AggregateType.ToInterface)
+      protected val aggregateImplementations = aggregates.map(AggregateType.ToImplementation)
+      protected val processImplementations = processes.map(ProcessType.ToImplementation)
       type Aggregates = AS
       type Processes = PS
       type AggregateInterfaces = ai.Out
+      type AggregateImplementations = aimpl.Out
+      type ProcessImplementations = pimpl.Out
     }
   }
 }
@@ -50,10 +73,14 @@ object BoundedContextDefinition {
 sealed trait BoundedContextType {
   type Interface <: BoundedContext
   val interface: Interface
+  type Implementation <: BoundedContextImplementation
+  val implementation: Implementation
 }
 
 /** Model of a subdomain of the problem (i.e. inventory or customer relationship mangement). */
 sealed trait BoundedContext {
+  val name: String
+
   type Aggregates <: HList
   val aggregates: Aggregates
 
@@ -80,6 +107,22 @@ object BoundedContext {
   }
 
   type BoundedContextM[BC <: BoundedContext, A] = Free[BoundedContextAction[BC, ?], A]
+}
+
+sealed trait BoundedContextImplementation {
+  val name: String
+
+  type Aggregates <: HList
+  val aggregates: Aggregates
+
+  type Processes <: HList
+  val processes: Processes
+}
+object BoundedContextImplementation {
+  type Aux[A <: HList, P <: HList] = BoundedContextImplementation {
+    type Aggregates = A
+    type Processes = P
+  }
 }
 
 sealed trait BoundedContextAction[BC <: BoundedContext, +A]

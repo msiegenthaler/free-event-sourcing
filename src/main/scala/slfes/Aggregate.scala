@@ -41,10 +41,12 @@ sealed trait AggregateType {
   val implementation: Implementation
 }
 object AggregateType {
-  object ToAggregateInterface extends Poly1 {
+  object ToInterface extends Poly1 {
     implicit def tpe[AT <: AggregateType] = at[AT](_.interface)
   }
-
+  object ToImplementation extends Poly1 {
+    implicit def tpe[AT <: AggregateType] = at[AT](_.implementation)
+  }
 }
 
 /** Public interface of an aggregate. */
