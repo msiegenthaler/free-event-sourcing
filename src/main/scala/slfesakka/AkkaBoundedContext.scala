@@ -1,10 +1,13 @@
 package slfesakka
 
-import akka.actor.{ Actor, ActorRef }
+import akka.actor.{ Actor, ActorRef, Props }
 import slfes.BoundedContextImplementation
 
-class AkkaBoundedContext[BC <: BoundedContextImplementation](bc: BC) {
-  private class Impl(eventBus: ActorRef) extends Actor {
+object AkkaBoundedContext {
+  def props(bc: BoundedContextImplementation, eventBus: ActorRef) =
+    Props(new Impl(bc, eventBus))
+
+  private class Impl(bc: BoundedContextImplementation, eventBus: ActorRef) extends Actor {
     override def preStart = {
       val props = bc.aggregatesUnified.map { aggregate ⇒
         AkkaAggregateType.props(aggregate, eventBus)
