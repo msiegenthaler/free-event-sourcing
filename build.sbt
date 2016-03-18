@@ -17,6 +17,7 @@ libraryDependencies += "org.typelevel" %% "cats" % "0.4.1"
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import scalariform.formatter.preferences._
 
+SbtScalariform.defaultScalariformSettings
 ScalariformKeys.preferences := ScalariformKeys.preferences.value
   .setPreference(AlignSingleLineCaseStatements, true)
   .setPreference(MultilineScaladocCommentsStartOnFirstLine, true)
