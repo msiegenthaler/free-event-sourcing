@@ -1,34 +1,38 @@
 package slfesakka
 
 import akka.actor.{ Actor, ActorRef, Props }
-import slfes.AggregateImplementation
+import shapeless.Typeable
+import slfes.{ AggregateImplementation, Cmd }
 
 /** Manages a class of Aggregates */
-class AkkaAggregateType(aggregateImplementation: AggregateImplementation) {
-  val inner = new AkkaAggregate(aggregateImplementation)
-  type Id = inner.aggregate.Id
-  type Command = inner.aggregate.Command
-
-  case class ExecuteCommand(id: CommandId, target: Id, cmd: Command)
+object AkkaAggregateType {
+  case class ExecuteCommand(id: CommandId, aggregateId: Any, cmd: Cmd)
   case class CommandExecuted(id: CommandId)
   case class CommandFailed(id: CommandId, error: Any)
 
-  def props(eventBus: ActorRef) = Props(new Impl(eventBus))
+  def props(aggregate: AggregateImplementation, eventBus: ActorRef) =
+    Props(new Impl(aggregate, eventBus))
 
-  private class Impl(eventBus: ActorRef) extends Actor {
-    override def receive = handle(Map.empty)
-    def handle(instances: Map[inner.aggregate.Id, ActorRef]): Receive = {
-      case ExecuteCommand(commandId, id, cmd) ⇒
-        val actor = instances.getOrElse(id, {
-          val a = create(id)
-          context become handle(instances + (id → a))
-          a
-        })
-        actor ! inner.ExecuteCommand(commandId, cmd)
+  class Impl(aggregate: AggregateImplementation, eventBus: ActorRef) extends Actor {
+    def receive = handle(Map.empty)
+    def handle(instances: Map[aggregate.Id, ActorRef]): Receive = {
+      case ExecuteCommand(commandId, aggregateId, cmd) ⇒
+        aggregate.IdTypeable.cast(aggregateId) match {
+          case Some(id) ⇒
+            val actor = instances.getOrElse(id, {
+              val a = create(id)
+              context become handle(instances + (id → a))
+              a
+            })
+            actor ! AkkaAggregate.ExecuteCommand(commandId, cmd)
+
+          case None ⇒
+            sender() ! CommandFailed(commandId, s"Invalid id for aggregate ${aggregate.name}: type was ${aggregateId.getClass.getName}")
+        }
     }
 
-    private def create(id: Id) = {
-      context.actorOf(inner.props(id, eventBus))
+    private def create(id: aggregate.Id) = {
+      context.actorOf(AkkaAggregate.props(aggregate, eventBus)(id))
     }
   }
 }

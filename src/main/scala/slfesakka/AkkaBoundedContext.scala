@@ -7,8 +7,7 @@ class AkkaBoundedContext[BC <: BoundedContextImplementation](bc: BC) {
   private class Impl(eventBus: ActorRef) extends Actor {
     override def preStart = {
       val props = bc.aggregatesUnified.map { aggregate ⇒
-        val a = new AkkaAggregateType(aggregate)
-        a.props(eventBus)
+        AkkaAggregateType.props(aggregate, eventBus)
       }
       props.foreach(p ⇒ context.actorOf(p))
     }
