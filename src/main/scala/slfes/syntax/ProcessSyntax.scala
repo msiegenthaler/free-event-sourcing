@@ -1,6 +1,6 @@
 package slfes.syntax
 
-import cats.Monad
+import cats.{ Monad, Show }
 import cats.free.Free
 import shapeless.{ :+:, CNil, Coproduct, Lub }
 import shapeless.ops.coproduct.{ Basis, Prepend, Selector }
@@ -19,6 +19,9 @@ object ProcessSyntax {
    */
   def execute[A <: Aggregate, C <: Cmd: CommandFor[A]#λ](to: A#Id, command: C) =
     Free.liftF[ProcessBodyAction, Unit](Command(to, command))
+
+  /** Fail the process. Will stop the process. */
+  def fail[A: Show](reason: A) = Free.liftF[ProcessBodyAction, Unit](Fail(reason))
 
   /** Wait for an event to happen. Syntax: await(from(id).event[My](...)) */
   def await[A <: Aggregate, For <: Coproduct, R](handler: Handler[A, For, R]): ProcessBodyM[R] =

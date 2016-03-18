@@ -1,5 +1,7 @@
 package slfes
 
+import cats.Show
+
 case class ProcessDefinition[A <: Aggregate, I](name: String, source: A, spawn: AggregateEvt[A] ⇒ Option[I],
     body: I ⇒ ProcessBody) {
   private def outer = this
@@ -43,4 +45,5 @@ object ProcessBodyAction {
     extends ProcessBodyAction[R]
   case class Command[A <: Aggregate, C <: Cmd: CommandFor[A]#λ](to: A#Id, command: C)
     extends ProcessBodyAction[Unit]
+  case class Fail[A: Show](reason: A) extends ProcessBodyAction[Unit]
 }
