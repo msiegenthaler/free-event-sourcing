@@ -1,9 +1,10 @@
 package slfes
 
 import shapeless._
+import slfes.utils.AnyToCoproduct
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
-case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](
+case class AggregateDefinition[I: Typeable, S, C <: Coproduct: AnyToCoproduct, E <: Coproduct: AnyToCoproduct](
     name: String,
     seed: I ⇒ S,
     handleCommand: C ⇒ S ⇒ CmdResult[E],
@@ -26,6 +27,9 @@ case class AggregateDefinition[I, S, C <: Coproduct, E <: Coproduct](
       val seed: (Id) ⇒ State = outer.seed
       val handleCommand: (Command) ⇒ (State) ⇒ CmdResult[Event] = outer.handleCommand
       val applyEvent: (Event) ⇒ (State) ⇒ State = outer.applyEvent
+      def AnyToCommand = implicitly
+      def IdTypeable = implicitly
+      def AnyToEvent = implicitly
       type Id = I
       type Command = C
       type State = S
@@ -81,6 +85,10 @@ sealed trait AggregateImplementation {
   val seed: Id ⇒ State
   val handleCommand: Command ⇒ State ⇒ CmdResult[Event]
   val applyEvent: Event ⇒ State ⇒ State
+
+  def AnyToCommand: AnyToCoproduct[Command]
+  def AnyToEvent: AnyToCoproduct[Event]
+  def IdTypeable: Typeable[Id]
 
   type Id
   type State
