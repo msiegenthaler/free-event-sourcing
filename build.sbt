@@ -13,6 +13,7 @@ addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.0"
 libraryDependencies += "org.typelevel" %% "cats" % "0.4.1"
 
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.2"
 
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import scalariform.formatter.preferences._
