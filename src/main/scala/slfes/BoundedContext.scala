@@ -1,14 +1,15 @@
 package slfes
 
-import scala.language.higherKinds
 import cats.Monad
 import cats.data.Xor
 import cats.free.Free
+import shapeless.HList
 import shapeless.LUBConstraint.<<:
-import shapeless.{ ::, HList }
 import shapeless.ops.coproduct.Inject
 import shapeless.ops.hlist.{ Mapper, Selector }
 import slfes.BoundedContextAction.CommandResult
+
+import scala.language.higherKinds
 
 sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
   val name: String
@@ -37,6 +38,7 @@ sealed trait BoundedContextDefinition[AS <: HList, PS <: HList] {
       val name = outer.name
       type Aggregates = AggregateImplementations
       val aggregates = aggregateImplementations
+      def aggregatesUnified = ??? //TODO
       type Processes = ProcessImplementations
       val processes = processImplementations
     }
@@ -114,6 +116,7 @@ sealed trait BoundedContextImplementation {
 
   type Aggregates <: HList
   val aggregates: Aggregates
+  def aggregatesUnified: List[AggregateImplementation]
 
   type Processes <: HList
   val processes: Processes
