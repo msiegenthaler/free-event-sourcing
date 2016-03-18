@@ -1,14 +1,11 @@
 package slfesakka
 
 import akka.actor.{ Actor, ActorRef, Props }
-import shapeless.Typeable
 import slfes.{ AggregateImplementation, Cmd }
 
 /** Manages a class of Aggregates */
 object AkkaAggregateType {
   case class ExecuteCommand(id: CommandId, aggregateId: Any, cmd: Cmd)
-  case class CommandExecuted(id: CommandId)
-  case class CommandFailed(id: CommandId, error: Any)
 
   def props(aggregate: AggregateImplementation, eventBus: ActorRef) =
     Props(new Impl(aggregate, eventBus))
@@ -24,7 +21,7 @@ object AkkaAggregateType {
               context become handle(instances + (id → a))
               a
             })
-            actor ! AkkaAggregate.ExecuteCommand(commandId, cmd)
+            actor forward AkkaAggregate.ExecuteCommand(commandId, cmd)
 
           case None ⇒
             sender() ! CommandFailed(commandId, s"Invalid id for aggregate ${aggregate.name}: type was ${aggregateId.getClass.getName}")

@@ -2,14 +2,11 @@ package slfesakka
 
 import akka.actor.{ Actor, ActorRef, Props }
 import cats.data.Xor
-import shapeless.Coproduct
 import slfes.{ AggregateImplementation, Cmd }
 
 /** Manages a single aggregate */
 object AkkaAggregate {
   case class ExecuteCommand(id: CommandId, cmd: Cmd)
-  case class CommandExecuted(id: CommandId)
-  case class CommandFailed(id: CommandId, error: Any)
 
   def props(aggregate: AggregateImplementation, eventBus: ActorRef)(id: aggregate.Id) =
     Props(new Impl[aggregate.type, aggregate.Id](aggregate, eventBus, id))
