@@ -134,5 +134,6 @@ object BoundedContextAction {
     to: A#Id,
     command: C
   ) extends BoundedContextAction[BC, CommandResult[C]]
+
   type CommandResult[C <: Cmd] = C#Errors Xor Unit
 }
