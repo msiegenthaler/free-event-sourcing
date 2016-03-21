@@ -24,7 +24,7 @@ object AkkaAggregateType {
             actor forward AkkaAggregate.ExecuteCommand(commandId, cmd)
 
           case None ⇒
-            sender() ! CommandFailed(commandId, s"Invalid id for aggregate ${aggregate.name}: type was ${aggregateId.getClass.getName}")
+            sender() ! CommandInvalid(commandId, s"Invalid id for aggregate ${aggregate.name}: type was ${aggregateId.getClass.getName}")
         }
     }
 

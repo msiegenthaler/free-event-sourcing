@@ -31,7 +31,7 @@ object AkkaAggregate {
             }
 
           case None ⇒
-            sender() ! CommandFailed(commandId, s"Received invalid command type: ${cmd.getClass.getName}")
+            sender() ! CommandInvalid(commandId, s"Received invalid command type: ${cmd.getClass.getName}")
         }
     }
   }

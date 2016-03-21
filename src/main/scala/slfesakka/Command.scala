@@ -9,3 +9,4 @@ object CommandId {
 
 case class CommandExecuted(id: CommandId)
 case class CommandFailed(id: CommandId, error: Any)
+case class CommandInvalid(id: CommandId, reason: String)
