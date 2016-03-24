@@ -90,6 +90,16 @@ sealed trait AggregateImplementation {
   def AnyToEvent: AnyToCoproduct[Event]
   def IdTypeable: Typeable[Id]
 
+  object Id {
+    def unapply(a: Any): Option[Id] = IdTypeable.cast(a)
+  }
+  object Command {
+    def unapply(a: Any): Option[Command] = AnyToCommand(a)
+  }
+  object Event {
+    def unapply(a: Any): Option[Event] = AnyToEvent(a)
+  }
+
   type Id
   type State
   type Command <: Coproduct
