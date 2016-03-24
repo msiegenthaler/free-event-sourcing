@@ -24,7 +24,7 @@ object AkkaAggregate {
               case Xor.Right(events) ⇒
                 val next = events.foldLeft(state)((s, e) ⇒ aggregate.applyEvent(e)(s))
                 events
-                  .map(e ⇒ EventStoreAdapter.Publish(id, e))
+                  .map(e ⇒ EventStoreAdapter.PublishAggregateEvent[A](aggregate, id, e))
                   .foreach(eventBus ! _)
                 sender() ! CommandExecuted(commandId)
                 context become handle(next)

@@ -1,5 +1,7 @@
 package slfesakka
 
+import slfes.AggregateImplementation
+
 object EventStoreAdapter {
-  case class Publish[Id, Event](aggregateId: Id, event: Event)
+  case class PublishAggregateEvent[A <: AggregateImplementation](aggregate: A, id: A#Id, event: A#Event)
 }
