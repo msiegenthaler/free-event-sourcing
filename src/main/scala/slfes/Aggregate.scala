@@ -1,10 +1,10 @@
 package slfes
 
 import shapeless._
-import slfes.utils.AnyToCoproduct
+import slfes.utils.{ AnyToCoproduct, StringSerializable }
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
-case class AggregateDefinition[I: Typeable, S, C <: Coproduct: AnyToCoproduct, E <: Coproduct: AnyToCoproduct](
+case class AggregateDefinition[I: Typeable: StringSerializable, S, C <: Coproduct: AnyToCoproduct, E <: Coproduct: AnyToCoproduct](
     name: String,
     seed: I ⇒ S,
     handleCommand: C ⇒ S ⇒ CmdResult[E],
@@ -30,6 +30,7 @@ case class AggregateDefinition[I: Typeable, S, C <: Coproduct: AnyToCoproduct, E
       def AnyToCommand = implicitly
       def IdTypeable = implicitly
       def AnyToEvent = implicitly
+      def IdStringSerializable = implicitly
       type Id = I
       type Command = C
       type State = S
@@ -86,12 +87,15 @@ sealed trait AggregateImplementation {
   val handleCommand: Command ⇒ State ⇒ CmdResult[Event]
   val applyEvent: Event ⇒ State ⇒ State
 
-  def AnyToCommand: AnyToCoproduct[Command]
-  def AnyToEvent: AnyToCoproduct[Event]
-  def IdTypeable: Typeable[Id]
+  implicit def AnyToCommand: AnyToCoproduct[Command]
+  implicit def AnyToEvent: AnyToCoproduct[Event]
+  implicit def IdTypeable: Typeable[Id]
+  implicit def IdStringSerializable: StringSerializable[Id]
 
   object Id {
     def unapply(a: Any): Option[Id] = IdTypeable.cast(a)
+    def serialize(id: Id) = StringSerializable[Id].serializeToString(id)
+    def parse(serialized: String) = StringSerializable[Id].parseFromString(serialized)
   }
   object Command {
     def unapply(a: Any): Option[Command] = AnyToCommand(a)
