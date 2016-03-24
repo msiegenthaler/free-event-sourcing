@@ -1,6 +1,7 @@
 package slfes.syntax
 
 import scala.language.implicitConversions
+import scala.collection.immutable.Seq
 import cats.data.Xor
 import shapeless.ops.coproduct.Inject
 import shapeless.{ Coproduct, HList, Poly1 }

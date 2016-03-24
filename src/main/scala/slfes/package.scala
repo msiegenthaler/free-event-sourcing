@@ -1,3 +1,4 @@
+import scala.collection.immutable.Seq
 import cats.data.Xor
 import cats.free.Free
 import shapeless.ops.coproduct.Inject

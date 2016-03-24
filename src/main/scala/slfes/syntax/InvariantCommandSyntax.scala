@@ -1,5 +1,6 @@
 package slfes.syntax
 
+import scala.collection.immutable.Seq
 import scala.language.implicitConversions
 import cats.data.{ WriterT, Xor }
 import cats.std.list
