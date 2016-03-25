@@ -30,12 +30,12 @@ object AkkaAggregate {
     //TODO Snapshots would improve performance for aggregates with lots of events
 
     def receiveRecover = {
-      case AggregateEvent(seq, aggregate.Event(evt)) ⇒
-        updateState(AggregateEvent(seq, evt))
+      case AggregateEvent(seq, tpe, aggregate.Event(evt)) ⇒
+        updateState(AggregateEvent(seq, tpe, evt))
         eventSeq = seq + 1
-      case AggregateEvent(seq, invalidEvt) ⇒
+      case AggregateEvent(seq, tpe, invalidEvt) ⇒
         throw new IllegalStateException(s"Cannot apply event for ${aggregate.name} (${id}): " +
-          s"Unsupported type ${invalidEvt.getClass.getName} @ ${seq}")
+          s"Unsupported event ${tpe} of class ${invalidEvt.getClass.getName} @ ${seq}")
     }
 
     def receiveCommand = {
@@ -48,7 +48,7 @@ object AkkaAggregate {
             val toPersist = events.map { e ⇒
               val seq = eventSeq
               eventSeq = eventSeq + 1
-              AggregateEvent(seq, e)
+              AggregateEvent(seq, aggregate.Event.eventType(e), e)
             }
             //TODO don't persist the coproduct, extract the value first..
             persistAll[AggregateEvent[E]](toPersist)(updateState _)

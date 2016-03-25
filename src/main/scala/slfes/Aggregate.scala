@@ -4,7 +4,7 @@ import shapeless._
 import slfes.utils.{ AnyToCoproduct, StringSerializable }
 
 /** Describes a class of aggregates (i.e. Account or Customer). */
-case class AggregateDefinition[I: Typeable: StringSerializable, S, C <: Coproduct: AnyToCoproduct, E <: Coproduct: AnyToCoproduct](
+case class AggregateDefinition[I: Typeable: StringSerializable, S, C <: Coproduct: AnyToCoproduct, E <: Coproduct: AnyToCoproduct: EventWithType](
     name: String,
     seed: I ⇒ S,
     handleCommand: C ⇒ S ⇒ CmdResult[E],
@@ -27,10 +27,11 @@ case class AggregateDefinition[I: Typeable: StringSerializable, S, C <: Coproduc
       val seed: (Id) ⇒ State = outer.seed
       val handleCommand: (Command) ⇒ (State) ⇒ CmdResult[Event] = outer.handleCommand
       val applyEvent: (Event) ⇒ (State) ⇒ State = outer.applyEvent
-      def AnyToCommand = implicitly
       def IdTypeable = implicitly
-      def AnyToEvent = implicitly
       def IdStringSerializable = implicitly
+      def AnyToCommand = implicitly
+      def AnyToEvent = implicitly
+      def EventWithType = implicitly
       type Id = I
       type Command = C
       type State = S
@@ -89,6 +90,7 @@ sealed trait AggregateImplementation {
 
   implicit def AnyToCommand: AnyToCoproduct[Command]
   implicit def AnyToEvent: AnyToCoproduct[Event]
+  implicit def EventWithType: slfes.EventWithType[Event]
   implicit def IdTypeable: Typeable[Id]
   implicit def IdStringSerializable: StringSerializable[Id]
 
@@ -102,6 +104,7 @@ sealed trait AggregateImplementation {
   }
   object Event {
     def unapply(a: Any): Option[Event] = AnyToEvent(a)
+    def eventType(of: Event): EventType = EventWithType.eventType(of)
   }
 
   type Id

@@ -1,8 +1,34 @@
 package slfes
 
-import shapeless.ops.coproduct.{ Selector, Inject }
+import shapeless.{ :+:, CNil, Coproduct, Inl, Inr }
 
-case class EventMetadata[A <: Aggregate](from: A#Id, sequence: Long, aggregate: A)
+import scala.language.implicitConversions
+import shapeless.ops.coproduct.{ Inject, Selector }
+import simulacrum.typeclass
+
+case class EventType(name: String) extends AnyVal
+
+@typeclass trait EventWithType[E] {
+  def eventType(event: E): EventType
+}
+object EventWithType extends LowPriorityTypedEvent {
+  implicit def coproduct[H: EventWithType, T <: Coproduct: EventWithType] = new EventWithType[H :+: T] {
+    def eventType(event: H :+: T) = event match {
+      case Inl(h) ⇒ EventWithType[H].eventType(h)
+      case Inr(t) ⇒ EventWithType[T].eventType(t)
+    }
+  }
+  implicit def coproductCNil = new EventWithType[CNil] {
+    def eventType(event: CNil) = throw new IllegalArgumentException("Empty coproduct")
+  }
+}
+trait LowPriorityTypedEvent {
+  implicit def product[E <: Product] = new EventWithType[E] {
+    def eventType(event: E) = EventType(event.productPrefix)
+  }
+}
+
+case class EventMetadata[A <: Aggregate](from: A#Id, sequence: Long, eventType: EventType, aggregate: A)
 
 case class Evt[E, A <: Aggregate](event: E, metadata: EventMetadata[A])(implicit ev: Evt.EvtCreate) {
   type Event = E
