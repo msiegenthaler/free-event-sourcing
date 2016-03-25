@@ -2,8 +2,8 @@ package slfesakka
 
 import akka.actor.{ Actor, ActorRef, Props }
 import akka.persistence.PersistentActor
-import cats.Show
 import cats.data.Xor
+import shapeless.Coproduct
 import slfes.{ AggregateImplementation, Cmd }
 
 /** Manages a single aggregate using a persistent actor.
@@ -12,29 +12,28 @@ import slfes.{ AggregateImplementation, Cmd }
 object AkkaAggregate {
   case class ExecuteCommand(id: CommandId, cmd: Cmd)
 
-  private case class Event[E](sequence: Long, payload: E)
+  def props(boundedContext: String, aggregate: AggregateImplementation)(id: aggregate.Id) =
+    Props(new Impl[aggregate.type, aggregate.Id, aggregate.Command, aggregate.Event](boundedContext, aggregate, id))
 
-  def props(base: CompositeName, aggregate: AggregateImplementation, eventBus: ActorRef)(id: aggregate.Id) =
-    Props(new Impl[aggregate.type, aggregate.Id, aggregate.Command, aggregate.Event](base, aggregate, eventBus, id))
-
-  private class Impl[A <: AggregateImplementation { type Id = I; type Event = E; type Command = C }, I, C, E](base: CompositeName, aggregate: A, eventBus: ActorRef, id: I)
-      extends PersistentActor {
-    val name = base / aggregate.Id.serialize(id)
-    def persistenceId = name.toString
+  private class Impl[A <: AggregateImplementation { type Id = I; type Event = E; type Command = C }, I, C <: Coproduct, E <: Coproduct](
+      boundedContext: String, aggregate: A, id: I
+  ) extends PersistentActor {
+    val persistenceId = EventStoreAdapter(context.system)
+      .aggregatePersistenceId(boundedContext, aggregate.name, id)(aggregate.IdStringSerializable)
 
     private var eventSeq = 0L
     private var state = aggregate.seed(id)
-    private def updateState(event: Event[E]): Unit = {
+    private def updateState(event: AggregateEvent[E]): Unit = {
       state = aggregate.applyEvent(event.payload)(state)
     }
 
     //TODO Snapshots would improve performance for aggregates with lots of events
 
     def receiveRecover = {
-      case Event(seq, aggregate.Event(evt)) ⇒
-        updateState(Event(seq, evt))
+      case AggregateEvent(seq, aggregate.Event(evt)) ⇒
+        updateState(AggregateEvent(seq, evt))
         eventSeq = seq + 1
-      case Event(seq, invalidEvt) ⇒
+      case AggregateEvent(seq, invalidEvt) ⇒
         throw new IllegalStateException(s"Cannot apply event for ${aggregate.name} (${id}): " +
           s"Unsupported type ${invalidEvt.getClass.getName} @ ${seq}")
     }
@@ -49,9 +48,10 @@ object AkkaAggregate {
             val toPersist = events.map { e ⇒
               val seq = eventSeq
               eventSeq = eventSeq + 1
-              Event[E](seq, e)
+              AggregateEvent(seq, e)
             }
-            persistAll[Event[E]](toPersist)(updateState _)
+            //TODO don't persist the coproduct, extract the value first..
+            persistAll[AggregateEvent[E]](toPersist)(updateState _)
         }
 
       case ExecuteCommand(commandId, invalidCmd) ⇒

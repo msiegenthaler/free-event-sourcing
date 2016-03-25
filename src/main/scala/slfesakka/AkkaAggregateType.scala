@@ -7,11 +7,10 @@ import slfes.{ AggregateImplementation, Cmd }
 object AkkaAggregateType {
   case class ExecuteCommand(id: CommandId, aggregateId: Any, cmd: Cmd)
 
-  def props(base: CompositeName, aggregate: AggregateImplementation, eventBus: ActorRef) =
-    Props(new Impl(base, aggregate, eventBus))
+  def props(boundedContext: String, aggregate: AggregateImplementation) =
+    Props(new Impl(boundedContext, aggregate))
 
-  class Impl(base: CompositeName, aggregate: AggregateImplementation, eventBus: ActorRef) extends Actor {
-    val name = base / aggregate.name
+  class Impl(boundedContext: String, aggregate: AggregateImplementation) extends Actor {
     def receive = handle(Map.empty)
     def handle(instances: Map[aggregate.Id, ActorRef]): Receive = {
       case ExecuteCommand(commandId, aggregateId, cmd) ⇒
@@ -30,7 +29,7 @@ object AkkaAggregateType {
     }
 
     private def create(id: aggregate.Id) = {
-      context.actorOf(AkkaAggregate.props(name, aggregate, eventBus)(id))
+      context.actorOf(AkkaAggregate.props(boundedContext, aggregate)(id))
     }
   }
 }

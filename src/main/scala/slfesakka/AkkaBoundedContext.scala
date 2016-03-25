@@ -14,14 +14,13 @@ import scala.util.Try
 object AkkaBoundedContext {
   case class ExecuteCommand(id: CommandId, aggregateType: String, aggregateId: Any, cmd: Cmd)
 
-  def props(base: CompositeName = CompositeName.root, bc: BoundedContextImplementation, eventBus: ActorRef) =
-    Props(new Impl(base, bc, eventBus))
+  def props(bc: BoundedContextImplementation) =
+    Props(new Impl(bc))
 
-  private class Impl(base: CompositeName, bc: BoundedContextImplementation, eventBus: ActorRef) extends Actor {
-    val name = base / bc.name
+  private class Impl(bc: BoundedContextImplementation) extends Actor {
     val aggregateTypes = {
       bc.aggregatesUnified.map { aggregate ⇒
-        val props = AkkaAggregateType.props(name, aggregate, eventBus)
+        val props = AkkaAggregateType.props(bc.name, aggregate)
         val actor = context actorOf props
         (aggregate.name → actor)
       }.toMap
