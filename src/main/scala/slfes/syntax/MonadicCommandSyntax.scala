@@ -7,6 +7,8 @@ import shapeless.ops.coproduct.Inject
 import shapeless.{ Coproduct, Poly1 }
 import slfes.Cmd
 
+import scala.annotation.implicitNotFound
+
 case class MonadicCommandSyntax[State, Commands <: Coproduct, Events <: Coproduct, T <: Poly1](poly: T) {
   type Result[C <: Cmd] = Xor[C#Errors, Seq[Events]]
   type IsCommand[C] = Inject[Commands, C]
@@ -23,7 +25,9 @@ case class MonadicCommandContext[State, Events <: Coproduct, C <: Cmd](command: 
   //Help the compiler a bit..
   type M1[A] = Xor[C#Errors, A]
   type CM[A] = WriterT[M1, List[Events], A]
+  @implicitNotFound("${E} is not a valid error for this command.")
   type IsError[E] = Inject[C#Errors, E]
+  @implicitNotFound("${Event} is not a valid event for this aggregate.")
   type IsEvent[Event] = Inject[Events, Event]
   private implicit def listMonoid = list.listAlgebra[Events]
 

@@ -8,6 +8,8 @@ import shapeless.ops.coproduct.{ Basis, Inject }
 import shapeless.{ Coproduct, Poly1 }
 import slfes.{ Cmd, Inv }
 
+import scala.annotation.implicitNotFound
+
 case class InvariantCommandSyntax[State, Commands <: Coproduct, Events <: Coproduct, In <: Inv[State], InErrs <: Coproduct, T <: Poly1](
     applyEvent: Events ⇒ State ⇒ State,
     invariants: Traversable[In],
@@ -36,9 +38,12 @@ case class InvariantMonadicCommandSyntax[State, Commands <: Coproduct, Events <:
   type Result[C <: Cmd] = Xor[C#Errors, Seq[Events]]
   type IsCommand[C] = Inject[Commands, C]
 
+  @implicitNotFound("Command ${C} does not have the defined invariants as valid errors.")
+  type ContainsInvariantErrors[C <: Cmd] = Basis[C#Errors, InErrs]
+
   def onM[C <: Cmd: IsCommand](
     f: MonadicCommandContext[State, Events, C] ⇒ CommandMonad[C, Unit]
-  )(implicit basis: Basis[C#Errors, InErrs]): poly.Case.Aux[C, State ⇒ Result[C]] = poly.at { c ⇒ s ⇒
+  )(implicit basis: ContainsInvariantErrors[C]): poly.Case.Aux[C, State ⇒ Result[C]] = poly.at { c ⇒ s ⇒
     def mkError(failed: In): Result[C] = Xor.left(basis.inverse(Right(onInvariantFailed(failed))))
     f(MonadicCommandContext(c, s)).run.map(_._1).flatMap { events ⇒
       val s2 = events.foldLeft(s)((s2, e) ⇒ applyEvent(e)(s2))
