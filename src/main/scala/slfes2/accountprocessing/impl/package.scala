@@ -4,17 +4,16 @@ import slfes2.{ AggregateImplementation, BoundedContextImplementation }
 
 package object impl {
   val accountProcessing = {
-
     implicit val account = AggregateImplementation(Account)(
       seed = _ ⇒ AccountState(None, false),
-      eventApplicator = AccountApplicator,
-      commandHandler = AccountHandler
+      applyEvent = AccountApplicator.function,
+      handleCommand = AccountHandler
     )
 
     implicit val transaction = AggregateImplementation(Transaction)(
       seed = _ ⇒ TransactionState(),
-      eventApplicator = TransactionApplicator,
-      commandHandler = TransactionHandler
+      applyEvent = TransactionApplicator.function,
+      handleCommand = TransactionHandler
     )
 
     BoundedContextImplementation(AccountProcessing)

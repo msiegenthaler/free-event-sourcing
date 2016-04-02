@@ -15,6 +15,12 @@ abstract class CoproductEventApplicator[Event, State] extends Poly1 {
     cc.fold(this).apply(state)
   }
 
+  def function[CE <: Coproduct](implicit
+    generic: Generic.Aux[Event, CE],
+    folder: ApplyEvent[this.type, CE, Event, State]): (Event, State) ⇒ State = (event, state) ⇒ {
+    val cc = generic.to(event)
+    cc.fold(this).apply(state)
+  }
 }
 object CoproductEventApplicator {
   @implicitNotFound("Not all events (subclasses of ${Event}) are handled in ${X}.")

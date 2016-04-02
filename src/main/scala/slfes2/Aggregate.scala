@@ -2,12 +2,8 @@ package slfes2
 
 import scala.language.implicitConversions
 import cats.data.Xor
-import shapeless.ops.coproduct.Folder
 import shapeless.{ Coproduct, Generic, Typeable }
 import simulacrum.typeclass
-import slfes2.syntax.CoproductCommandHandler.HandleCommand
-import slfes2.syntax.CoproductEventApplicator.ApplyEvent
-import slfes2.syntax.{ CoproductCommandHandler, CoproductEventApplicator }
 
 trait Aggregate { self ⇒
   type Id
@@ -34,30 +30,32 @@ trait Aggregate { self ⇒
   implicit def typeableCommand: Typeable[Command]
 }
 object AggregateImplementation {
-  def apply[State, CE <: Coproduct, CC <: Coproduct](
+  def apply[State](
     aggregate: Aggregate
   )(
     seed: aggregate.Id ⇒ State,
-    eventApplicator: CoproductEventApplicator[aggregate.Event, State],
-    commandHandler: CoproductCommandHandler[aggregate.Command, aggregate.Event]
+    applyEvent: (aggregate.Event, State) ⇒ State,
+    handleCommand: CommandHandler[State, aggregate.Command, aggregate.Event]
   )(implicit
     tI: Typeable[aggregate.Id],
     tE: Typeable[aggregate.Event],
-    tC: Typeable[aggregate.Command],
-    gE: Generic.Aux[aggregate.Event, CE],
-    fE: ApplyEvent[eventApplicator.type, CE, aggregate.Event, State],
-    gC: Generic.Aux[aggregate.Command, CC],
-    fC: HandleCommand[commandHandler.type, CC, aggregate.Command, aggregate.Command, aggregate.Event]): AggregateImplementation[aggregate.Aggregate] = {
-    val seed2 = seed
+    tC: Typeable[aggregate.Command]): AggregateImplementation[aggregate.Aggregate] = {
     type S = State
+    def seed2 = seed
+    def apply2 = applyEvent
+    def handle2 = handleCommand
     new AggregateImplementation[aggregate.Aggregate] {
       type State = S
       def seed(id: Id) = seed2(id)
-      def applyEvent(event: aggregate.Event, state: State) = eventApplicator.apply(event, state)
-      def handleCommand[C <: aggregate.Command](command: C, state: State) = commandHandler.handle(command)(gC, fC)
+      def applyEvent(event: aggregate.Event, state: State) = apply2(event, state)
+      def handleCommand[C <: aggregate.Command](command: C, state: State) = handle2(command, state)
       implicit def typeableId = tI
       implicit def typeableEvent = tE
       implicit def typeableCommand = tC
     }
+  }
+
+  trait CommandHandler[State, Command <: { type Error <: Coproduct }, Event] {
+    def apply[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
   }
 }

@@ -1,7 +1,6 @@
 package slfes2.accountprocessing.impl
 
 import cats.data.Xor
-import slfes2.AggregateImplementation
 import slfes2.syntax.{ CoproductCommandHandler, CoproductEventApplicator }
 import slfes2.accountprocessing.Transaction
 import Transaction._
@@ -10,12 +9,14 @@ import Event._
 
 final case class TransactionState()
 
-private object TransactionHandler extends CoproductCommandHandler[Command, Event] {
-  implicit val open = at[Create] { _ ⇒
+private object TransactionHandler extends CoproductCommandHandler[Command, TransactionState, Event] {
+  def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
+
+  implicit val open = at[Create] { _ ⇒ _: State ⇒
     Xor.right(Seq.empty)
   }
 
-  implicit val close = at[Commit] { _ ⇒
+  implicit val close = at[Commit] { _ ⇒ _: State ⇒
     Xor.right(Seq.empty)
   }
 }
@@ -28,13 +29,3 @@ private object TransactionApplicator extends CoproductEventApplicator[Event, Tra
     state.copy()
   }
 }
-
-object TransactionImplementation extends AggregateImplementation[Transaction.type] {
-  type State = TransactionState
-  def seed(id: Id) = TransactionState()
-  def applyEvent(event: Event, state: State): State =
-    TransactionApplicator.apply(event, state)
-  def handleCommand[C <: Command](command: C, state: State): C#Error Xor Seq[Event] =
-    TransactionHandler.handle(command)
-}
-
