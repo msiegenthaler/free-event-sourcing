@@ -3,6 +3,7 @@ package slfes2.syntax
 import cats.data.Xor
 import shapeless.ops.coproduct.Folder
 import shapeless.{ Coproduct, Generic, Poly1 }
+import slfes2.syntax.CoproductCommandHandler.HandleCommand
 
 import scala.annotation.implicitNotFound
 
@@ -11,11 +12,12 @@ abstract class CoproductCommandHandler[Command <: { type Error <: Coproduct }, E
     command: C
   )(implicit
     generic: Generic.Aux[Command, CC],
-    folder: Handler[CC, C]): C#Error Xor Seq[Event] = {
+    folder: HandleCommand[this.type, CC, C, Command, Event]): C#Error Xor Seq[Event] = {
     val cc = generic.to(command)
     cc.fold(this)
   }
-
-  @implicitNotFound("Not all commands for the aggregate are handled.")
-  type Handler[CC <: Coproduct, C <: Command] = Folder.Aux[this.type, CC, C#Error Xor Seq[Event]]
+}
+object CoproductCommandHandler {
+  @implicitNotFound("Not all commands (subclasses of ${Command}) are handled in ${X}.")
+  type HandleCommand[X <: Poly1, CC <: Coproduct, C <: Command, Command <: { type Error <: Coproduct }, Event] = Folder.Aux[X, CC, C#Error Xor Seq[Event]]
 }

@@ -1,20 +1,22 @@
 package slfes2.syntax
 
-import shapeless.ops.coproduct.Folder
-import shapeless.{ Coproduct, Generic, Poly1 }
-
 import scala.annotation.implicitNotFound
+import shapeless.ops.coproduct.Folder
+import shapeless.{ Coproduct, Generic, Poly, Poly1 }
+import slfes2.syntax.CoproductEventApplicator.ApplyEvent
 
 abstract class CoproductEventApplicator[Event, State] extends Poly1 {
   def apply[CE <: Coproduct](
     event: Event, state: State
   )(implicit
     generic: Generic.Aux[Event, CE],
-    folder: ApplyEvent[CE]): State = {
+    folder: ApplyEvent[this.type, CE, Event, State]): State = {
     val cc = generic.to(event)
     cc.fold(this).apply(state)
   }
 
-  @implicitNotFound("Not all events for the aggregate are handled.")
-  type ApplyEvent[CE <: Coproduct] = Folder.Aux[this.type, CE, State ⇒ State]
+}
+object CoproductEventApplicator {
+  @implicitNotFound("Not all events (subclasses of ${Event}) are handled in ${X}.")
+  type ApplyEvent[X <: Poly, CE <: Coproduct, Event, State] = Folder.Aux[X, CE, State ⇒ State]
 }
