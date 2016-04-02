@@ -1,43 +1,48 @@
 package slfes2
 
-import shapeless.LUBConstraint.<<:
-import shapeless.{ HList, HNil, LUBConstraint, :: }
-
+import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
+import shapeless.{ HList, HMap, Poly2 }
+import shapeless.ops.hlist.{ LeftFolder, Selector }
+import simulacrum.typeclass
 
-sealed trait BoundedContext {
+trait BoundedContext { self ⇒
+  val name: String
+
   type Aggregates <: HList
   val aggregates: Aggregates
+
+  /** Convenience definition for object (xx.BoundedContext instead of xx.type). */
+  type BoundedContext = self.type
 }
-object BoundedContext {
-  def apply[As <: HList: AggregateConstraint: AggregateImplementations](instances: As) = new BoundedContext {
-    type Aggregates = As
-    val aggregates = instances
-    protected val implementations = AggregateImplementations[As].implementations
+
+@typeclass trait BoundedContextImplementation[BC <: BoundedContext] {
+  val boundedContext: BC
+
+  def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A): AggregateImplementation[A]
+
+  @implicitNotFound("The aggregate ${A} does not exist in this bounded context.")
+  type MemberAggregate[A <: Aggregate] = Selector[BC#Aggregates, A]
+}
+object BoundedContextImplementation {
+  def apply[BC <: BoundedContext](bc: BC)(implicit f: AggregateImplementations[BC#Aggregates]): BoundedContextImplementation[BC] = {
+    val aggregates: BC#Aggregates = bc.aggregates
+    val implMap = aggregates.foldLeft(HMap.empty[BiMapAggregateToImplementation])(FoldToImplMap)
+    ???
   }
 
-  @implicitNotFound("Not all elements of HList are aggregates: ${AS}")
-  type AggregateConstraint[AS <: HList] = LUBConstraint[AS, Aggregate]
+  @implicitNotFound("Not all aggregates have an implementation. An AggregateImplementation[A] must be in implicit scope for each aggregate out of ${Aggregates}")
+  type AggregateImplementations[Aggregates <: HList] = LeftFolder[Aggregates, HMap[BiMapAggregateToImplementation], FoldToImplMap.type]
 
-  @implicitNotFound("Could not find an AggregateImplementation for one of the aggregates in ${As}")
-  sealed trait AggregateImplementations[As <: HList] {
-    type Impls <: HList
-    def implementations: Impls
-    def implementationList: List[AggregateImplementation[_]]
-  }
-  object AggregateImplementations {
-    def apply[A <: HList](implicit i: AggregateImplementations[A]) = i
-    type Aux[As <: HList, Is <: HList] = AggregateImplementations[As] { type Imples = Is }
-    implicit val forHNil = new AggregateImplementations[HNil] {
-      type Impls = HNil
-      def implementations = HNil
-      def implementationList = Nil
-    }
-    implicit def forHList[H <: Aggregate: AggregateImplementation, T <: HList](implicit ts: AggregateImplementations[T]) =
-      new AggregateImplementations[H :: T] {
-        type Impls = AggregateImplementation[H] :: ts.Impls
-        def implementations = AggregateImplementation[H] :: ts.implementations
-        def implementationList = AggregateImplementation[H] :: ts.implementationList
+  sealed trait BiMapAggregateToImplementation[A, AI]
+  implicit def aggregateToImpl[A <: Aggregate]: BiMapAggregateToImplementation[A, AggregateImplementation[A]] =
+    new BiMapAggregateToImplementation[A, AggregateImplementation[A]] {}
+
+  object FoldToImplMap extends Poly2 {
+    implicit def aggregateWithImpl[H <: HMap[BiMapAggregateToImplementation], A <: Aggregate: AggregateImplementation] =
+      at[H, A] { (acc, a) ⇒
+        val implementation = implicitly[AggregateImplementation[A]]
+        acc + (a → implementation)
       }
   }
 }

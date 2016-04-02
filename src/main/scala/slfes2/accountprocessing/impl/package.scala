@@ -1,5 +1,11 @@
 package slfes2.accountprocessing
 
+import slfes2.{ AggregateImplementation, BoundedContextImplementation }
+
 package object impl {
-  implicit val account = AccountImplementation
+  val accountProcessing = {
+    implicit val account = AccountImplementation
+    implicit val transaction = TransactionImplementation
+    BoundedContextImplementation(AccountProcessing)
+  }
 }
