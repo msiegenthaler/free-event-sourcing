@@ -15,6 +15,8 @@ import simulacrum.typeclass
   def applyEvent(event: Event, state: State): State
   def seed(id: Id): State
 
+  def aggregate: A
+
   implicit def typeableId: Typeable[Id]
   implicit def typeableEvent: Typeable[Event]
   implicit def typeableCommand: Typeable[Command]
@@ -22,24 +24,25 @@ import simulacrum.typeclass
 
 object AggregateImplementation {
   def apply[State](
-    aggregate: Aggregate
+    forAggregate: Aggregate
   )(
-    seed: aggregate.Id ⇒ State,
-    applyEvent: (aggregate.Event, State) ⇒ State,
-    handleCommand: CommandHandler[State, aggregate.Command, aggregate.Event]
+    seed: forAggregate.Id ⇒ State,
+    applyEvent: (forAggregate.Event, State) ⇒ State,
+    handleCommand: CommandHandler[State, forAggregate.Command, forAggregate.Event]
   )(implicit
-    tI: Typeable[aggregate.Id],
-    tE: Typeable[aggregate.Event],
-    tC: Typeable[aggregate.Command]): AggregateImplementation[aggregate.Aggregate] = {
+    tI: Typeable[forAggregate.Id],
+    tE: Typeable[forAggregate.Event],
+    tC: Typeable[forAggregate.Command]): AggregateImplementation[forAggregate.Aggregate] = {
     type S = State
     def seed2 = seed
     def apply2 = applyEvent
     def handle2 = handleCommand
-    new AggregateImplementation[aggregate.Aggregate] {
+    new AggregateImplementation[forAggregate.Aggregate] {
       type State = S
       def seed(id: Id) = seed2(id)
-      def applyEvent(event: aggregate.Event, state: State) = apply2(event, state)
-      def handleCommand[C <: aggregate.Command](command: C, state: State) = handle2(command, state)
+      def applyEvent(event: forAggregate.Event, state: State) = apply2(event, state)
+      def handleCommand[C <: forAggregate.Command](command: C, state: State) = handle2(command, state)
+      def aggregate = forAggregate
       implicit def typeableId = tI
       implicit def typeableEvent = tE
       implicit def typeableCommand = tC
