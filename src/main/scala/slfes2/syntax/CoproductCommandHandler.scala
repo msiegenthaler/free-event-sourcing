@@ -8,7 +8,7 @@ import slfes2.syntax.CoproductCommandHandler.HandleCommand
 
 import scala.annotation.implicitNotFound
 
-abstract class CoproductCommandHandler[Command <: { type Error <: Coproduct }, S, Event] extends Poly1 with CommandHandler[S, Command, Event] {
+trait CoproductCommandHandler[Command <: { type Error <: Coproduct }, S, Event] extends Poly1 with CommandHandler[S, Command, Event] {
   type State = S
 
   /** Always implement as: doHandle(command).apply(state). You need to implement the method because of the implicit resolution. */
