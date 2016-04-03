@@ -1,7 +1,7 @@
 package slfes2.accountprocessing
 
 import shapeless.{ :+:, CNil, Coproduct }
-import slfes2.Aggregate
+import slfes2.{ Aggregate, AggregateCommand }
 
 object Account extends Aggregate {
   val name = "Account"
@@ -14,9 +14,7 @@ object Account extends Aggregate {
     final case class Closed() extends Event
   }
 
-  sealed trait Command {
-    type Error <: Coproduct
-  }
+  sealed trait Command extends AggregateCommand
   object Command {
     import Error._
     final case class Open(owner: String) extends Command {

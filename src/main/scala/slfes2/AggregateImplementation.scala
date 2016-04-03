@@ -45,7 +45,7 @@ object AggregateImplementation {
     }
   }
 
-  trait CommandHandler[State, Command <: { type Error <: Coproduct }, Event] {
+  trait CommandHandler[State, Command <: AggregateCommand, Event] {
     def apply[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
   }
 }

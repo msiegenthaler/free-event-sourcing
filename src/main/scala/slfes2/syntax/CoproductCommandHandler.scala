@@ -3,12 +3,13 @@ package slfes2.syntax
 import cats.data.Xor
 import shapeless.ops.coproduct.Folder
 import shapeless.{ Coproduct, Generic, Poly1 }
+import slfes2.AggregateCommand
 import slfes2.AggregateImplementation.CommandHandler
 import slfes2.syntax.CoproductCommandHandler.HandleCommand
 
 import scala.annotation.implicitNotFound
 
-trait CoproductCommandHandler[Command <: { type Error <: Coproduct }, S, Event] extends Poly1 with CommandHandler[S, Command, Event] {
+trait CoproductCommandHandler[Command <: AggregateCommand, S, Event] extends Poly1 with CommandHandler[S, Command, Event] {
   type State = S
 
   /** Always implement as: doHandle(command).apply(state). You need to implement the method because of the implicit resolution. */
@@ -27,5 +28,5 @@ trait CoproductCommandHandler[Command <: { type Error <: Coproduct }, S, Event] 
 }
 object CoproductCommandHandler {
   @implicitNotFound("Not all commands (subclasses of ${Command}) are handled in ${X}.")
-  type HandleCommand[X <: Poly1, CC <: Coproduct, C <: Command, Command <: { type Error <: Coproduct }, State, Event] = Folder.Aux[X, CC, State ⇒ C#Error Xor Seq[Event]]
+  type HandleCommand[X <: Poly1, CC <: Coproduct, C <: Command, Command <: AggregateCommand, State, Event] = Folder.Aux[X, CC, State ⇒ C#Error Xor Seq[Event]]
 }
