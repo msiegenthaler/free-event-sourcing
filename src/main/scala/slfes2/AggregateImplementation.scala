@@ -1,6 +1,7 @@
 package slfes2
 
 import scala.language.implicitConversions
+import scala.collection.immutable.Seq
 import cats.data.Xor
 import shapeless.{ Coproduct, Generic, Typeable }
 import simulacrum.typeclass

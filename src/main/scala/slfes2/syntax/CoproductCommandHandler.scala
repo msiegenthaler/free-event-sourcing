@@ -15,7 +15,7 @@ trait CoproductCommandHandler[Command <: AggregateCommand, S, Event] extends Pol
   /** Always implement as: doHandle(command).apply(state). You need to implement the method because of the implicit resolution. */
   def handle[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
 
-  final def apply[C <: Command](command: C, state: State) = handle(command, state)
+  final def apply[C <: Command](command: C, state: State) = handle(command, state).map(_.toList)
 
   def doHandle[C <: Command, CC <: Coproduct](
     command: C
