@@ -21,6 +21,8 @@ abstract class CoproductEventApplicator[Event, State] extends Poly1 {
     val cc = generic.to(event)
     cc.fold(this).apply(state)
   }
+
+  def on[E <: Event](f: E ⇒ State ⇒ State): Case.Aux[E, State ⇒ State] = at(f)
 }
 object CoproductEventApplicator {
   @implicitNotFound("Not all events (subclasses of ${Event}) are handled in ${X}.")

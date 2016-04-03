@@ -22,11 +22,11 @@ private object AccountHandler extends CoproductCommandHandler[Command, AccountSt
 }
 
 private object AccountApplicator extends CoproductEventApplicator[Event, AccountState] {
-  implicit val opened = at[Opened] { evt ⇒ state: AccountState ⇒
+  implicit val opened = on[Opened] { evt ⇒ state ⇒
     state.copy(owner = Some(evt.owner), open = true)
   }
 
-  implicit val close = at[Closed] { evt ⇒ state: AccountState ⇒
+  implicit val close = on[Closed] { evt ⇒ state ⇒
     state.copy(open = false)
   }
 }
