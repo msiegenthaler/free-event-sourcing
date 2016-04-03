@@ -11,8 +11,8 @@ package object impl {
     )
 
     implicit val transaction = AggregateImplementation(Transaction)(
-      seed = _ ⇒ TransactionState(),
-      applyEvent = TransactionApplicator.function,
+      seed = _ ⇒ TransactionState(None, false),
+      applyEvent = TransactionApplicator,
       handleCommand = TransactionHandler
     )
 

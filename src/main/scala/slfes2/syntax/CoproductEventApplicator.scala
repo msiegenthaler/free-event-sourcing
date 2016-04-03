@@ -5,7 +5,7 @@ import shapeless.ops.coproduct.Folder
 import shapeless.{ Coproduct, Generic, Poly, Poly1 }
 import slfes2.syntax.CoproductEventApplicator.ApplyEvent
 
-abstract class CoproductEventApplicator[Event, State] extends Poly1 {
+trait CoproductEventApplicator[Event, State] extends Poly1 {
   def apply[CE <: Coproduct](
     event: Event, state: State
   )(implicit

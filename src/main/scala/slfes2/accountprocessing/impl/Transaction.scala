@@ -1,13 +1,14 @@
 package slfes2.accountprocessing.impl
 
 import cats.data.Xor
-import slfes2.syntax.{ CoproductCommandHandler, CoproductEventApplicator }
-import slfes2.accountprocessing.Transaction
+import slfes2.syntax.{ CoproductCommandHandler, MatchEventApplicator }
+import slfes2.accountprocessing.{ Account, Transaction }
 import Transaction._
 import Command._
 import Event._
 
-final case class TransactionState()
+final case class TransactionInformation(from: Account.Id, to: Account.Id, amount: Long)
+final case class TransactionState(information: Option[TransactionInformation], commited: Boolean)
 
 private object TransactionHandler extends CoproductCommandHandler[Command, TransactionState, Event] {
   def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
@@ -21,11 +22,12 @@ private object TransactionHandler extends CoproductCommandHandler[Command, Trans
   }
 }
 
-private object TransactionApplicator extends CoproductEventApplicator[Event, TransactionState] {
-  implicit val opened = at[Created] { evt ⇒ state: TransactionState ⇒
-    state.copy()
-  }
-  implicit val close = at[Commited] { evt ⇒ state: TransactionState ⇒
-    state.copy()
+private object TransactionApplicator extends MatchEventApplicator[Event, TransactionState] {
+  def apply(event: Event, state: TransactionState) = event match {
+    case Created(from, to, amount) ⇒
+      val info = TransactionInformation(from, to, amount)
+      state.copy(information = Some(info))
+    case Commited() ⇒
+      state.copy(commited = true)
   }
 }
