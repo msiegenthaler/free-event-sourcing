@@ -5,18 +5,20 @@ import scala.annotation.implicitNotFound
 import shapeless.{ HList, HMap, Poly2 }
 import shapeless.ops.hlist.{ LeftFolder, Selector }
 import simulacrum.typeclass
+import slfes2.BoundedContextImplementation.BCAggregateInfo
 
 @typeclass trait BoundedContextImplementation[BC <: BoundedContext] {
   val boundedContext: BC
-
   def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A): AggregateImplementation[A]
+
+  def aggregateInfo: List[BCAggregateInfo[BC]]
 
   @implicitNotFound("The aggregate ${A} does not exist in this bounded context.")
   type MemberAggregate[A <: Aggregate] = Selector[BC#Aggregates, A]
 }
 
 object BoundedContextImplementation {
-  def apply[BC <: BoundedContext](bc: BC)(implicit f: AggregateImplementations[bc.Aggregates]): BoundedContextImplementation[BC] = {
+  def apply[BC <: BoundedContext](bc: BC)(implicit f: AggregateImplementationsEv[bc.Aggregates], l: AggregateInfoEv[BC]): BoundedContextImplementation[BC] = {
     val implMap = bc.aggregates.foldLeft(HMap.empty[BiMapAggregateToImplementation])(FoldToImplMap)
     new BoundedContextImplementation[BC] {
       val boundedContext = bc
@@ -26,11 +28,25 @@ object BoundedContextImplementation {
             s"This should have been prevented at the type level.")
         }
       }
+      val aggregateInfo = {
+        def aggregates: BC#Aggregates = bc.aggregates
+        aggregates.foldLeft(List.empty[BCAggregateInfo[BC]])(FoldToAggregateInfo)(l)
+      }
     }
   }
 
+  trait BCAggregateInfo[BC <: BoundedContext] {
+    type A <: Aggregate
+    val aggregate: A
+    def implementation: AggregateImplementation[A]
+    def memberEvidence: Selector[BC#Aggregates, A]
+  }
+
   @implicitNotFound("Not all aggregates have an implementation. An AggregateImplementation[A] must be in implicit scope for each aggregate out of ${Aggregates}")
-  type AggregateImplementations[Aggregates <: HList] = LeftFolder.Aux[Aggregates, HMap[BiMapAggregateToImplementation], FoldToImplMap.type, HMap[BiMapAggregateToImplementation]]
+  type AggregateImplementationsEv[Aggregates <: HList] = LeftFolder.Aux[Aggregates, HMap[BiMapAggregateToImplementation], FoldToImplMap.type, HMap[BiMapAggregateToImplementation]]
+
+  @implicitNotFound("Not all aggregates extend the Aggregate trait in bounded context ${BC}.")
+  type AggregateInfoEv[BC <: BoundedContext] = LeftFolder.Aux[BC#Aggregates, List[BCAggregateInfo[BC]], FoldToAggregateInfo.type, List[BCAggregateInfo[BC]]]
 
   sealed trait BiMapAggregateToImplementation[A, AI]
   implicit def aggregateToImpl[A <: Aggregate]: BiMapAggregateToImplementation[A, AggregateImplementation[A]] =
@@ -42,5 +58,19 @@ object BoundedContextImplementation {
         val implementation = implicitly[AggregateImplementation[A]]
         acc + (a → implementation)
       }
+  }
+
+  object FoldToAggregateInfo extends Poly2 {
+    implicit def aggregate[AG <: Aggregate, BC <: BoundedContext](implicit impl: AggregateImplementation[AG], ev: Selector[BC#Aggregates, AG]) = {
+      at[List[BCAggregateInfo[BC]], AG] { (acc, a) ⇒
+        val data = new BCAggregateInfo[BC] {
+          type A = AG
+          val aggregate = a
+          def implementation = impl
+          def memberEvidence = ev
+        }
+        data :: acc
+      }
+    }
   }
 }
