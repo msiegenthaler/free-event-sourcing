@@ -1,14 +1,9 @@
 package slfes2.akka
 
-import akka.actor.{ Actor, ActorRef, Props }
-import simulacrum.typeclass
-import slfes.utils.StringSerializable
-import slfes2.accountprocessing.{ Account, AccountProcessing, Transaction }
-import slfes2._
-import slfes2.accountprocessing.impl.{ AccountApplicator, AccountHandler, AccountState }
+import akka.actor.{Actor, ActorRef, Props}
+import slfes2.{Aggregate, AggregateCommand, BoundedContext}
 
 import scala.language.implicitConversions
-import scala.annotation.implicitNotFound
 
 object AkkaBoundedContext {
   case class ExecuteAggregateCommand(commandId: CommandId, aggregate: String, aggregateId: Any, command: AggregateCommand)

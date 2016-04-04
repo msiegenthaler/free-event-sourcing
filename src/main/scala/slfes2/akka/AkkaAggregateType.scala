@@ -32,5 +32,4 @@ object AkkaAggregateType {
       def unapply(a: Any): Option[A#Id] = impl.typeableId.cast(a)
     }
   }
-
 }

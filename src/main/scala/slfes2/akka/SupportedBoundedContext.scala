@@ -15,7 +15,9 @@ import scala.annotation.implicitNotFound
   def aggregates: AggregateMap
 }
 object SupportedBoundedContext {
-  implicit def derive[BC <: BoundedContext](implicit impl: BoundedContextImplementation[BC], ef: AggregateExtensions[BC#Aggregates]): SupportedBoundedContext[BC] = {
+  implicit def derive[BC <: BoundedContext](implicit
+    impl: BoundedContextImplementation[BC],
+    ef: AggregateExtensions[BC#Aggregates]): SupportedBoundedContext[BC] = {
     val aggregates: BC#Aggregates = impl.boundedContext.aggregates
     val exts = aggregates.foldLeft(HMap.empty[BiMapAggregateExtensions])(FoldToExtMap)
 
@@ -46,12 +48,14 @@ object SupportedBoundedContext {
   implicit def aggregateToExtension[A <: Aggregate]: BiMapAggregateExtensions[A, AggregateExtension[A]] =
     new BiMapAggregateExtensions[A, AggregateExtension[A]] {}
   object FoldToExtMap extends Poly2 {
-    implicit def aggregateWithImpl[H <: HMap[BiMapAggregateExtensions], A <: Aggregate](implicit idSer: StringSerializable[A#Id]) = at[H, A] { (acc, a) ⇒
-      val ext = new AggregateExtension[A] {
-        def aggregate = a
-        def idSerializable = idSer
+    implicit def aggregateWithImpl[H <: HMap[BiMapAggregateExtensions], A <: Aggregate](implicit idSer: StringSerializable[A#Id]) = {
+      at[H, A] { (acc, a) ⇒
+        val ext = new AggregateExtension[A] {
+          def aggregate = a
+          def idSerializable = idSer
+        }
+        acc + (a → ext)
       }
-      acc + (a → ext)
     }
   }
   @implicitNotFound("Not all aggregates are supported by akka. The implicit scope must contain for each Aggregate (A):\n - a StringSerializer for A#ID")

@@ -19,7 +19,7 @@ import slfes2.BoundedContextImplementation.BCAggregateInfo
 
 object BoundedContextImplementation {
   def apply[BC <: BoundedContext](bc: BC)(implicit f: AggregateImplementationsEv[bc.Aggregates], l: AggregateInfoEv[BC]): BoundedContextImplementation[BC] = {
-    val implMap = bc.aggregates.foldLeft(HMap.empty[BiMapAggregateToImplementation])(FoldToImplMap)
+    val implMap = bc.aggregates.foldLeft(HMap.empty[BiMapToImpl])(FoldToImplMap)
     new BoundedContextImplementation[BC] {
       val boundedContext = bc
       def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A) = {
@@ -42,18 +42,18 @@ object BoundedContextImplementation {
     def memberEvidence: Selector[BC#Aggregates, A]
   }
 
-  @implicitNotFound("Not all aggregates have an implementation. An AggregateImplementation[A] must be in implicit scope for each aggregate out of ${Aggregates}")
-  type AggregateImplementationsEv[Aggregates <: HList] = LeftFolder.Aux[Aggregates, HMap[BiMapAggregateToImplementation], FoldToImplMap.type, HMap[BiMapAggregateToImplementation]]
+  @implicitNotFound("Not all aggregates have an implementation. An AggregateImplementation[A] must be in implicit scope for all aggregates in ${Aggregates}")
+  type AggregateImplementationsEv[Aggregates <: HList] = LeftFolder.Aux[Aggregates, HMap[BiMapToImpl], FoldToImplMap.type, HMap[BiMapToImpl]]
 
   @implicitNotFound("Not all aggregates extend the Aggregate trait in bounded context ${BC}.")
   type AggregateInfoEv[BC <: BoundedContext] = LeftFolder.Aux[BC#Aggregates, List[BCAggregateInfo[BC]], FoldToAggregateInfo.type, List[BCAggregateInfo[BC]]]
 
-  sealed trait BiMapAggregateToImplementation[A, AI]
-  implicit def aggregateToImpl[A <: Aggregate]: BiMapAggregateToImplementation[A, AggregateImplementation[A]] =
-    new BiMapAggregateToImplementation[A, AggregateImplementation[A]] {}
+  sealed trait BiMapToImpl[A, AI]
+  implicit def aggregateToImpl[A <: Aggregate]: BiMapToImpl[A, AggregateImplementation[A]] =
+    new BiMapToImpl[A, AggregateImplementation[A]] {}
 
   object FoldToImplMap extends Poly2 {
-    implicit def aggregateWithImpl[H <: HMap[BiMapAggregateToImplementation], A <: Aggregate: AggregateImplementation] =
+    implicit def aggregateWithImpl[H <: HMap[BiMapToImpl], A <: Aggregate: AggregateImplementation] =
       at[H, A] { (acc, a) ⇒
         val implementation = implicitly[AggregateImplementation[A]]
         acc + (a → implementation)
