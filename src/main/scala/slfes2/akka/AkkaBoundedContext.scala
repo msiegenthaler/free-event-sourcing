@@ -1,7 +1,7 @@
 package slfes2.akka
 
-import akka.actor.{Actor, ActorRef, Props}
-import slfes2.{Aggregate, AggregateCommand, BoundedContext}
+import akka.actor.{ Actor, ActorRef, Props }
+import slfes2.{ Aggregate, AggregateCommand, BoundedContext }
 
 import scala.language.implicitConversions
 
