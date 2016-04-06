@@ -16,10 +16,6 @@ import simulacrum.typeclass
   def seed(id: Id): State
 
   def aggregate: A
-
-  implicit def typeableId: Typeable[Id]
-  implicit def typeableEvent: Typeable[Event]
-  implicit def typeableCommand: Typeable[Command]
 }
 
 object AggregateImplementation {
@@ -29,10 +25,7 @@ object AggregateImplementation {
     seed: forAggregate.Id ⇒ State,
     applyEvent: (forAggregate.Event, State) ⇒ State,
     handleCommand: CommandHandler[State, forAggregate.Command, forAggregate.Event]
-  )(implicit
-    tI: Typeable[forAggregate.Id],
-    tE: Typeable[forAggregate.Event],
-    tC: Typeable[forAggregate.Command]): AggregateImplementation[forAggregate.Aggregate] = {
+  ): AggregateImplementation[forAggregate.Aggregate] = {
     type S = State
     def seed2 = seed
     def apply2 = applyEvent
@@ -43,9 +36,6 @@ object AggregateImplementation {
       def applyEvent(event: forAggregate.Event, state: State) = apply2(event, state)
       def handleCommand[C <: forAggregate.Command](command: C, state: State) = handle2(command, state)
       def aggregate = forAggregate
-      implicit def typeableId = tI
-      implicit def typeableEvent = tE
-      implicit def typeableCommand = tC
     }
   }
 

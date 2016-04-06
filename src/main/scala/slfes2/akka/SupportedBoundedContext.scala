@@ -2,7 +2,7 @@ package slfes2.akka
 
 import scala.language.implicitConversions
 import shapeless.ops.hlist.{ LeftFolder, Mapper }
-import shapeless.{ HList, HMap, Poly1, Poly2 }
+import shapeless.{ HList, HMap, Poly1, Poly2, Typeable }
 import simulacrum.typeclass
 import slfes.utils.StringSerializable
 import slfes2.accountprocessing.{ Account, AccountProcessing, Transaction }
@@ -31,7 +31,13 @@ object SupportedBoundedContext {
             throw new IllegalStateException(s"Implementation extendsion for aggregate ${d.aggregate.name} not found in the " +
               s"bounded context ${impl.boundedContext.name}. This should have been prevented at the type level.")
           }
-          val s = SupportedAggregate.derive[d.A](d.implementation, ext.idSerializable)
+          val s = SupportedAggregate.derive[d.A](
+            d.implementation,
+            ext.idSerializable,
+            ext.typeableId,
+            ext.typeableEvent,
+            ext.typeableCommand
+          )
           (d.aggregate, s)
         }.toMap
       }
@@ -43,16 +49,26 @@ object SupportedBoundedContext {
   trait AggregateExtension[A <: Aggregate] {
     def aggregate: A
     def idSerializable: StringSerializable[A#Id]
+    def typeableId: Typeable[A#Id]
+    def typeableEvent: Typeable[A#Event]
+    def typeableCommand: Typeable[A#Command]
   }
   sealed trait BiMapAggregateExtensions[A, AE]
   implicit def aggregateToExtension[A <: Aggregate]: BiMapAggregateExtensions[A, AggregateExtension[A]] =
     new BiMapAggregateExtensions[A, AggregateExtension[A]] {}
   object FoldToExtMap extends Poly2 {
-    implicit def aggregateWithImpl[H <: HMap[BiMapAggregateExtensions], A <: Aggregate](implicit idSer: StringSerializable[A#Id]) = {
+    implicit def aggregateWithImpl[H <: HMap[BiMapAggregateExtensions], A <: Aggregate](implicit
+      idSer: StringSerializable[A#Id],
+      ti: Typeable[A#Id],
+      te: Typeable[A#Event],
+      tc: Typeable[A#Command]) = {
       at[H, A] { (acc, a) ⇒
         val ext = new AggregateExtension[A] {
           def aggregate = a
           def idSerializable = idSer
+          def typeableId = ti
+          def typeableEvent = te
+          def typeableCommand = tc
         }
         acc + (a → ext)
       }
