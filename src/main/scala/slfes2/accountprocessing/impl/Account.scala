@@ -1,11 +1,10 @@
 package slfes2.accountprocessing.impl
 
 import cats.data.Xor
+import slfes2.accountprocessing.Account.Command._
+import slfes2.accountprocessing.Account.Event._
+import slfes2.accountprocessing.Account._
 import slfes2.syntax.{ CoproductCommandHandler, CoproductEventApplicator }
-import slfes2.accountprocessing.Account
-import Account._
-import Command._
-import Event._
 
 final case class AccountState(owner: Option[String], open: Boolean)
 

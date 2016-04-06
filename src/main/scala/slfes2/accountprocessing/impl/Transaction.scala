@@ -1,11 +1,11 @@
 package slfes2.accountprocessing.impl
 
 import cats.data.Xor
+import slfes2.accountprocessing.Account
+import slfes2.accountprocessing.Transaction.Command._
+import slfes2.accountprocessing.Transaction.Event._
+import slfes2.accountprocessing.Transaction._
 import slfes2.syntax.{ CoproductCommandHandler, MatchEventApplicator }
-import slfes2.accountprocessing.{ Account, Transaction }
-import Transaction._
-import Command._
-import Event._
 
 final case class TransactionInformation(from: Account.Id, to: Account.Id, amount: Long)
 final case class TransactionState(information: Option[TransactionInformation], commited: Boolean)

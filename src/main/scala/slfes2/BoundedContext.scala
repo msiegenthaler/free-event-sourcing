@@ -1,6 +1,6 @@
 package slfes2
 
-import shapeless.{ HList, HMap, Poly2 }
+import shapeless.HList
 
 trait BoundedContext { self ⇒
   val name: String

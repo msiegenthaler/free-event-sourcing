@@ -3,7 +3,7 @@ package slfes2.akka
 import akka.actor.Props
 import akka.persistence.PersistentActor
 import cats.data.Xor
-import slfes2.{ Aggregate, AggregateCommand, AggregateImplementation }
+import slfes2.{ Aggregate, AggregateCommand }
 
 /** Manages a single aggregate using a persistent actor.
  *  Only one actor may exist per aggregate (id), else inconsistencies will be created.

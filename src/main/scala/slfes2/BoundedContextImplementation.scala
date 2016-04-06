@@ -2,8 +2,8 @@ package slfes2
 
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
-import shapeless.{ HList, HMap, Poly2 }
 import shapeless.ops.hlist.{ LeftFolder, Selector }
+import shapeless.{ HList, HMap, Poly2 }
 import simulacrum.typeclass
 import slfes2.BoundedContextImplementation.BCAggregateInfo
 

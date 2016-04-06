@@ -1,9 +1,8 @@
 package slfes2.akka
 
-import shapeless.Typeable
-
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
+import shapeless.Typeable
 import simulacrum.typeclass
 import slfes.utils.StringSerializable
 import slfes2.{ Aggregate, AggregateImplementation }

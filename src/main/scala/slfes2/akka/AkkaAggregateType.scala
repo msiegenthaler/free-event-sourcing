@@ -1,7 +1,7 @@
 package slfes2.akka
 
 import akka.actor.{ Actor, ActorRef, Props }
-import slfes2.{ Aggregate, AggregateCommand, AggregateImplementation, BoundedContext }
+import slfes2.{ Aggregate, AggregateCommand }
 
 object AkkaAggregateType {
   case class Execute(id: CommandId, aggregateId: Any, command: AggregateCommand)

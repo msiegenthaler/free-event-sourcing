@@ -1,6 +1,6 @@
 package slfes2.accountprocessing
 
-import shapeless.{ :+:, CNil, Coproduct }
+import shapeless.{ :+:, CNil }
 import slfes2.{ Aggregate, AggregateCommand }
 
 object Account extends Aggregate {

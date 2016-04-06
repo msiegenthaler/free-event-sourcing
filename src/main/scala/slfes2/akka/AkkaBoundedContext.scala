@@ -1,9 +1,8 @@
 package slfes2.akka
 
-import akka.actor.{ Actor, ActorRef, Props }
-import slfes2.{ Aggregate, AggregateCommand, BoundedContext }
-
 import scala.language.implicitConversions
+import akka.actor.{ Actor, ActorRef }
+import slfes2.{ Aggregate, AggregateCommand, BoundedContext }
 
 object AkkaBoundedContext {
   case class ExecuteAggregateCommand(commandId: CommandId, aggregate: String, aggregateId: Any, command: AggregateCommand)

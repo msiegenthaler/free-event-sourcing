@@ -1,13 +1,12 @@
 package slfes2.syntax
 
+import scala.annotation.implicitNotFound
 import cats.data.Xor
 import shapeless.ops.coproduct.Folder
 import shapeless.{ Coproduct, Generic, Poly1 }
 import slfes2.AggregateCommand
 import slfes2.AggregateImplementation.CommandHandler
 import slfes2.syntax.CoproductCommandHandler.HandleCommand
-
-import scala.annotation.implicitNotFound
 
 trait CoproductCommandHandler[Command <: AggregateCommand, S, Event] extends Poly1 with CommandHandler[S, Command, Event] {
   type State = S
