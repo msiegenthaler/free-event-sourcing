@@ -16,6 +16,11 @@ libraryDependencies += "org.typelevel" %% "cats" % "0.4.1"
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.2"
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.2"
 
+
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.0" % "test"
+
+
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import scalariform.formatter.preferences._
 
