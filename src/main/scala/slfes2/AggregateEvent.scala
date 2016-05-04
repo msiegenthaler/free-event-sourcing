@@ -36,7 +36,7 @@ case class AggregateEventSelector[A <: Aggregate](aggregateType: A, aggregate: A
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
-  def eventSelectorInstance[A <: Aggregate](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A]] {
+  implicit def eventSelectorInstance[A <: Aggregate](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A]] {
     def serialize(selector: AggregateEventSelector[A]) = selector.serialize
   }
 
