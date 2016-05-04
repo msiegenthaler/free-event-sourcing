@@ -4,33 +4,27 @@ import scala.language.implicitConversions
 import scala.collection.immutable.Traversable
 import simulacrum.typeclass
 
-//case class EventMetadata[A <: Aggregate](from: A#Id, sequence: Long, eventType: EventType, aggregate: A)
-
 trait EventTime {
   //TODO compareable (before, concurrent, after)
 }
 
-case class EventMetadata(eventTime: EventTime)
-//TODO maybe a "trace"
-
-case class Event[E](
-  eventTime: EventTime,
-  //    source: EventSource,
-  content: E
-)
-
-//case class IndexedEvent()
-
-@typeclass trait IndexedEvent[EventKey] {
-  def asString(key: EventKey): String
+@typeclass trait Event[E] {
+  def eventTime(e: E): EventTime
+  //TODO maybe a "trace" (cause of the event)
 }
 
-trait EventIndexer {
-  def apply(e: Event[_]): Traversable[IndexedEvent[_]]
+case class SerializedEventSelector(selectorType: String, value: String)
+@typeclass trait EventSelector[S] {
+  def serialize(selector: S): SerializedEventSelector
 }
 
-object Event {
+object EventIndexer {
+  type EventIndexer = Any ⇒ Traversable[SerializedEventSelector]
 
-  type Selector = Event[_] ⇒ List[IndexedEvent[_]]
-
+  def apply(f: PartialFunction[Any, SerializedEventSelector]): EventIndexer =
+    apply(f.lift)
+  def apply(f: Any ⇒ Option[SerializedEventSelector]): EventIndexer =
+    e ⇒ f(e).toList
+  def multi(f: PartialFunction[Any, Traversable[SerializedEventSelector]]): EventIndexer =
+    e ⇒ f.lift(e).getOrElse(Nil)
 }
