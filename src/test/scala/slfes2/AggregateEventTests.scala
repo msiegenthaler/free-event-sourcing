@@ -43,6 +43,12 @@ class AggregateEventTests extends FlatSpec with Matchers {
   "AggregateEventSelector " should " fail to compile if an event is used that is not valid for the aggregate" in {
     "AggregateEventSelector(Account)(Account.Id(1))[String]" shouldNot compile
   }
+
+  "AggregateEventSelector " should " be an instance of EventSelector" in {
+    val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
+    def ser[S: EventSelector](s: S) = implicitly[EventSelector[S]].serialize(s)
+    "ser(selector)" should compile
+  }
 }
 
 case class MockEventTime(t: Int) extends EventTime
