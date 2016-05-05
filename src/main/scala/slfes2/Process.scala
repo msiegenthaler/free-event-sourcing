@@ -2,15 +2,13 @@ package slfes2
 
 import java.time.Instant
 import scala.annotation.implicitNotFound
-import shapeless.{ HList, :: }
 import slfes2.EventSelector.WithEventType
-import slfes2.Process.ValidAggregateSelector
 
 class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("${S} is not a valid EventSelector for this process.")
   sealed trait ValidSelector[S]
   object ValidSelector {
-    implicit def aggregate[S](implicit ev: ValidAggregateSelector[S, BC#Aggregates]) = new ValidSelector[S] {}
+    implicit def aggregate[S](implicit ev: AggregateEventSelector.ValidFor[S, BC#Aggregates]) = new ValidSelector[S] {}
   }
 
   sealed trait ProcessAction[+A]
@@ -26,12 +24,4 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   }
 }
 object Process {
-  @implicitNotFound("${S} is not a valid aggregate event selector for the aggregates ${Aggregates}")
-  sealed trait ValidAggregateSelector[S, Aggregates <: HList]
-  object ValidAggregateSelector {
-    implicit def head[A <: Aggregate, E <: A#Event, T <: HList] =
-      new ValidAggregateSelector[AggregateEventSelector[A, E], A :: T] {}
-    implicit def tail[S, H, T <: HList](implicit t: ValidAggregateSelector[S, T]) =
-      new ValidAggregateSelector[S, H :: T] {}
-  }
 }

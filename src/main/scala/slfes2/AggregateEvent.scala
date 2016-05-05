@@ -3,7 +3,7 @@ package slfes2
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
 import scala.reflect._
-import shapeless.Typeable
+import shapeless.{ ::, HList, Typeable }
 import simulacrum.typeclass
 import slfes.utils.{ =!=, StringSerializable }
 import slfes.utils.StringSerializable.ops._
@@ -32,7 +32,6 @@ case class AggregateEventSelector[A <: Aggregate, E <: A#Event](aggregateType: A
     val key = CompositeName.root / aggregateType.name / aggregate.serializeToString / eventType
     EventTag("aggregateEventSelector", key.serialize)
   }
-
 }
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
@@ -53,6 +52,15 @@ object AggregateEventSelector {
   sealed trait ConcreteEvent[A <: Aggregate, E]
   object ConcreteEvent {
     implicit def instance[A <: Aggregate, E](implicit ev: E =!= A#Event) = new ConcreteEvent[A, E] {}
+  }
+
+  @implicitNotFound("${S} is not a valid aggregate event selector for the aggregates ${Aggregates}")
+  sealed trait ValidFor[S, Aggregates <: HList]
+  object ValidFor {
+    implicit def head[A <: Aggregate, E <: A#Event, T <: HList] =
+      new ValidFor[AggregateEventSelector[A, E], A :: T] {}
+    implicit def tail[S, H, T <: HList](implicit t: ValidFor[S, T]) =
+      new ValidFor[S, H :: T] {}
   }
 }
 

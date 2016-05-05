@@ -1,8 +1,10 @@
 package slfes2
 
 import org.scalatest.{ FlatSpec, Matchers }
+import shapeless.{ ::, HNil }
 import slfes2.EventSelector.WithEventType
 import slfes2.accountprocessing.Account.Event.{ Closed, Opened }
+import slfes2.accountprocessing.Transaction.Event.Created
 import slfes2.accountprocessing._
 
 class AggregateEventTests extends FlatSpec with Matchers {
@@ -49,6 +51,22 @@ class AggregateEventTests extends FlatSpec with Matchers {
     val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
     def ser[S <: WithEventType: EventSelector](s: S) = implicitly[EventSelector[S]].asTag(s)
     "ser(selector)" should compile
+  }
+
+  "AggregateEventSelector.ValidFor " should " have an instance for subtypes of events of first aggregate in list" in {
+    type L = Account.type :: Transaction.type :: HNil
+    "implicitly[AggregateEventSelector.ValidFor[AggregateEventSelector[Account.type, Opened], L]]" should compile
+    "implicitly[AggregateEventSelector.ValidFor[AggregateEventSelector[Account.type, Closed], L]]" should compile
+  }
+
+  "AggregateEventSelector.ValidFor " should " have an instance for subtypes of events of second (and last) aggregate in list" in {
+    type L = Account.type :: Transaction.type :: HNil
+    "implicitly[AggregateEventSelector.ValidFor[AggregateEventSelector[Transaction.type, Created], L]]" should compile
+  }
+
+  "AggregateEventSelector.ValidFor " should " have no instance for events of aggregate not list" in {
+    type L = Account.type :: HNil
+    "implicitly[AggregateEventSelector.ValidFor[AggregateEventSelector[Transaction.type, Created], L]]" shouldNot compile
   }
 }
 

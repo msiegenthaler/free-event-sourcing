@@ -2,7 +2,6 @@ package slfes2
 
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, HNil }
-import slfes2.Process.ValidAggregateSelector
 import slfes2.accountprocessing.{ Account, AccountProcessing, Transaction }
 import slfes2.accountprocessing.Account.Event.{ Closed, Opened }
 import slfes2.accountprocessing.Transaction.Event.Created
@@ -25,22 +24,6 @@ class ProcessTests extends FlatSpec with Matchers {
 
   val process = new Process(AccountProcessing)
   import process.ProcessAction._
-
-  "AggregateEventSelector " should " have an instance for subtypes of events of first aggregate in list" in {
-    type L = Account.type :: Transaction.type :: HNil
-    "implicitly[ValidAggregateSelector[AggregateEventSelector[Account.type, Opened], L]]" should compile
-    "implicitly[ValidAggregateSelector[AggregateEventSelector[Account.type, Closed], L]]" should compile
-  }
-
-  "AggregateEventSelector " should " have an instance for subtypes of events of second (and last) aggregate in list" in {
-    type L = Account.type :: Transaction.type :: HNil
-    "implicitly[ValidAggregateSelector[AggregateEventSelector[Transaction.type, Created], L]]" should compile
-  }
-
-  "AggregateEventSelector " should " have no instance for events of aggregate not list" in {
-    type L = Account.type :: HNil
-    "implicitly[ValidAggregateSelector[AggregateEventSelector[Transaction.type, Created], L]]" shouldNot compile
-  }
 
   "Process " should " allow selector for aggregate in the same bounded context" in {
     "AwaitEvent(selectorOpened)" should compile
