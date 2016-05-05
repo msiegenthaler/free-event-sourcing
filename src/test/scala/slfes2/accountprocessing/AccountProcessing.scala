@@ -8,8 +8,4 @@ object AccountProcessing extends BoundedContext {
   val name = "account processing"
   val aggregates = Account :: Transaction :: HNil
   type Aggregates = Account.type :: Transaction.type :: HNil
-
-  type Selectors = //AggregateEventSelector[Account.type, Opened] ::
-  AggregateEventSelector[Account.type, Closed] :: HNil
-
 }
