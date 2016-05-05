@@ -13,18 +13,19 @@ trait EventTime {
   //TODO maybe a "trace" (cause of the event)
 }
 
-case class EventTag(key: String, value: String)
 @typeclass trait EventSelector[S] {
   def asTag(selector: S): EventTag
 }
 
-object EventIndexer {
-  type EventIndexer = Any ⇒ Traversable[EventTag]
+case class EventTag(key: String, value: String)
 
-  def apply(f: PartialFunction[Any, EventTag]): EventIndexer =
+object EventTagger {
+  type EventTagger = Any ⇒ Traversable[EventTag]
+
+  def apply(f: PartialFunction[Any, EventTag]): EventTagger =
     apply(f.lift)
-  def apply(f: Any ⇒ Option[EventTag]): EventIndexer =
+  def apply(f: Any ⇒ Option[EventTag]): EventTagger =
     e ⇒ f(e).toList
-  def multi(f: PartialFunction[Any, Traversable[EventTag]]): EventIndexer =
+  def multi(f: PartialFunction[Any, Traversable[EventTag]]): EventTagger =
     e ⇒ f.lift(e).getOrElse(Nil)
 }
