@@ -20,10 +20,13 @@ trait EventTime {
 object EventSelector {
   type WithEventType = { type Event }
 
+}
+
+//TODO Move into akka
 case class EventTag(key: String, value: String)
 
 object EventTagger {
-  type EventTagger = Any ⇒ Traversable[EventTag]
+  type EventTagger = Any ⇒ Traversable[EventTag] // TODO find different return type..
 
   def apply(f: PartialFunction[Any, EventTag]): EventTagger =
     apply(f.lift)
