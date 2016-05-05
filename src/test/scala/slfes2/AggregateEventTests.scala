@@ -9,31 +9,31 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   val event1 = AggregateEvent[Account.type](Account, Account.Id(1), Opened("Mario"), MockEventTime(1))
 
-  "AggregateEventIndexer " should " produce the same serialized form as the matching AggregateEventSelector" in {
+  "AggregateEventIndexer " should " produce the same tag as the matching AggregateEventSelector" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
     val selector = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-    indexed shouldBe selector.serialize
+    indexed shouldBe selector.asTag
   }
 
-  "AggregateEventIndexer " should " produce the differend serialized form as a AggregateEventSelector that does not match the event type" in {
+  "AggregateEventIndexer " should " produce a different tag than an AggregateEventSelector that does not match the event type" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
     val selector = AggregateEventSelector(Account)(Account.Id(1))[Closed]
-    indexed should not be (selector.serialize)
+    indexed should not be (selector.asTag)
   }
 
-  "AggregateEventIndexer " should " produce the differend serialized form as a AggregateEventSelector that does not match the aggregate" in {
+  "AggregateEventIndexer " should " produce a different tag than an AggregateEventSelector that does not match the aggregate" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
     val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    indexed should not be (selector.serialize)
+    indexed should not be (selector.asTag)
   }
 
   "AggregateEventSelector " should " fail to compile if the base event class is used" in {
@@ -46,7 +46,7 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   "AggregateEventSelector " should " be an instance of EventSelector" in {
     val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    def ser[S: EventSelector](s: S) = implicitly[EventSelector[S]].serialize(s)
+    def ser[S: EventSelector](s: S) = implicitly[EventSelector[S]].asTag(s)
     "ser(selector)" should compile
   }
 }

@@ -27,9 +27,9 @@ object AggregateEventType {
 }
 
 case class AggregateEventSelector[A <: Aggregate](aggregateType: A, aggregate: A#Id, eventType: String)(implicit idser: StringSerializable[A#Id]) {
-  def serialize = {
+  def asTag = {
     val key = CompositeName.root / aggregateType.name / aggregate.serializeToString / eventType
-    SerializedEventSelector("aggregateEventSelector", key.serialize)
+    EventTag("aggregateEventSelector", key.serialize)
   }
 
 }
@@ -37,7 +37,7 @@ object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
   implicit def eventSelectorInstance[A <: Aggregate](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A]] {
-    def serialize(selector: AggregateEventSelector[A]) = selector.serialize
+    def asTag(selector: AggregateEventSelector[A]) = selector.asTag
   }
 
   class EventCatcher[A <: Aggregate](aggregateType: A, aggregate: A#Id) {
@@ -59,7 +59,7 @@ object AggregateEventIndexer {
     t.cast(event).filter(_.aggregateType == aggregate).map { event ⇒
       val eventType = event.event.getClass.getName //TODO change to more robust implementation
       val selector = AggregateEventSelector(aggregate, event.aggregate, eventType)
-      selector.serialize
+      selector.asTag
     }
   }
 }
