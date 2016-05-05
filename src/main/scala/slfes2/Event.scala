@@ -13,9 +13,12 @@ trait EventTime {
   //TODO maybe a "trace" (cause of the event)
 }
 
-@typeclass trait EventSelector[S] {
-  def asTag(selector: S): EventTag
+@typeclass trait EventSelector[S <: EventSelector.WithEventType] {
+  def castEvent(e: Any): S#Event
+  def asTag(selector: S): EventTag //TODO Move into akka?
 }
+object EventSelector {
+  type WithEventType = { type Event }
 
 case class EventTag(key: String, value: String)
 

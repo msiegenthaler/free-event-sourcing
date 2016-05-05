@@ -26,7 +26,8 @@ object AggregateEventType {
   }
 }
 
-case class AggregateEventSelector[A <: Aggregate](aggregateType: A, aggregate: A#Id, eventType: String)(implicit idser: StringSerializable[A#Id]) {
+case class AggregateEventSelector[A <: Aggregate, E <: A#Event](aggregateType: A, aggregate: A#Id, eventType: String)(implicit idser: StringSerializable[A#Id]) {
+  type Event = E
   def asTag = {
     val key = CompositeName.root / aggregateType.name / aggregate.serializeToString / eventType
     EventTag("aggregateEventSelector", key.serialize)
@@ -36,13 +37,14 @@ case class AggregateEventSelector[A <: Aggregate](aggregateType: A, aggregate: A
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
-  implicit def eventSelectorInstance[A <: Aggregate](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A]] {
-    def asTag(selector: AggregateEventSelector[A]) = selector.asTag
+  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A, E]] {
+    def castEvent(e: Any) = ???
+    def asTag(selector: AggregateEventSelector[A, E]) = selector.asTag
   }
 
   class EventCatcher[A <: Aggregate](aggregateType: A, aggregate: A#Id) {
-    def apply[E <: A#Event](implicit et: AggregateEventType[E], idser: StringSerializable[A#Id], notBaseType: ConcreteEvent[A, E]): AggregateEventSelector[A] = {
-      AggregateEventSelector[A](aggregateType, aggregate, et.eventType)
+    def apply[E <: A#Event](implicit et: AggregateEventType[E], idser: StringSerializable[A#Id], notBaseType: ConcreteEvent[A, E]): AggregateEventSelector[A, E] = {
+      AggregateEventSelector[A, E](aggregateType, aggregate, et.eventType)
     }
   }
 

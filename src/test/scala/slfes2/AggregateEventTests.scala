@@ -1,6 +1,7 @@
 package slfes2
 
 import org.scalatest.{ FlatSpec, Matchers }
+import slfes2.EventSelector.WithEventType
 import slfes2.accountprocessing.Account.Event.{ Closed, Opened }
 import slfes2.accountprocessing._
 
@@ -46,7 +47,7 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   "AggregateEventSelector " should " be an instance of EventSelector" in {
     val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    def ser[S: EventSelector](s: S) = implicitly[EventSelector[S]].asTag(s)
+    def ser[S <: WithEventType: EventSelector](s: S) = implicitly[EventSelector[S]].asTag(s)
     "ser(selector)" should compile
   }
 }
