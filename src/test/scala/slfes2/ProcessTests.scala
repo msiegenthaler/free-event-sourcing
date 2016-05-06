@@ -2,9 +2,10 @@ package slfes2
 
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, CNil, HNil }
-import slfes2.accountprocessing.Account.Command.Open
+import slfes2.accountprocessing.Account.Command.{ BlockFunds, Open }
 import slfes2.accountprocessing.{ Account, AccountProcessing, Transaction }
-import slfes2.accountprocessing.Account.Event.{ Closed, Opened }
+import slfes2.accountprocessing.Account.Event.{ Blocked, Closed, Opened }
+import slfes2.accountprocessing.Transaction.Command.Confirm
 import slfes2.accountprocessing.Transaction.Event.Created
 
 class ProcessTests extends FlatSpec with Matchers {
@@ -61,6 +62,7 @@ class ProcessTests extends FlatSpec with Matchers {
 
 //TODO delete
 object Experiments {
+  val selectorCreated = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
   val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
   val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]
 
@@ -68,4 +70,16 @@ object Experiments {
   val s = sel(selectorOpened)
   val b = s.castEvent(???)
   println(b.owner)
+
+  val process = new Process(AccountProcessing)
+  import process.Syntax
+  import process.Syntax._
+
+  for {
+    tx ← await(selectorCreated)
+    _ ← Syntax.execute(Account)(tx.from, BlockFunds(Transaction.Id(1), tx.amount))
+    _ ← awaitFrom(Account)(tx.from)[Blocked]
+    _ ← Syntax.execute(Transaction)(???, Confirm())
+  } yield ()
+
 }

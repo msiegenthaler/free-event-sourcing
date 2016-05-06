@@ -4,6 +4,7 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.free.Free
 import shapeless.ops.hlist.Selector
+import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 
 class Process[BC <: BoundedContext](boundedContext: BC) {
@@ -21,14 +22,30 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
     //TODO firstOf
 
+    /** Await an event using a selector. The event must be from this bounded context. */
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
       Free.liftF[ProcessAction, S#Event](AwaitEvent(selector))
 
+    /** Await an event from an aggregate from the same bounded context. */
+    //TODO we should be able to infer the aggregateType automatically
+    def awaitFrom[A <: Aggregate](aggregateType: A)(aggregate: A#Id) =
+      new AwaitFromBuilder[A](aggregateType, aggregate)
+
+    /** Wait until the specified date/time. If the time has already passed it will still be called. */
     def waitUntil(when: Instant) =
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
 
+    /** Execute a command on an aggregate from the same bounded context. */
+    //TODO we should be able to infer the aggregateType automatically
     def execute[A <: Aggregate: ValidAggregate](aggregateType: A)(aggregate: A#Id, command: A#Command) =
       Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
+
+    class AwaitFromBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
+      def apply[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+        val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
+        await(selector)
+      }
+    }
   }
 
   sealed trait ProcessAction[+A]
