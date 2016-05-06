@@ -3,6 +3,7 @@ package slfes2
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
 import scala.reflect._
+import shapeless.ops.hlist.Selector
 import shapeless.{ ::, HList, Typeable }
 import simulacrum.typeclass
 import slfes.utils.{ =!=, StringSerializable }
@@ -57,10 +58,8 @@ object AggregateEventSelector {
   @implicitNotFound("${S} is not a valid aggregate event selector for the aggregates ${Aggregates}")
   sealed trait ValidFor[S, Aggregates <: HList]
   object ValidFor {
-    implicit def head[A <: Aggregate, E <: A#Event, T <: HList] =
-      new ValidFor[AggregateEventSelector[A, E], A :: T] {}
-    implicit def tail[S, H, T <: HList](implicit t: ValidFor[S, T]) =
-      new ValidFor[S, H :: T] {}
+    implicit def selector[A <: Aggregate, E <: A#Event, AS <: HList](implicit ev: Selector[AS, A]) =
+      new ValidFor[AggregateEventSelector[A, E], AS] {}
   }
 }
 
