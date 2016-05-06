@@ -11,7 +11,8 @@ object Transaction extends Aggregate {
   sealed trait Event
   object Event {
     final case class Created(from: Account.Id, to: Account.Id, amount: Long) extends Event
-    final case class Commited() extends Event
+    final case class Confirmed() extends Event
+    final case class Canceled() extends Event
   }
 
   sealed trait Command extends AggregateCommand
@@ -20,13 +21,18 @@ object Transaction extends Aggregate {
     final case class Create(from: Account.Id, to: Account.Id, amount: Long) extends Command {
       type Error = AlreadyExists :+: CNil
     }
-    final case class Commit() extends Command {
-      type Error = DoesNotExist :+: CNil
+    final case class Confirm() extends Command {
+      type Error = AlreadyCanceled :+: DoesNotExist :+: CNil
+    }
+    final case class Cancel() extends Command {
+      type Error = AlreadyConfirmed :+: DoesNotExist :+: CNil
     }
   }
 
   object Error {
     final case class AlreadyExists()
     final case class DoesNotExist()
+    final case class AlreadyConfirmed()
+    final case class AlreadyCanceled()
   }
 }

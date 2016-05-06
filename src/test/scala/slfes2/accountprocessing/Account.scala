@@ -11,6 +11,10 @@ object Account extends Aggregate {
   sealed trait Event
   object Event {
     final case class Opened(owner: String) extends Event
+    final case class Blocked(by: Transaction.Id, amount: Long) extends Event
+    final case class Announced(by: Transaction.Id, amount: Long) extends Event
+    final case class BalanceChanged(newBalance: Long, byTx: Transaction.Id, byAmount: Long) extends Event
+    final case class TxAborted(tx: Transaction.Id) extends Event
     final case class Closed() extends Event
   }
 
@@ -21,12 +25,28 @@ object Account extends Aggregate {
       type Error = AlreadyOpen :+: CNil
     }
     final case class Close() extends Command {
+      type Error = NotOpen :+: NotEmpty :+: HasPendingTx :+: CNil
+    }
+    final case class BlockFunds(tx: Transaction.Id, amount: Long) extends Command {
+      type Error = InsufficientFunds :+: NotOpen :+: CNil
+    }
+    final case class AnnounceDeposit(tx: Transaction.Id, amount: Long) extends Command {
       type Error = NotOpen :+: CNil
+    }
+    final case class ConfirmTransaction(tx: Transaction.Id) extends Command {
+      type Error = TxNotFound :+: NotOpen :+: CNil
+    }
+    final case class CancelTransaction(tx: Transaction.Id) extends Command {
+      type Error = TxNotFound :+: NotOpen :+: CNil
     }
   }
 
   object Error {
     final case class AlreadyOpen()
     final case class NotOpen()
+    final case class InsufficientFunds()
+    final case class TxNotFound(tx: Transaction.Id)
+    final case class NotEmpty()
+    final case class HasPendingTx(txs: List[Transaction.Id])
   }
 }

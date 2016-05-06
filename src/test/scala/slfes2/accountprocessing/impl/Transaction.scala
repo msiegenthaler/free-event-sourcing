@@ -7,27 +7,39 @@ import slfes2.accountprocessing.Transaction.Event._
 import slfes2.accountprocessing.Transaction._
 import slfes2.syntax.{ CoproductCommandHandler, MatchEventApplicator }
 
-final case class TransactionInformation(from: Account.Id, to: Account.Id, amount: Long)
-final case class TransactionState(information: Option[TransactionInformation], commited: Boolean)
+sealed trait TxState
+object TxState {
+  case object Unconfirmed extends TxState
+  case object Confirmed extends TxState
+  case object Canceled extends TxState
+}
+final case class TransactionState(from: Account.Id, to: Account.Id, amount: Long, state: TxState)
+object TransactionState {
+  def initial(id: Id) = Option.empty[TransactionState]
+}
 
-private object TransactionHandler extends CoproductCommandHandler[Command, TransactionState, Event] {
+private object TransactionHandler extends CoproductCommandHandler[Command, Option[TransactionState], Event] {
   def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
-  implicit val open = at[Create] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty)
+  implicit val create = at[Create] { _ ⇒ _: State ⇒
+    Xor.right(Seq.empty) //TODO
   }
 
-  implicit val close = at[Commit] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty)
+  implicit val confirm = at[Confirm] { _ ⇒ _: State ⇒
+    Xor.right(Seq.empty) //TODO
+  }
+
+  implicit val cancel = at[Cancel] { _ ⇒ _: State ⇒
+    Xor.right(Seq.empty) //TODO
   }
 }
 
-private object TransactionApplicator extends MatchEventApplicator[Event, TransactionState] {
-  def apply(event: Event, state: TransactionState) = event match {
+private object TransactionApplicator extends MatchEventApplicator[Event, Option[TransactionState]] {
+  def apply(event: Event, state: Option[TransactionState]) = event match {
     case Created(from, to, amount) ⇒
-      val info = TransactionInformation(from, to, amount)
-      state.copy(information = Some(info))
-    case Commited() ⇒
-      state.copy(commited = true)
+      val info = TransactionState(from, to, amount, TxState.Unconfirmed)
+      Some(info)
+    case Confirmed() ⇒ state.map(_.copy(state = TxState.Confirmed))
+    case Canceled()  ⇒ state.map(_.copy(state = TxState.Canceled))
   }
 }
