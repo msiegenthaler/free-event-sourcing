@@ -78,5 +78,9 @@ object Experiments {
     _ ← awaitFrom(Account)(tx.from)[Blocked]
     _ ← Syntax.execute(Transaction)(tid, Confirm())
   } yield ()
+  //TODO error handling for commands (force it)
+  //TODO how to access event metadata
+  //TODO firstOf syntax
+  //TODO resolve the aggregate from the id type (get rid of the first parameter block in execute and await from)
 
 }
