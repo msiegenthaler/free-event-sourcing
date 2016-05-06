@@ -62,24 +62,21 @@ class ProcessTests extends FlatSpec with Matchers {
 
 //TODO delete
 object Experiments {
-  val selectorCreated = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
   val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-  val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]
-
   def sel[S <: EventSelector.WithEventType](s: S)(implicit selector: EventSelector[S]) = selector
-  val s = sel(selectorOpened)
-  val b = s.castEvent(???)
+  val b = sel(selectorOpened).castEvent(???)
   println(b.owner)
 
   val process = new Process(AccountProcessing)
   import process.Syntax
   import process.Syntax._
 
+  val tid = Transaction.Id(1)
   for {
-    tx ← await(selectorCreated)
+    tx ← awaitFrom(Transaction)(tid)[Created]
     _ ← Syntax.execute(Account)(tx.from, BlockFunds(Transaction.Id(1), tx.amount))
     _ ← awaitFrom(Account)(tx.from)[Blocked]
-    _ ← Syntax.execute(Transaction)(???, Confirm())
+    _ ← Syntax.execute(Transaction)(tid, Confirm())
   } yield ()
 
 }
