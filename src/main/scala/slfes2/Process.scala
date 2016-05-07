@@ -6,6 +6,7 @@ import cats.free.Free
 import shapeless.ops.hlist.Selector
 import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
+import slfes2.support.AggregateFromId
 
 class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("${S} is not a valid EventSelector for this process.")
@@ -26,24 +27,28 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
       Free.liftF[ProcessAction, S#Event](AwaitEvent(selector))
 
-    /** Await an event from an aggregate from the same bounded context. */
-    //TODO we should be able to infer the aggregateType automatically
-    def awaitFrom[A <: Aggregate](aggregateType: A)(aggregate: A#Id) =
-      new AwaitFromBuilder[A](aggregateType, aggregate)
+    /** Actions (execution and await) regarding a specific aggregate. */
+    def on[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+      val aggregateType = afi.aggregate(boundedContext.aggregates)
+      new OnAggregateBuilder[afi.Out](aggregateType, aggregate)
+    }
+
+    /** Alias for 'on'. */
+    def from[Id, A](id: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = on(id)
 
     /** Wait until the specified date/time. If the time has already passed it will still be called. */
     def waitUntil(when: Instant) =
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
 
-    /** Execute a command on an aggregate from the same bounded context. */
-    //TODO we should be able to infer the aggregateType automatically
-    def execute[A <: Aggregate: ValidAggregate](aggregateType: A)(aggregate: A#Id, command: A#Command) =
-      Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
+    class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
+      /** Execute a command on an aggregate from the same bounded context. */
+      def execute(command: A#Command)(implicit ev: ValidAggregate[A]) =
+        Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
 
-    class AwaitFromBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
-      def apply[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+      /** Await an event from an aggregate from the same bounded context. */
+      def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-        await(selector)
+        Syntax.await(selector)
       }
     }
   }

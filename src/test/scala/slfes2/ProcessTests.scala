@@ -51,7 +51,7 @@ class ProcessTests extends FlatSpec with Matchers {
 
   "Process " should " allow commands of aggregates in the same context" in {
     """Execute[Account.type](Account, Account.Id(1), Open("Mario"))""" should compile
-    """Syntax.execute(Account)(Account.Id(1), Open("Mario"))""" should compile
+    """on(Account.Id(1)).execute(Open("Mario"))""" should compile
   }
 
   "Process " should " not allow commands of aggregates not in the same context" in {
@@ -73,14 +73,14 @@ object Experiments {
 
   val tid = Transaction.Id(1)
   for {
-    tx ← awaitFrom(Transaction)(tid)[Created]
-    _ ← Syntax.execute(Account)(tx.from, BlockFunds(Transaction.Id(1), tx.amount))
-    _ ← awaitFrom(Account)(tx.from)[Blocked]
-    _ ← Syntax.execute(Transaction)(tid, Confirm())
+    tx ← from(tid).await[Created]
+    _ ← on(tx.from).execute(BlockFunds(Transaction.Id(1), tx.amount))
+    _ ← from(tx.from).await[Blocked]
+    _ ← on(tid).execute(Confirm())
   } yield ()
+
   //TODO error handling for commands (force it)
   //TODO how to access event metadata
   //TODO firstOf syntax
-  //TODO resolve the aggregate from the id type (get rid of the first parameter block in execute and await from)
 
 }
