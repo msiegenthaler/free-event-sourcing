@@ -20,6 +20,16 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("Aggregate ${A} is not a member of this bounded context.")
   type ValidAggregate[A <: Aggregate] = Selector[BC#Aggregates, A]
 
+  /** The same as C =:= CNil, but with a nicer error message. */
+  @implicitNotFound("Not all possible errors of the command were handled, ${C} are still unhandled")
+  sealed trait AllErrorsHandled[C <: Coproduct]
+  object AllErrorsHandled {
+    implicit val handled = new AllErrorsHandled[CNil] {}
+  }
+
+  @implicitNotFound("The command cannot result in an error of type ${E}")
+  type HandleError[Unhandled <: Coproduct, E] = Remove[Unhandled, E]
+
   type ProcessMonad[A] = Free[ProcessAction, A]
 
   object Syntax {
@@ -55,8 +65,17 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
 
       /** Execute a command on an aggregate from the same bounded context. */
-      def execute2(command: A#Command)(implicit ev: ValidAggregate[A]) =
-        new ExecuteBuilder[command.type, command.Error](command)
+      //TODO maybe use an implicit for nicer error message
+      def execute2[R <: Coproduct](command: A#Command)(catches: ExecuteBuilder[command.type, command.Error] ⇒ ExecuteBuilder[command.type, R])(
+        implicit
+        ev: ValidAggregate[A],
+        ev2: AllErrorsHandled[R]
+      ) = {
+        val builder = new ExecuteBuilder[command.type, command.Error](command)
+        catches(builder)
+        //TODO
+        terminate
+      }
 
       /** Await an event from an aggregate from the same bounded context. */
       def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
@@ -66,10 +85,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
       class ExecuteBuilder[C <: A#Command, Unhandled <: Coproduct] private[OnAggregateBuilder] (command: C) {
         //TODO add type alias for nicer implicit not found
-        def apply(implicit ev: Unhandled =:= CNil) = terminate //TODO
-
-        //TODO add type alias for nicer implicit not found
-        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: Remove[Unhandled, E], s: CPSelector[C#Error, E]) =
+        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[C#Error, E]) =
           new ExecuteBuilder[C, ev.Rest](command)
       }
     }

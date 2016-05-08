@@ -32,7 +32,6 @@ class ProcessTests extends FlatSpec with Matchers {
 
   val process = new Process(AccountProcessing)
   import process.ProcessAction._
-  import process.Syntax
   import process.Syntax._
 
   "Process " should " allow selector for aggregate in the same bounded context" in {
@@ -79,18 +78,29 @@ object Experiments {
   println(b.owner)
 
   val process = new Process(AccountProcessing)
-  import process.Syntax
   import process.Syntax._
+
+  //TODO convert to test
+  //  on(Account.Id(1)).execute2(BlockFunds(tid, 100)) {
+  //    _.catching[InsufficientFunds](_ ⇒ terminate)
+  //  }
+
+  //TODO convert to test
+  //  on(Account.Id(1)).execute2(BlockFunds(tid, 100)) {
+  //    _.catching[String](_ ⇒ terminate)
+  //  }
 
   val tid = Transaction.Id(1)
   for {
     tx ← from(tid).await[Created]
     _ ← on(tx.from) execute BlockFunds(tid, tx.amount)
+    //TODO convert to test
     _ ← on(tx.from)
-      .execute2(BlockFunds(tid, tx.amount))
-      .catching[InsufficientFunds](_ ⇒ terminate)
-      .catching[NotOpen](_ ⇒ terminate)
-      .apply
+      .execute2(BlockFunds(tid, tx.amount)) {
+        _.catching[InsufficientFunds](_ ⇒ terminate).
+          catching[NotOpen](_ ⇒ terminate)
+      }
+    //      .apply
     _ ← from(tx.from).await[Blocked]
     _ ← on(tid) execute Confirm()
   } yield ()
