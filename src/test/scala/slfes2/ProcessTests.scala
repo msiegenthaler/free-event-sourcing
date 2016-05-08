@@ -84,9 +84,9 @@ object Experiments {
   val tid = Transaction.Id(1)
   for {
     tx ← from(tid).await[Created]
-    _ ← on(tx.from).execute(BlockFunds(Transaction.Id(1), tx.amount))
+    _ ← on(tx.from) execute BlockFunds(tid, tx.amount)
     _ ← from(tx.from).await[Blocked]
-    _ ← on(tid).execute(Confirm())
+    _ ← on(tid) execute Confirm()
   } yield ()
 
   //TODO error handling for commands (force it)
