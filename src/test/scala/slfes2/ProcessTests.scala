@@ -44,6 +44,12 @@ class ProcessTests extends FlatSpec with Matchers {
     "await(selectorCreated)" should compile
   }
 
+  "Process " should " have a nice syntax to wait for events from aggregates " in {
+    val account1 = Account.Id(1)
+    val r = on(account1).await[Opened]
+    r shouldBe await(AggregateEventSelector(Account)(account1)[Opened])
+  }
+
   "Process " should " not allow selector for aggregate not in the same context" in {
     "AwaitEvent(selectorMyEvent)" shouldNot compile
     "await(selectorMyEvent)" shouldNot compile
@@ -56,7 +62,11 @@ class ProcessTests extends FlatSpec with Matchers {
 
   "Process " should " not allow commands of aggregates not in the same context" in {
     """Execute[TestAggregate.type](TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"))""" shouldNot compile
-    """Syntax.execute(TestAggregate)(TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"))""" shouldNot compile
+    """on(TestAggregate.Id(1)).execute(TestAggregate.Command.MyCommand("Mario"))""" shouldNot compile
+  }
+
+  "Process " should " not allow commands that don't fit the aggregate" in {
+    """on(Transaction.Id(1)).execute(Open("Mario"))""" shouldNot compile
   }
 }
 
