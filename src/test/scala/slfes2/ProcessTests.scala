@@ -3,6 +3,7 @@ package slfes2
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, CNil, HNil }
 import slfes2.accountprocessing.Account.Command.{ BlockFunds, Open }
+import slfes2.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen }
 import slfes2.accountprocessing.{ Account, AccountProcessing, Transaction }
 import slfes2.accountprocessing.Account.Event.{ Blocked, Closed, Opened }
 import slfes2.accountprocessing.Transaction.Command.Confirm
@@ -85,6 +86,11 @@ object Experiments {
   for {
     tx ← from(tid).await[Created]
     _ ← on(tx.from) execute BlockFunds(tid, tx.amount)
+    _ ← on(tx.from)
+      .execute2(BlockFunds(tid, tx.amount))
+      .catching[InsufficientFunds](_ ⇒ terminate)
+      .catching[NotOpen](_ ⇒ terminate)
+      .apply
     _ ← from(tx.from).await[Blocked]
     _ ← on(tid) execute Confirm()
   } yield ()

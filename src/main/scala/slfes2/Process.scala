@@ -3,7 +3,9 @@ package slfes2
 import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.free.Free
+import shapeless.{ CNil, Coproduct }
 import shapeless.ops.hlist.Selector
+import shapeless.ops.coproduct.{ Remove, Selector ⇒ CPSelector }
 import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 import slfes2.support.AggregateFromId
@@ -17,6 +19,8 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
   @implicitNotFound("Aggregate ${A} is not a member of this bounded context.")
   type ValidAggregate[A <: Aggregate] = Selector[BC#Aggregates, A]
+
+  type ProcessMonad[A] = Free[ProcessAction, A]
 
   object Syntax {
     import ProcessAction._
@@ -40,15 +44,33 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     def waitUntil(when: Instant) =
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
 
+    /** Terminate this process instance. */
+    def terminate =
+      Free.liftF[ProcessAction, Unit](End())
+
     class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
+      //TODO delete
       /** Execute a command on an aggregate from the same bounded context. */
       def execute(command: A#Command)(implicit ev: ValidAggregate[A]) =
         Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
+
+      /** Execute a command on an aggregate from the same bounded context. */
+      def execute2(command: A#Command)(implicit ev: ValidAggregate[A]) =
+        new ExecuteBuilder[command.type, command.Error](command)
 
       /** Await an event from an aggregate from the same bounded context. */
       def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
         Syntax.await(selector)
+      }
+
+      class ExecuteBuilder[C <: A#Command, Unhandled <: Coproduct] private[OnAggregateBuilder] (command: C) {
+        //TODO add type alias for nicer implicit not found
+        def apply(implicit ev: Unhandled =:= CNil) = terminate //TODO
+
+        //TODO add type alias for nicer implicit not found
+        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: Remove[Unhandled, E], s: CPSelector[C#Error, E]) =
+          new ExecuteBuilder[C, ev.Rest](command)
       }
     }
   }
@@ -62,6 +84,8 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
     case class Execute[A <: Aggregate: ValidAggregate](aggregateType: A, aggregate: A#Id, command: A#Command)
       extends ProcessAction[Unit] // TODO force error handling
+
+    case class End() extends ProcessAction[Unit]
   }
 }
 object Process {
