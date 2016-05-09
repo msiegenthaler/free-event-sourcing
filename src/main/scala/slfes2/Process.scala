@@ -59,18 +59,13 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       Free.liftF[ProcessAction, Unit](End())
 
     final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
-      //TODO delete
       /** Execute a command on an aggregate from the same bounded context. */
-      def execute(command: A#Command)(implicit ev: ValidAggregate[A]) =
-        Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
-
-      /** Execute a command on an aggregate from the same bounded context. */
-      def execute2[R <: Coproduct](command: A#Command)(
+      def execute[R <: Coproduct](command: A#Command)(
         catches: CommandErrorHandler.EmptyBuilder[command.Error] ⇒ CommandErrorHandler.Builder[command.Error, R]
       )(implicit ev: ValidAggregate[A], ev2: AllErrorsHandled[R]) = {
         val builder = CommandErrorHandler.builder[command.Error]
         val errorHandler = catches(builder).errorHandler
-        Free.liftF[ProcessAction, Unit](Execute2(aggregateType, aggregate, command, errorHandler))
+        Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command, errorHandler))
       }
 
       /** Await an event from an aggregate from the same bounded context. */
@@ -119,10 +114,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     case class WaitUntil(when: Instant) extends Await[Unit]
     case class FirstOf[A](alternatives: Await[A]*) extends Await[A]
 
-    case class Execute[A <: Aggregate: ValidAggregate](aggregateType: A, aggregate: A#Id, command: A#Command)
-      extends ProcessAction[Unit] // TODO force error handling
-
-    case class Execute2[A <: Aggregate: ValidAggregate, Cmd <: A#Command](
+    case class Execute[A <: Aggregate: ValidAggregate, Cmd <: A#Command](
       aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: CommandErrorHandler[Cmd#Error]
     ) extends ProcessAction[Unit]
 

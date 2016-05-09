@@ -3,10 +3,11 @@ package slfes2
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, CNil, HNil }
 import slfes2.accountprocessing.Account.Command.{ BlockFunds, Open }
-import slfes2.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen }
+import slfes2.accountprocessing.Account.Error.{ AlreadyOpen, InsufficientFunds, NotOpen }
 import slfes2.accountprocessing.{ Account, AccountProcessing, Transaction }
 import slfes2.accountprocessing.Account.Event.{ Blocked, Closed, Opened }
 import slfes2.accountprocessing.Transaction.Command.Confirm
+import slfes2.accountprocessing.Transaction.Error.{ AlreadyCanceled, DoesNotExist }
 import slfes2.accountprocessing.Transaction.Event.Created
 
 class ProcessTests extends FlatSpec with Matchers {
@@ -56,17 +57,37 @@ class ProcessTests extends FlatSpec with Matchers {
   }
 
   "Process " should " allow commands of aggregates in the same context" in {
-    """Execute[Account.type](Account, Account.Id(1), Open("Mario"))""" should compile
-    """on(Account.Id(1)).execute(Open("Mario"))""" should compile
+    """Execute[Account.type, Open](Account, Account.Id(1), Open("Mario"), ???)""" should compile
+    """on(Account.Id(1)).execute(Open("Mario"))(_.catching[AlreadyOpen](_ ⇒ terminate))""" should compile
   }
 
   "Process " should " not allow commands of aggregates not in the same context" in {
-    """Execute[TestAggregate.type](TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"))""" shouldNot compile
-    """on(TestAggregate.Id(1)).execute(TestAggregate.Command.MyCommand("Mario"))""" shouldNot compile
+    """Execute[TestAggregate.type, TestAggregate.Command.MyCommand](TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"), ???)""" shouldNot compile
+    """on(TestAggregate.Id(1)).execute(TestAggregate.Command.MyCommand("Mario"))(???)""" shouldNot compile
   }
 
   "Process " should " not allow commands that don't fit the aggregate" in {
-    """on(Transaction.Id(1)).execute(Open("Mario"))""" shouldNot compile
+    """on(Transaction.Id(1)).execute(Open("Mario"))(???)""" shouldNot compile
+  }
+
+  "Process " should " have a nice syntax to catch multiple errors on a command" in {
+    on(Account.Id(1)).execute(BlockFunds(Transaction.Id(2), 100)) {
+      _.catching[InsufficientFunds](_ ⇒ terminate).
+        catching[NotOpen](_ ⇒ terminate)
+    }
+  }
+
+  "Process " should " require that executing a command contains handlers for all errors" in {
+    """on(Account.Id(1)).execute(BlockFunds(Transaction.Id(1), 100)) {
+      _.catching[InsufficientFunds](_ ⇒ terminate)
+    }""" shouldNot compile
+  }
+
+  "Process " should " ensure that only errors that are thrown by the command are handled" in {
+    """on(Account.Id(1)).execute(BlockFunds(Transaction.Id(2), 100)) {
+      _.catching[InsufficientFunds](_ ⇒ terminate).
+        catching[AlreadyOpen](_ ⇒ terminate)
+    }""" shouldNot compile
   }
 }
 
@@ -80,32 +101,21 @@ object Experiments {
   val process = new Process(AccountProcessing)
   import process.Syntax._
 
-  //TODO convert to test
-  //  on(Account.Id(1)).execute2(BlockFunds(tid, 100)) {
-  //    _.catching[InsufficientFunds](_ ⇒ terminate)
-  //  }
-
-  //TODO convert to test
-  //  on(Account.Id(1)).execute2(BlockFunds(tid, 100)) {
-  //    _.catching[String](_ ⇒ terminate)
-  //  }
-
   val tid = Transaction.Id(1)
   for {
     tx ← from(tid).await[Created]
-    _ ← on(tx.from) execute BlockFunds(tid, tx.amount)
-    //TODO convert to test
     _ ← on(tx.from)
-      .execute2(BlockFunds(tid, tx.amount)) {
+      .execute(BlockFunds(tid, tx.amount)) {
         _.catching[InsufficientFunds](_ ⇒ terminate).
           catching[NotOpen](_ ⇒ terminate)
       }
-    //      .apply
     _ ← from(tx.from).await[Blocked]
-    _ ← on(tid) execute Confirm()
+    _ ← on(tid).execute(Confirm()) {
+      _.catching[AlreadyCanceled](_ ⇒ terminate).
+        catching[DoesNotExist](_ ⇒ terminate)
+    }
   } yield ()
 
-  //TODO error handling for commands (force it)
   //TODO how to access event metadata
   //TODO firstOf syntax
 
