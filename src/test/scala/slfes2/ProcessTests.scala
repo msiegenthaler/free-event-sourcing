@@ -133,6 +133,21 @@ object Experiments {
       await(selectorOpened).
       await(selectorBlocked))
 
+    //TODO convert to test
+    x ← firstOf(_.
+      from(Account.Id(1)).await[Opened])
+
+    //TODO convert to test
+    x ← firstOf(_.
+      from(Account.Id(1)).await[Opened].
+      from(Account.Id(2)).await[Closed])
+
+    //TODO convert to test
+    x ← firstOf(_.
+      from(Account.Id(1)).await[Opened].
+      from(Account.Id(2)).await[Closed].
+      await(selectorBlocked))
+
     _ ← from(tx.from).await[Blocked]
     _ ← on(tid).execute(Confirm()) {
       _.catching[AlreadyCanceled](_ ⇒ terminate).
@@ -141,7 +156,6 @@ object Experiments {
   } yield x
 
   //TODO how to access event metadata
-  //TODO firstOf syntax
   //TODO all syntax?
 
 }

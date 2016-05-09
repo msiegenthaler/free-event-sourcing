@@ -31,6 +31,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("The command cannot result in an error of type ${E}")
   type HandleError[Unhandled <: Coproduct, E] = Remove[Unhandled, E]
 
+  /** Finds the least upper bounds of two Await actions (like shapeless.Lub). */
   sealed trait AwaitLub[-A, -B, Out] {
     def left(a: ProcessAction.Await[A]): ProcessAction.Await[Out]
     def right(b: ProcessAction.Await[B]): ProcessAction.Await[Out]
@@ -47,23 +48,10 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   object Syntax {
     import ProcessAction._
 
+    /** Gets the matching event that occurs first. */
     def firstOf[R](b: FirstOfBuilder[Nothing] ⇒ FirstOfBuilder[R]): ProcessMonad[R] = {
       val awaits = b(FirstOfBuilder.empty).collect
       Free.liftF[ProcessAction, R](FirstOf(awaits))
-    }
-
-    class FirstOfBuilder[R] private[Syntax] (awaits: List[Await[R]]) {
-      def await[S <: WithEventType: EventSelector: ValidSelector, R2](selector: S)(implicit lub: AwaitLub[R, S#Event, R2]): FirstOfBuilder[R2] = {
-        val action: Await[R2] = lub.right(AwaitEvent(selector))
-        new FirstOfBuilder[R2](action :: awaits.map(lub.left))
-      }
-
-      //TODO on...
-
-      private[Syntax] def collect = awaits
-    }
-    object FirstOfBuilder {
-      def empty = new FirstOfBuilder[Nothing](Nil)
     }
 
     /** Await an event using a selector. The event must be from this bounded context. */
@@ -84,14 +72,42 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
 
     /** Terminate this process instance. */
-    def terminate =
-      Free.liftF[ProcessAction, Unit](End())
+    def terminate = Free.liftF[ProcessAction, Unit](End())
 
     /** Does nothing. */
     def noop = Monad[Free[ProcessAction, ?]].pure(())
 
+    /** Helper class for firstOf */
+    final class FirstOfBuilder[R] private[Syntax] (awaits: List[Await[R]]) {
+      /** Await an event using a selector. The event must be from this bounded context. */
+      def await[S <: WithEventType: EventSelector: ValidSelector, R2](selector: S)(implicit lub: AwaitLub[R, S#Event, R2]): FirstOfBuilder[R2] = {
+        val action: Await[R2] = lub.right(AwaitEvent(selector))
+        new FirstOfBuilder[R2](action :: awaits.map(lub.left))
+      }
+
+      /** Await event from a specific aggregate. */
+      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+        val aggregateType = afi.aggregate(boundedContext.aggregates)
+        new FirstOfFromAggregateBuilder[afi.Out](aggregateType, aggregate)
+      }
+
+      private[Syntax] def collect = awaits
+
+      final class FirstOfFromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
+        /** Await an event from the aggregate. */
+        def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+          val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
+          FirstOfBuilder.this.await(selector)
+        }
+      }
+    }
+    object FirstOfBuilder {
+      def empty = new FirstOfBuilder[Nothing](Nil)
+    }
+
+    /** Helper class for on/from. */
     final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
-      /** Execute a command on an aggregate from the same bounded context. */
+      /** Execute a command on the aggregate. */
       def execute[R <: Coproduct](command: A#Command)(
         catches: CommandErrorHandler.EmptyBuilder[command.Error] ⇒ CommandErrorHandler.Builder[command.Error, R]
       )(implicit ev: ValidAggregate[A], ev2: AllErrorsHandled[R]) = {
@@ -100,13 +116,14 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command, errorHandler))
       }
 
-      /** Await an event from an aggregate from the same bounded context. */
+      /** Await an event from the aggregate. */
       def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
         Syntax.await(selector)
       }
     }
 
+    /** Helper class for execute. */
     type CommandErrorHandler[Error <: Coproduct] = Error ⇒ ProcessMonad[Unit]
     object CommandErrorHandler {
       private[Syntax] def builder[E <: Coproduct]() = new Builder[E, E](e ⇒
