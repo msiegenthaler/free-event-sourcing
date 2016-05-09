@@ -2,6 +2,7 @@ package slfes2
 
 import java.time.Instant
 import scala.annotation.implicitNotFound
+import cats.Monad
 import cats.free.Free
 import shapeless.{ :+:, CNil, Coproduct, Poly1 }
 import shapeless.ops.hlist.Selector
@@ -57,6 +58,9 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     /** Terminate this process instance. */
     def terminate =
       Free.liftF[ProcessAction, Unit](End())
+
+    /** Does nothing. */
+    def noop = Monad[Free[ProcessAction, ?]].pure(())
 
     final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
       /** Execute a command on an aggregate from the same bounded context. */
