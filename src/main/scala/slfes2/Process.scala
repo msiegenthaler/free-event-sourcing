@@ -66,9 +66,9 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
       /** Execute a command on an aggregate from the same bounded context. */
       def execute2[R <: Coproduct](command: A#Command)(
-        catches: ExecuteBuilder.Empty[command.Error] ⇒ ExecuteBuilder[command.Error, R]
+        catches: CommandErrorHandler.EmptyBuilder[command.Error] ⇒ CommandErrorHandler.Builder[command.Error, R]
       )(implicit ev: ValidAggregate[A], ev2: AllErrorsHandled[R]) = {
-        val builder = ExecuteBuilder[command.Error]
+        val builder = CommandErrorHandler.builder[command.Error]
         val errorHandler = catches(builder).errorHandler
         Free.liftF[ProcessAction, Unit](Execute2(aggregateType, aggregate, command, errorHandler))
       }
@@ -78,37 +78,37 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
         Syntax.await(selector)
       }
-
-      //TODO move up
-      final class ExecuteBuilder[All <: Coproduct, Unhandled <: Coproduct] private (
-          handled: CommandErrorHandler[All]
-      ) {
-        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
-          val handler2 = new CommandErrorHandler[All] {
-            def handle(error: All) = {
-              s(error).map(handler).getOrElse(handled.handle(error))
-            }
-          }
-          new ExecuteBuilder[All, ev.Rest](handler2)
-        }
-
-        /** Return the fully constructed error handler. Can only be called if all cases have been handled */
-        private[OnAggregateBuilder] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
-      }
-      object ExecuteBuilder {
-        type Empty[E <: Coproduct] = ExecuteBuilder[E, E]
-        private[OnAggregateBuilder] def apply[E <: Coproduct]() = new ExecuteBuilder[E, E](new CommandErrorHandler[E] {
-          def handle(error: E) = {
-            throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
-              "handle all cases. Should have been prevented by the compiler")
-          }
-        })
-      }
     }
   }
 
   trait CommandErrorHandler[Error <: Coproduct] {
     def handle(error: Error): ProcessMonad[Unit]
+  }
+  object CommandErrorHandler {
+    def builder[E <: Coproduct]() = new Builder[E, E](new CommandErrorHandler[E] {
+      def handle(error: E) = {
+        throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
+          "handle all cases. Should have been prevented by the compiler")
+      }
+    })
+
+    type EmptyBuilder[E <: Coproduct] = Builder[E, E]
+
+    final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (
+        handled: CommandErrorHandler[All]
+    ) {
+      def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
+        val handler2 = new CommandErrorHandler[All] {
+          def handle(error: All) = {
+            s(error).map(handler).getOrElse(handled.handle(error))
+          }
+        }
+        new Builder[All, ev.Rest](handler2)
+      }
+
+      /** Return the fully constructed error handler. Can only be called if all cases have been handled */
+      private[Process] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
+    }
   }
 
   //TODO move to top level (include the bounded context).
