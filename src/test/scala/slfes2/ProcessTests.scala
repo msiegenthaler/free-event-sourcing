@@ -1,5 +1,6 @@
 package slfes2
 
+import cats.data.Xor
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, CNil, HNil }
 import slfes2.accountprocessing.Account.Command.{ BlockFunds, Open }
@@ -78,16 +79,25 @@ class ProcessTests extends FlatSpec with Matchers {
   }
 
   "Process " should " require that executing a command contains handlers for all errors" in {
-    """on(Account.Id(1)).execute(BlockFunds(Transaction.Id(1), 100)) {
+    """
+    on(Account.Id(1)).execute(BlockFunds(Transaction.Id(1), 100)) {
       _.catching[InsufficientFunds](_ ⇒ terminate)
     }""" shouldNot compile
   }
 
   "Process " should " ensure that only errors that are thrown by the command are handled" in {
-    """on(Account.Id(1)).execute(BlockFunds(Transaction.Id(2), 100)) {
+    """
+    on(Account.Id(1)).execute(BlockFunds(Transaction.Id(2), 100)) {
       _.catching[InsufficientFunds](_ ⇒ terminate).
         catching[AlreadyOpen](_ ⇒ terminate)
     }""" shouldNot compile
+  }
+
+  "Process " should " allow the implementation to handle errors by the command" in {
+    """
+    def execHandler(exec: Execute[Account.type, Open], r: Open#Error Xor Unit): process.ProcessMonad[Unit] = {
+      r.fold(exec.errorHandler.handle, _ ⇒ noop)
+    }""" should compile
   }
 }
 
