@@ -3,9 +3,9 @@ package slfes2
 import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.free.Free
-import shapeless.{ CNil, Coproduct }
+import shapeless.{ :+:, CNil, Coproduct, Poly1 }
 import shapeless.ops.hlist.Selector
-import shapeless.ops.coproduct.{ Remove, Selector ⇒ CPSelector }
+import shapeless.ops.coproduct.{ Folder, Remove, Selector ⇒ CPSelector }
 import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 import slfes2.support.AggregateFromId
@@ -58,23 +58,19 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     def terminate =
       Free.liftF[ProcessAction, Unit](End())
 
-    class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
+    final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
       //TODO delete
       /** Execute a command on an aggregate from the same bounded context. */
       def execute(command: A#Command)(implicit ev: ValidAggregate[A]) =
         Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command))
 
       /** Execute a command on an aggregate from the same bounded context. */
-      //TODO maybe use an implicit for nicer error message
-      def execute2[R <: Coproduct](command: A#Command)(catches: ExecuteBuilder[command.type, command.Error] ⇒ ExecuteBuilder[command.type, R])(
-        implicit
-        ev: ValidAggregate[A],
-        ev2: AllErrorsHandled[R]
-      ) = {
-        val builder = new ExecuteBuilder[command.type, command.Error](command)
-        catches(builder)
-        //TODO
-        terminate
+      def execute2[R <: Coproduct](command: A#Command)(
+        catches: ExecuteBuilder.Empty[command.Error] ⇒ ExecuteBuilder[command.Error, R]
+      )(implicit ev: ValidAggregate[A], ev2: AllErrorsHandled[R]) = {
+        val builder = ExecuteBuilder[command.Error]
+        val errorHandler = catches(builder).errorHandler
+        Free.liftF[ProcessAction, Unit](Execute2(aggregateType, aggregate, command, errorHandler))
       }
 
       /** Await an event from an aggregate from the same bounded context. */
@@ -83,14 +79,39 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         Syntax.await(selector)
       }
 
-      class ExecuteBuilder[C <: A#Command, Unhandled <: Coproduct] private[OnAggregateBuilder] (command: C) {
-        //TODO add type alias for nicer implicit not found
-        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[C#Error, E]) =
-          new ExecuteBuilder[C, ev.Rest](command)
+      //TODO move up
+      final class ExecuteBuilder[All <: Coproduct, Unhandled <: Coproduct] private (
+          handled: CommandErrorHandler[All]
+      ) {
+        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
+          val handler2 = new CommandErrorHandler[All] {
+            def handle(error: All) = {
+              s(error).map(handler).getOrElse(handled.handle(error))
+            }
+          }
+          new ExecuteBuilder[All, ev.Rest](handler2)
+        }
+
+        /** Return the fully constructed error handler. Can only be called if all cases have been handled */
+        private[OnAggregateBuilder] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
+      }
+      object ExecuteBuilder {
+        type Empty[E <: Coproduct] = ExecuteBuilder[E, E]
+        private[OnAggregateBuilder] def apply[E <: Coproduct]() = new ExecuteBuilder[E, E](new CommandErrorHandler[E] {
+          def handle(error: E) = {
+            throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
+              "handle all cases. Should have been prevented by the compiler")
+          }
+        })
       }
     }
   }
 
+  trait CommandErrorHandler[Error <: Coproduct] {
+    def handle(error: Error): ProcessMonad[Unit]
+  }
+
+  //TODO move to top level (include the bounded context).
   sealed trait ProcessAction[+A]
   object ProcessAction {
     sealed trait Await[+A] extends ProcessAction[A]
@@ -101,8 +122,10 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     case class Execute[A <: Aggregate: ValidAggregate](aggregateType: A, aggregate: A#Id, command: A#Command)
       extends ProcessAction[Unit] // TODO force error handling
 
+    case class Execute2[A <: Aggregate: ValidAggregate, Cmd <: A#Command](
+      aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: CommandErrorHandler[Cmd#Error]
+    ) extends ProcessAction[Unit]
+
     case class End() extends ProcessAction[Unit]
   }
-}
-object Process {
 }
