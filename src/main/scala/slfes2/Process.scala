@@ -4,9 +4,9 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
-import shapeless.{ :+:, CNil, Coproduct, Poly1 }
+import shapeless.ops.coproduct.{ Remove, Selector ⇒ CPSelector }
 import shapeless.ops.hlist.Selector
-import shapeless.ops.coproduct.{ Folder, Remove, Selector ⇒ CPSelector }
+import shapeless.{ CNil, Coproduct }
 import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 import slfes2.support.AggregateFromId
@@ -31,12 +31,40 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("The command cannot result in an error of type ${E}")
   type HandleError[Unhandled <: Coproduct, E] = Remove[Unhandled, E]
 
+  sealed trait AwaitLub[-A, -B, Out] {
+    def left(a: ProcessAction.Await[A]): ProcessAction.Await[Out]
+    def right(b: ProcessAction.Await[B]): ProcessAction.Await[Out]
+  }
+  object AwaitLub {
+    implicit def lub[T] = new AwaitLub[T, T, T] {
+      def left(a: ProcessAction.Await[T]) = a
+      def right(b: ProcessAction.Await[T]) = b
+    }
+  }
+
   type ProcessMonad[A] = Free[ProcessAction, A]
 
   object Syntax {
     import ProcessAction._
 
-    //TODO firstOf
+    def firstOf[R](b: FirstOfBuilder[Nothing] ⇒ FirstOfBuilder[R]): ProcessMonad[R] = {
+      val awaits = b(FirstOfBuilder.empty).collect
+      Free.liftF[ProcessAction, R](FirstOf(awaits))
+    }
+
+    class FirstOfBuilder[R] private[Syntax] (awaits: List[Await[R]]) {
+      def await[S <: WithEventType: EventSelector: ValidSelector, R2](selector: S)(implicit lub: AwaitLub[R, S#Event, R2]): FirstOfBuilder[R2] = {
+        val action: Await[R2] = lub.right(AwaitEvent(selector))
+        new FirstOfBuilder[R2](action :: awaits.map(lub.left))
+      }
+
+      //TODO on...
+
+      private[Syntax] def collect = awaits
+    }
+    object FirstOfBuilder {
+      def empty = new FirstOfBuilder[Nothing](Nil)
+    }
 
     /** Await an event using a selector. The event must be from this bounded context. */
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
@@ -104,7 +132,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     sealed trait Await[+A] extends ProcessAction[A]
     case class AwaitEvent[S <: WithEventType: EventSelector: ValidSelector](selector: S) extends Await[S#Event]
     case class WaitUntil(when: Instant) extends Await[Unit]
-    case class FirstOf[A](alternatives: Await[A]*) extends Await[A]
+    case class FirstOf[A](alternatives: List[Await[A]]) extends Await[A]
 
     case class Execute[A <: Aggregate: ValidAggregate, Cmd <: A#Command](
       aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: Cmd#Error ⇒ ProcessMonad[Unit]
