@@ -96,7 +96,7 @@ class ProcessTests extends FlatSpec with Matchers {
   "Process " should " allow the implementation to handle errors by the command" in {
     """
     def execHandler(exec: Execute[Account.type, Open], r: Open#Error Xor Unit): process.ProcessMonad[Unit] = {
-      r.fold(exec.errorHandler.handle, _ ⇒ noop)
+      r.fold(exec.errorHandler.apply, _ ⇒ noop)
     }""" should compile
   }
 }

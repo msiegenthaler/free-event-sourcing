@@ -80,12 +80,10 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     }
   }
 
-  trait CommandErrorHandler[Error <: Coproduct] {
-    def handle(error: Error): ProcessMonad[Unit]
-  }
+  type CommandErrorHandler[Error <: Coproduct] = Error ⇒ ProcessMonad[Unit]
   object CommandErrorHandler {
     def builder[E <: Coproduct]() = new Builder[E, E](new CommandErrorHandler[E] {
-      def handle(error: E) = {
+      def apply(error: E) = {
         throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
           "handle all cases. Should have been prevented by the compiler")
       }
@@ -98,8 +96,8 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     ) {
       def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
         val handler2 = new CommandErrorHandler[All] {
-          def handle(error: All) = {
-            s(error).map(handler).getOrElse(handled.handle(error))
+          def apply(error: All) = {
+            s(error).map(handler).getOrElse(handled(error))
           }
         }
         new Builder[All, ev.Rest](handler2)
