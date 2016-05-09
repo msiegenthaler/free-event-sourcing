@@ -128,5 +128,6 @@ object Experiments {
 
   //TODO how to access event metadata
   //TODO firstOf syntax
+  //TODO all syntax?
 
 }

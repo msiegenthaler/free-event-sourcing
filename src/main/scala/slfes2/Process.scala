@@ -81,29 +81,19 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
     type CommandErrorHandler[Error <: Coproduct] = Error ⇒ ProcessMonad[Unit]
     object CommandErrorHandler {
-      def builder[E <: Coproduct]() = new Builder[E, E](new CommandErrorHandler[E] {
-        def apply(error: E) = {
-          throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
-            "handle all cases. Should have been prevented by the compiler")
-        }
-      })
+      private[Syntax] def builder[E <: Coproduct]() = new Builder[E, E](e ⇒
+        throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
+          "handle all cases. Should have been prevented by the compiler"))
 
       type EmptyBuilder[E <: Coproduct] = Builder[E, E]
 
-      final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (
-          handled: CommandErrorHandler[All]
-      ) {
+      final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (handled: CommandErrorHandler[All]) {
         def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
-          val handler2 = new CommandErrorHandler[All] {
-            def apply(error: All) = {
-              s(error).map(handler).getOrElse(handled(error))
-            }
-          }
-          new Builder[All, ev.Rest](handler2)
+          new Builder[All, ev.Rest](error ⇒ s(error).map(handler).getOrElse(handled(error)))
         }
 
         /** Return the fully constructed error handler. Can only be called if all cases have been handled */
-        private[Process] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
+        private[Syntax] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
       }
     }
   }
