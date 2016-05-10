@@ -34,6 +34,7 @@ class ProcessTests extends FlatSpec with Matchers {
 
   val process = new Process(AccountProcessing)
   import process.ProcessAction._
+  import process.ProcessMonad
   import process.Syntax._
 
   "Process " should " allow selector for aggregate in the same bounded context" in {
@@ -99,6 +100,28 @@ class ProcessTests extends FlatSpec with Matchers {
       r.fold(exec.errorHandler.apply, _ ⇒ noop)
     }""" should compile
   }
+
+  "Process.firstOf " should " reject an empty selector" in {
+    "firstOf(identity)" shouldNot compile
+  }
+
+  "Process.firstOf " should " accept a single selector" in {
+    val a: ProcessMonad[Opened] = firstOf(_.await(selectorOpened))
+  }
+
+  "Process.firstOf " should " accept two selectors" in {
+    val a: ProcessMonad[Account.Event] = firstOf(_.
+      await(selectorOpened).
+      await(selectorClosed))
+  }
+
+  "Process.firstOf " should " accept three selectors" in {
+    //TODO this is not really helpful.. what should we use as the return type? probably have another ProcessMonad as the parameter to each alternative..
+    val a = firstOf(_.
+      await(selectorOpened).
+      await(selectorClosed).
+      await(selectorCreated))
+  }
 }
 
 //TODO delete
@@ -120,9 +143,6 @@ object Experiments {
         _.catching[InsufficientFunds](_ ⇒ terminate).
           catching[NotOpen](_ ⇒ terminate)
       }
-
-    //TODO convert to test
-    //    _ ← firstOf(identity)
 
     //TODO convert to test
     _ ← firstOf(_.
