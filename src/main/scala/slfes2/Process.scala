@@ -36,17 +36,6 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   object Syntax {
     import ProcessAction._
 
-    /** Gets the matching event that occurs first. This variant returns a coproduct over the resulting events. */
-    def awaitFirst[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A]): ProcessMonad[A#Events] = {
-      val initial = new AwaitFirstBuilder[Alternatives.No](Alternatives.No)
-      val await = FirstOf2(b(initial).collect)
-      Free.liftF[ProcessAction, A#Events](await)
-    }
-
-    /** Gets the matching event that occurs first. This variant returns the common base type of the events. */
-    def awaitFirstUnified[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A])(implicit u: Unifier[A#Events]) =
-      awaitFirst(b).map(_.unify)
-
     /** Await an event using a selector. The event must be from this bounded context. */
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
       Free.liftF[ProcessAction, S#Event](AwaitEvent(selector))
@@ -63,6 +52,17 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     /** Wait until the specified date/time. If the time has already passed it will still be called. */
     def waitUntil(when: Instant) =
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
+
+    /** Gets the matching event that occurs first. This variant returns a coproduct over the resulting events. */
+    def awaitFirst[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A]): ProcessMonad[A#Events] = {
+      val initial = new AwaitFirstBuilder[Alternatives.No](Alternatives.No)
+      val await = FirstOf(b(initial).collect)
+      Free.liftF[ProcessAction, A#Events](await)
+    }
+
+    /** Gets the matching event that occurs first. This variant returns the common base type of the events. */
+    def awaitFirstUnified[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A])(implicit u: Unifier[A#Events]) =
+      awaitFirst(b).map(_.unify)
 
     /** Terminate this process instance. */
     def terminate = Free.liftF[ProcessAction, Unit](End())
@@ -141,10 +141,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     sealed trait Await[+A] extends ProcessAction[A]
     case class AwaitEvent[S <: WithEventType: EventSelector: ValidSelector](selector: S) extends Await[S#Event]
     case class WaitUntil(when: Instant) extends Await[Unit]
-
-    case class FirstOf[A](alternatives: List[Await[A]]) extends Await[A]
-
-    case class FirstOf2[Alt <: Alternatives](alternatives: Alt) extends Await[Alt#Events]
+    case class FirstOf[Alt <: Alternatives](alternatives: Alt) extends Await[Alt#Events]
 
     case class Execute[A <: Aggregate: ValidAggregate, Cmd <: A#Command](
       aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: Cmd#Error ⇒ ProcessMonad[Unit]
