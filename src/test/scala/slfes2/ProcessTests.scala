@@ -101,26 +101,42 @@ class ProcessTests extends FlatSpec with Matchers {
     }""" should compile
   }
 
-  "Process.firstOf " should " reject an empty selector" in {
-    "firstOf(identity)" shouldNot compile
+  "Process.awaitFirstUnified " should " reject an empty selector" in {
+    "awaitFirstUnified(identity)" shouldNot compile
   }
 
-  "Process.firstOf " should " accept a single selector" in {
-    val a: ProcessMonad[Opened] = firstOf(_.await(selectorOpened))
+  "Process.awaitFirstUnified " should " accept a single selector and return the event type of the selector" in {
+    val a: ProcessMonad[Opened] = awaitFirstUnified(_.event(selectorOpened))
   }
 
-  "Process.firstOf " should " accept two selectors" in {
-    val a: ProcessMonad[Account.Event] = firstOf(_.
-      await(selectorOpened).
-      await(selectorClosed))
+  "Process.awaitFirstUnified " should " accept an event from an aggregate and return the event type" in {
+    val a: ProcessMonad[Opened] = awaitFirstUnified(_.from(Account.Id(1)).event[Opened])
   }
 
-  "Process.firstOf " should " accept three selectors" in {
-    //TODO this is not really helpful.. what should we use as the return type? probably have another ProcessMonad as the parameter to each alternative..
-    val a = firstOf(_.
-      await(selectorOpened).
-      await(selectorClosed).
-      await(selectorCreated))
+  "Process.awaitFirstUnified " should " accept two selectors from the same aggregate and unify that to the aggregates event type" in {
+    val a: ProcessMonad[Account.Event with Product with Serializable] = awaitFirstUnified(_.
+      event(selectorOpened).
+      event(selectorClosed))
+  }
+
+  "Process.awaitFirstUnified " should " accept two events from the same aggregate and unify that to the aggregates event type" in {
+    val a: ProcessMonad[Account.Event with Product with Serializable] = awaitFirstUnified(_.
+      from(Account.Id(1)).event[Opened].
+      from(Account.Id(1)).event[Closed])
+  }
+
+  "Process.awaitFirstUnified " should " accept three selectors with no common class and unify that to Product with Serializable" in {
+    val a: Product with Serializable = awaitFirstUnified(_.
+      event(selectorOpened).
+      event(selectorClosed).
+      event(selectorCreated))
+  }
+
+  "Process.awaitFirstUnified " should " accept events from different aggregates and unify that to Product with Serializable" in {
+    val a: Product with Serializable = awaitFirstUnified(_.
+      from(Account.Id(1)).event[Opened].
+      from(Account.Id(1)).event[Closed].
+      from(Transaction.Id(1)).event[Created])
   }
 }
 
@@ -144,36 +160,12 @@ object Experiments {
           catching[NotOpen](_ ⇒ terminate)
       }
 
-    //TODO convert to test
-    _ ← firstOf(_.
-      await(selectorBlocked))
-
-    //TODO convert to test
-    x ← firstOf(_.
-      await(selectorOpened).
-      await(selectorBlocked))
-
-    //TODO convert to test
-    x ← firstOf(_.
-      from(Account.Id(1)).await[Opened])
-
-    //TODO convert to test
-    x ← firstOf(_.
-      from(Account.Id(1)).await[Opened].
-      from(Account.Id(2)).await[Closed])
-
-    //TODO convert to test
-    x ← firstOf(_.
-      from(Account.Id(1)).await[Opened].
-      from(Account.Id(2)).await[Closed].
-      await(selectorBlocked))
-
     _ ← from(tx.from).await[Blocked]
     _ ← on(tid).execute(Confirm()) {
       _.catching[AlreadyCanceled](_ ⇒ terminate).
         catching[DoesNotExist](_ ⇒ terminate)
     }
-  } yield x
+  } yield ()
 
   //TODO how to access event metadata
   //TODO all syntax?

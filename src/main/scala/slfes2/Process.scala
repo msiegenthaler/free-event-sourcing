@@ -4,9 +4,9 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
-import shapeless.ops.coproduct.{ Remove, Selector ⇒ CPSelector }
+import shapeless.ops.coproduct.{ Remove, Unifier, Selector ⇒ CPSelector }
 import shapeless.ops.hlist.Selector
-import shapeless.{ CNil, Coproduct }
+import shapeless.{ :+:, CNil, Coproduct }
 import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 import slfes2.support.AggregateFromId
@@ -31,28 +31,21 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("The command cannot result in an error of type ${E}")
   type HandleError[Unhandled <: Coproduct, E] = Remove[Unhandled, E]
 
-  /** Finds the least upper bounds of two Await actions (like shapeless.Lub). */
-  sealed trait AwaitLub[-A, -B, Out] {
-    def left(a: ProcessAction.Await[A]): ProcessAction.Await[Out]
-    def right(b: ProcessAction.Await[B]): ProcessAction.Await[Out]
-  }
-  object AwaitLub {
-    implicit def lub[T] = new AwaitLub[T, T, T] {
-      def left(a: ProcessAction.Await[T]) = a
-      def right(b: ProcessAction.Await[T]) = b
-    }
-  }
-
   type ProcessMonad[A] = Free[ProcessAction, A]
 
   object Syntax {
     import ProcessAction._
 
-    /** Gets the matching event that occurs first. */
-    def firstOf[R](b: FirstOfBuilder[Nothing] ⇒ FirstOfBuilder[R]): ProcessMonad[R] = {
-      val awaits = b(FirstOfBuilder.empty).collect
-      Free.liftF[ProcessAction, R](FirstOf(awaits))
+    /** Gets the matching event that occurs first. This variant returns a coproduct over the resulting events. */
+    def awaitFirst[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A]): ProcessMonad[A#Events] = {
+      val initial = new AwaitFirstBuilder[Alternatives.No](Alternatives.No)
+      val await = FirstOf2(b(initial).collect)
+      Free.liftF[ProcessAction, A#Events](await)
     }
+
+    /** Gets the matching event that occurs first. This variant returns the common base type of the events. */
+    def awaitFirstUnified[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A])(implicit u: Unifier[A#Events]) =
+      awaitFirst(b).map(_.unify)
 
     /** Await an event using a selector. The event must be from this bounded context. */
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
@@ -77,12 +70,14 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     /** Does nothing. */
     def noop = Monad[Free[ProcessAction, ?]].pure(())
 
-    /** Helper class for firstOf */
-    final class FirstOfBuilder[R] private[Syntax] (awaits: List[Await[R]]) {
+    /** Helper class for awaitFirst */
+    final class AwaitFirstBuilder[A <: Alternatives] private[Syntax] (alternatives: A) {
+      import Alternatives.Alternative
+
       /** Await an event using a selector. The event must be from this bounded context. */
-      def await[S <: WithEventType: EventSelector: ValidSelector, R2](selector: S)(implicit lub: AwaitLub[R, S#Event, R2]): FirstOfBuilder[R2] = {
-        val action: Await[R2] = lub.right(AwaitEvent(selector))
-        new FirstOfBuilder[R2](action :: awaits.map(lub.left))
+      def event[S <: WithEventType: EventSelector: ValidSelector](selector: S): AwaitFirstBuilder[S#Event Alternative A] = {
+        val a2 = Alternative(AwaitEvent(selector), alternatives)
+        new AwaitFirstBuilder(a2)
       }
 
       /** Await event from a specific aggregate. */
@@ -91,18 +86,15 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         new FirstOfFromAggregateBuilder[afi.Out](aggregateType, aggregate)
       }
 
-      private[Syntax] def collect = awaits
+      private[Syntax] def collect = alternatives
 
-      final class FirstOfFromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
+      final class FirstOfFromAggregateBuilder[A <: Aggregate] private[AwaitFirstBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+        def event[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          FirstOfBuilder.this.await(selector)
+          AwaitFirstBuilder.this.event(selector)
         }
       }
-    }
-    object FirstOfBuilder {
-      def empty = new FirstOfBuilder[Nothing](Nil)
     }
 
     /** Helper class for on/from. */
@@ -149,12 +141,29 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     sealed trait Await[+A] extends ProcessAction[A]
     case class AwaitEvent[S <: WithEventType: EventSelector: ValidSelector](selector: S) extends Await[S#Event]
     case class WaitUntil(when: Instant) extends Await[Unit]
+
     case class FirstOf[A](alternatives: List[Await[A]]) extends Await[A]
+
+    case class FirstOf2[Alt <: Alternatives](alternatives: Alt) extends Await[Alt#Events]
 
     case class Execute[A <: Aggregate: ValidAggregate, Cmd <: A#Command](
       aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: Cmd#Error ⇒ ProcessMonad[Unit]
     ) extends ProcessAction[Unit]
 
     case class End() extends ProcessAction[Unit]
+
+    /** Specialized Coproduct that contains Awaits and keeps track of the resulting event coproduct. */
+    sealed trait Alternatives {
+      type Events <: Coproduct
+    }
+    object Alternatives {
+      type No = No.type
+      case object No extends Alternatives {
+        type Events = CNil
+      }
+      case class Alternative[A, T <: Alternatives](await: Await[A], more: T) extends Alternatives {
+        type Events = A :+: T#Events
+      }
+    }
   }
 }
