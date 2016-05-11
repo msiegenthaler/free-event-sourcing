@@ -160,6 +160,14 @@ object Experiments {
           catching[NotOpen](_ ⇒ terminate)
       }
 
+    _ ← switch(_.
+      on(selectorOpened)(_ ⇒ noop).
+      on(selectorBlocked)(t ⇒
+        on(t.by).execute(Confirm()) {
+          _.catching[AlreadyCanceled](_ ⇒ terminate).
+            catching[DoesNotExist](_ ⇒ terminate)
+        }))
+
     _ ← from(tx.from).await[Blocked]
     _ ← on(tid).execute(Confirm()) {
       _.catching[AlreadyCanceled](_ ⇒ terminate).

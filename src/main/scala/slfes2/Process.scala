@@ -6,7 +6,7 @@ import cats.Monad
 import cats.free.Free
 import shapeless.ops.coproduct.{ Remove, Unifier, Selector ⇒ CPSelector }
 import shapeless.ops.hlist.Selector
-import shapeless.{ :+:, CNil, Coproduct }
+import shapeless.{ :+:, ::, CNil, Coproduct, HList, HNil, Inl, Inr }
 import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 import slfes2.support.AggregateFromId
@@ -35,6 +35,67 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
   object Syntax {
     import ProcessAction._
+
+    def switch[Paths <: HList](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit pta: Path.PathsToAlternative[Paths]): ProcessMonad[Unit] = {
+      val paths = b(new SwitchBuilder(HNil)).collect
+      val alternatives = Path.toAlternatives(paths)
+      Free.liftF[ProcessAction, alternatives.Events](FirstOf(alternatives))
+        .flatMap(event ⇒ pta.effectFor(paths, event))
+    }
+
+    sealed trait Path {
+      type Selector <: WithEventType
+      type Event = Selector#Event
+      val selector: Selector
+      def effect(event: Selector#Event): ProcessMonad[Unit]
+    }
+    object Path {
+      type Aux[S <: WithEventType] = Path { type Selector = S }
+
+      def toAlternatives[Paths <: HList](paths: Paths)(implicit pta: PathsToAlternative[Paths]): pta.A = pta.alternatives(paths)
+      sealed trait PathsToAlternative[Paths <: HList] {
+        type A <: Alternatives
+        type Events <: Coproduct
+        def effectFor(paths: Paths, event: A#Events): ProcessMonad[Unit]
+        def alternatives(paths: Paths): A
+      }
+      object PathsToAlternative {
+        import Alternatives.Alternative
+
+        implicit def end = new PathsToAlternative[HNil] {
+          type A = Alternatives.No
+          type Events = CNil
+          def effectFor(paths: HNil, event: CNil) = noop
+          def alternatives(paths: HNil) = Alternatives.No
+        }
+        implicit def head[S <: WithEventType: EventSelector: ValidSelector, T <: HList](implicit t: PathsToAlternative[T]) = new PathsToAlternative[Path.Aux[S] :: T] {
+          type A = S#Event Alternative t.A
+          type Events = Path.Aux[S]#Event :+: t.Events
+          def effectFor(paths: Path.Aux[S] :: T, event: A#Events) = event match {
+            case Inl(myEvent)    ⇒ paths.head.effect(myEvent)
+            case Inr(otherEvent) ⇒ t.effectFor(paths.tail, otherEvent)
+          }
+          def alternatives(paths: Path.Aux[S] :: T) =
+            Alternative(AwaitEvent(paths.head.selector), t.alternatives(paths.tail))
+        }
+      }
+    }
+
+    final class SwitchBuilder[A <: HList] private[Syntax] (paths: A) {
+      def on[S <: WithEventType: EventSelector: ValidSelector](selector: S)(body: S#Event ⇒ ProcessMonad[_]): SwitchBuilder[Path.Aux[S] :: A] = {
+        def s = selector
+        val path = new Path {
+          type Selector = S
+          val selector = s
+          def effect(event: Event) = body(event).map(_ ⇒ ())
+        }
+        new SwitchBuilder(path :: paths)
+      }
+
+      //TODO from...
+
+      private[Syntax] def collect: A = paths
+    }
 
     /** Await an event using a selector. The event must be from this bounded context. */
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
