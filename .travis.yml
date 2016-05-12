@@ -7,7 +7,6 @@ after_success: "sbt ++$TRAVIS_SCALA_VERSION coverageReport coveralls"
 
 jdk:
   - oraclejdk8
-  - openjdk8
 
 cache:
   directories:
