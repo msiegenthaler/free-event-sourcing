@@ -142,51 +142,57 @@ class ProcessTests extends FlatSpec with Matchers {
   "Process.switch " should " accept a single selector with an execute (flatMap)" in {
     val r = switch(_.
       on(selectorOpened).execute((e: Opened) ⇒ terminate))
-    //  TODO   "r : ProcessMonad[Unit :+: CNil]" should compile
+    "r : ProcessMonad[Unit :+: CNil]" should compile
 
-    switch(_.
+    val r2 = switch(_.
       on(selectorOpened).flatMap((e: Opened) ⇒ terminate))
+    "r2 : ProcessMonad[Unit :+: CNil]" should compile
   }
 
   "Process.switch " should " accept a single selector with a map" in {
     val r = switch(_.
       on(selectorOpened).map(_.owner))
-    // TODO    "r : ProcessMonad[String :+: CNil]" should compile
+    "r : ProcessMonad[String :+: CNil]" should compile
   }
 
   "Process.switch " should " accept a single selector that returns the event" in {
     val r = switch(_.
       on(selectorOpened).event)
-    // TODO "r : ProcessMonad[Opened :+: CNil]" should compile
+    "r : ProcessMonad[Opened :+: CNil]" should compile
   }
 
   "Process.switch " should " accept a single selector that terminates the process" in {
-    switch(_.
+    val r = switch(_.
       on(selectorOpened).terminate)
+    "r : ProcessMonad[Unit :+: CNil]" should compile
   }
 
   "Process.switch " should " accept two selectors" in {
-    switch(_.
-      on(selectorOpened).execute(_ ⇒ terminate).
-      on(selectorClosed).execute(_ ⇒ noop))
+    val r = switch(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event)
+    "r : ProcessMonad[Closed :+: Opened :+: CNil]" should compile
   }
 
   "Process.switch " should " accept a single event from an aggregate" in {
-    switch(_.
-      from(Account.Id(1)).on[Opened].execute(_ ⇒ noop))
+    val r = switch(_.
+      from(Account.Id(1)).on[Opened].event)
+    "r : ProcessMonad[Opened :+: CNil]" should compile
   }
 
   "Process.switch " should " accept a two event from different aggregates" in {
-    switch(_.
-      from(Account.Id(1)).on[Opened].execute(_ ⇒ noop).
-      from(Transaction.Id(1)).on[Created].execute(_ ⇒ terminate))
+    val r = switch(_.
+      from(Account.Id(1)).on[Opened].event.
+      from(Transaction.Id(1)).on[Created].event)
+    "r : ProcessMonad[Created :+: Opened :+: CNil]" should compile
   }
 
   "Process.switch " should " allow to mix selectors and events from aggregates" in {
-    switch(_.
-      from(Account.Id(1)).on[Opened].execute(_ ⇒ noop).
-      on(selectorClosed).execute(_ ⇒ noop).
-      from(Transaction.Id(1)).on[Created].execute(_ ⇒ terminate).
-      on(selectorOpened).execute(_ ⇒ terminate))
+    val r = switch(_.
+      from(Account.Id(1)).on[Opened].terminate.
+      on(selectorClosed).event.
+      from(Transaction.Id(1)).on[Created].event.
+      on(selectorOpened).event)
+    "r : ProcessMonad[Opened :+: Created :+: Closed :+: Unit :+: CNil]" should compile
   }
 }

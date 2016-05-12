@@ -51,7 +51,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       def effect(event: Selector#Event): ProcessMonad[Result]
     }
     object SwitchPath {
-      type Aux[S <: WithEventType] = SwitchPath { type Selector = S }
+      type Aux[S <: WithEventType, R] = SwitchPath { type Selector = S; type Result = R }
     }
 
     sealed trait Switch[Paths <: HList] {
@@ -73,9 +73,9 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         def effectFor(paths: HNil)(event: CNil) = throw new AssertionError("Cannot be reached, the compiler is supposed to prevent that")
         def alternatives(paths: HNil) = Alternatives.No
       }
-      implicit def head[S <: WithEventType: EventSelector: ValidSelector, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[S] :: T] {
+      implicit def head[S <: WithEventType: EventSelector: ValidSelector, R, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[S, R] :: T] {
         type A = S#Event Alternative t.A
-        type P = SwitchPath.Aux[S]
+        type P = SwitchPath.Aux[S, R]
         type Events = P#Event :+: t.Events
         type Result = P#Result :+: t.Result
         def effectFor(paths: P :: T)(event: A#Events) = event match {
@@ -112,7 +112,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         /** Terminate the process if the event occurs. */
         def terminate = flatMap(_ ⇒ Syntax.terminate)
 
-        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S] :: A] = {
+        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S, R] :: A] = {
           val path = new SwitchPath {
             type Selector = S
             val selector = OnBuilder.this.selector
