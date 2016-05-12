@@ -88,6 +88,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     }
 
     final class SwitchBuilder[A <: HList] private[Syntax] (paths: A) {
+      /** Await an event using a selector. The event must be from this bounded context. */
       def on[S <: WithEventType: EventSelector: ValidSelector, R](selector: S)(body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S] :: A] = {
         def s = selector
         val path = new SwitchPath {
@@ -99,9 +100,23 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         new SwitchBuilder(path :: paths)
       }
 
-      //TODO from...
+      /** Await event from a specific aggregate. */
+      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+        val aggregateType = afi.aggregate(boundedContext.aggregates)
+        new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
+      }
+
+      //TODO after time
 
       private[Syntax] def collect: A = paths
+
+      final class FromAggregateBuilder[A <: Aggregate] private[SwitchBuilder] (aggregateType: A, aggregate: A#Id) {
+        /** Await an event from the aggregate. */
+        def event[E <: A#Event: AggregateEventType, R](body: E ⇒ ProcessMonad[R])(implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+          val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
+          SwitchBuilder.this.on(selector)(body)
+        }
+      }
     }
 
     /** Await an event using a selector. The event must be from this bounded context. */

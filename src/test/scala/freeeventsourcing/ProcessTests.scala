@@ -138,6 +138,36 @@ class ProcessTests extends FlatSpec with Matchers {
       from(Account.Id(1)).event[Closed].
       from(Transaction.Id(1)).event[Created])
   }
+
+  "Process.switch " should " accept a single selector" in {
+    switch(_.
+      on(selectorOpened)(_ ⇒ terminate))
+  }
+
+  "Process.switch " should " accept two selectors" in {
+    switch(_.
+      on(selectorOpened)(_ ⇒ terminate).
+      on(selectorClosed)(_ ⇒ noop))
+  }
+
+  "Process.switch " should " accept a single event from an aggregate" in {
+    switch(_.
+      from(Account.Id(1)).event((e: Opened) ⇒ noop))
+  }
+
+  "Process.switch " should " accept a two event from different aggregates" in {
+    switch(_.
+      from(Account.Id(1)).event((e: Opened) ⇒ noop).
+      from(Transaction.Id(1)).event((e: Created) ⇒ terminate))
+  }
+
+  "Process.switch " should " allow to mix selectors and events from aggregates" in {
+    switch(_.
+      from(Account.Id(1)).event((e: Opened) ⇒ noop).
+      on(selectorClosed)(_ ⇒ noop).
+      from(Transaction.Id(1)).event((e: Created) ⇒ terminate).
+      on(selectorOpened)(_ ⇒ terminate))
+  }
 }
 
 //TODO delete
