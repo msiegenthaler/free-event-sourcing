@@ -101,44 +101,6 @@ class ProcessTests extends FlatSpec with Matchers {
     }""" should compile
   }
 
-  "Process.awaitFirstUnified " should " reject an empty selector" in {
-    "awaitFirstUnified(identity)" shouldNot compile
-  }
-
-  "Process.awaitFirstUnified " should " accept a single selector and return the event type of the selector" in {
-    val a: ProcessMonad[Opened] = awaitFirstUnified(_.event(selectorOpened))
-  }
-
-  "Process.awaitFirstUnified " should " accept an event from an aggregate and return the event type" in {
-    val a: ProcessMonad[Opened] = awaitFirstUnified(_.from(Account.Id(1)).event[Opened])
-  }
-
-  "Process.awaitFirstUnified " should " accept two selectors from the same aggregate and unify that to the aggregates event type" in {
-    val a: ProcessMonad[Account.Event with Product with Serializable] = awaitFirstUnified(_.
-      event(selectorOpened).
-      event(selectorClosed))
-  }
-
-  "Process.awaitFirstUnified " should " accept two events from the same aggregate and unify that to the aggregates event type" in {
-    val a: ProcessMonad[Account.Event with Product with Serializable] = awaitFirstUnified(_.
-      from(Account.Id(1)).event[Opened].
-      from(Account.Id(1)).event[Closed])
-  }
-
-  "Process.awaitFirstUnified " should " accept three selectors with no common class and unify that to Product with Serializable" in {
-    val a: Product with Serializable = awaitFirstUnified(_.
-      event(selectorOpened).
-      event(selectorClosed).
-      event(selectorCreated))
-  }
-
-  "Process.awaitFirstUnified " should " accept events from different aggregates and unify that to Product with Serializable" in {
-    val a: Product with Serializable = awaitFirstUnified(_.
-      from(Account.Id(1)).event[Opened].
-      from(Account.Id(1)).event[Closed].
-      from(Transaction.Id(1)).event[Created])
-  }
-
   "Process.switch " should " accept a single selector with an execute (flatMap)" in {
     val r = switch(_.
       on(selectorOpened).execute((e: Opened) ⇒ terminate))

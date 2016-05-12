@@ -56,17 +56,6 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     def waitUntil(when: Instant) =
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
 
-    /** Gets the matching event that occurs first. This variant returns a coproduct over the resulting events. */
-    def awaitFirst[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A]): ProcessMonad[A#Events] = {
-      val initial = new AwaitFirstBuilder[Alternatives.No](Alternatives.No)
-      val await = FirstOf(b(initial).collect)
-      Free.liftF[ProcessAction, A#Events](await)
-    }
-
-    /** Gets the matching event that occurs first. This variant returns the common base type of the events. */
-    def awaitFirstUnified[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A])(implicit u: Unifier[A#Events]) =
-      awaitFirst(b).map(_.unify)
-
     /** Wait for multiple events and run the path of the first event. */
     def switch[Paths <: HList](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[switch.Result] = {
       val paths = b(new SwitchBuilder(HNil)).collect
@@ -84,33 +73,6 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
     /** Does nothing. */
     def noop = Monad[Free[ProcessAction, ?]].pure(())
-
-    /** Helper class for awaitFirst */
-    final class AwaitFirstBuilder[A <: Alternatives] private[Syntax] (alternatives: A) {
-      import Alternatives.Alternative
-
-      /** Await an event using a selector. The event must be from this bounded context. */
-      def event[S <: WithEventType: EventSelector: ValidSelector](selector: S): AwaitFirstBuilder[S#Event Alternative A] = {
-        val a2 = Alternative(AwaitEvent(selector), alternatives)
-        new AwaitFirstBuilder(a2)
-      }
-
-      /** Await event from a specific aggregate. */
-      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-        val aggregateType = afi.aggregate(boundedContext.aggregates)
-        new FirstOfFromAggregateBuilder[afi.Out](aggregateType, aggregate)
-      }
-
-      private[Syntax] def collect = alternatives
-
-      final class FirstOfFromAggregateBuilder[A <: Aggregate] private[AwaitFirstBuilder] (aggregateType: A, aggregate: A#Id) {
-        /** Await an event from the aggregate. */
-        def event[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
-          val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          AwaitFirstBuilder.this.event(selector)
-        }
-      }
-    }
 
     /** Helper class for on. */
     final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
