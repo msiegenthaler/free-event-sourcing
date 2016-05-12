@@ -23,3 +23,11 @@ cache:
 before_cache:
   - find $HOME/.sbt -name "*.lock" -type f -delete
   - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete
+
+notifications:
+  slack:
+    rooms: dingsteam:RAMFhHHEJFRie1VmpxfhKnix
+    on_success: always
+    on_failure: always
+    on_start: never
+    on_pull_requests: false
