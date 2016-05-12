@@ -1,4 +1,4 @@
-package slfes.utils
+package slfes2.utils
 
 @annotation.implicitNotFound(msg = "Cannot prove that ${A} =!= ${B}.")
 trait =!=[A, B]

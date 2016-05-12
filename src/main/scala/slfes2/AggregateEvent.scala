@@ -6,9 +6,8 @@ import scala.reflect._
 import shapeless.ops.hlist.Selector
 import shapeless.{ ::, HList, Typeable }
 import simulacrum.typeclass
-import slfes.utils.{ =!=, StringSerializable }
-import slfes.utils.StringSerializable.ops._
-import slfesakka.CompositeName
+import slfes2.utils.{ =!=, CompositeName, StringSerializable }
+import slfes2.utils.StringSerializable.ops._
 
 case class AggregateEvent[A <: Aggregate](aggregateType: A, aggregate: A#Id, event: A#Event, eventTime: EventTime)
 object AggregateEvent {

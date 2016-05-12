@@ -1,4 +1,4 @@
-package slfesakka
+package slfes2.utils
 
 import java.net.{ URLDecoder, URLEncoder }
 import scala.util.Try

@@ -5,8 +5,8 @@ import scala.annotation.implicitNotFound
 import shapeless.ops.hlist.LeftFolder
 import shapeless.{ HList, HMap, Poly2, Typeable }
 import simulacrum.typeclass
-import slfes.utils.StringSerializable
 import slfes2.akka.SupportedBoundedContext.AggregateMap
+import slfes2.utils.StringSerializable
 import slfes2.{ Aggregate, BoundedContext, BoundedContextImplementation }
 
 @typeclass trait SupportedBoundedContext[BC <: BoundedContext] extends BoundedContextImplementation[BC] {

@@ -7,9 +7,9 @@ import cats.free.Free
 import shapeless.ops.coproduct.{ Remove, Unifier, Selector ⇒ CPSelector }
 import shapeless.ops.hlist.Selector
 import shapeless.{ :+:, ::, CNil, Coproduct, HList, HNil, Inl, Inr }
-import slfes.utils.StringSerializable
 import slfes2.EventSelector.WithEventType
 import slfes2.support.AggregateFromId
+import slfes2.utils.StringSerializable
 
 class Process[BC <: BoundedContext](boundedContext: BC) {
   @implicitNotFound("${S} is not a valid EventSelector for this process.")

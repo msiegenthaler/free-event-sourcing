@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
 import shapeless.Typeable
 import simulacrum.typeclass
-import slfes.utils.StringSerializable
+import slfes2.utils.StringSerializable
 import slfes2.{ Aggregate, AggregateImplementation }
 
 /** Typeclass for aggregates that are supported by this akka backend. */
