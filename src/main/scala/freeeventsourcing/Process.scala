@@ -57,16 +57,16 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       Free.liftF[ProcessAction, Unit](WaitUntil(when))
 
     /** Wait for multiple events and run the path of the first event. */
-    def switch[Paths <: HList](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[switch.Result] = {
-      val paths = b(new SwitchBuilder(HNil)).collect
+    def firstOf[Paths <: HList](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[switch.Result] = {
+      val paths = b(new FirstOfBuilder(HNil)).collect
       val alternatives = switch.alternatives(paths)
       Free.liftF[ProcessAction, alternatives.Events](FirstOf(alternatives))
         .flatMap(e ⇒ switch.effectFor(paths)(e))
     }
 
     /** Wait for multiple events and run the path of the first event. */
-    def switchUnified[Paths <: HList, R <: Coproduct](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit s: Switch.Aux[Paths, R], u: Unifier[R]) =
-      switch(b).map(r ⇒ u(r))
+    def firstOfUnified[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit s: Switch.Aux[Paths, R], u: Unifier[R]) =
+      firstOf(b).map(r ⇒ u(r))
 
     /** Terminate this process instance. */
     def terminate = Free.liftF[ProcessAction, Unit](End())
@@ -114,6 +114,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       }
     }
 
+    /** Option inside a firstOf. */
     sealed trait SwitchPath {
       type Selector <: WithEventType
       type Event = Selector#Event
@@ -124,7 +125,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     object SwitchPath {
       type Aux[S <: WithEventType, R] = SwitchPath { type Selector = S; type Result = R }
     }
-
+    /** All options of a firstOf. */
     sealed trait Switch[Paths <: HList] {
       type A <: Alternatives
       type Events <: Coproduct
@@ -158,7 +159,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       }
     }
 
-    final class SwitchBuilder[A <: HList] private[Syntax] (paths: A) {
+    final class FirstOfBuilder[A <: HList] private[Syntax] (paths: A) {
       /** Await an event using a selector. The event must be from this bounded context. */
       def on[S <: WithEventType: EventSelector: ValidSelector](selector: S) = new OnBuilder(selector)
 
@@ -172,7 +173,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
       private[Syntax] def collect: A = paths
 
-      final class OnBuilder[S <: WithEventType: EventSelector: ValidSelector] private[SwitchBuilder] (selector: S) {
+      final class OnBuilder[S <: WithEventType: EventSelector: ValidSelector] private[FirstOfBuilder] (selector: S) {
         /** This is a flatMap */
         def execute[R](body: S#Event ⇒ ProcessMonad[R]) = flatMap(body)
 
@@ -183,22 +184,22 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         /** Terminate the process if the event occurs. */
         def terminate = flatMap(_ ⇒ Syntax.terminate)
 
-        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S, R] :: A] = {
+        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[S, R] :: A] = {
           val path = new SwitchPath {
             type Selector = S
             val selector = OnBuilder.this.selector
             type Result = R
             def effect(event: Event) = body(event)
           }
-          new SwitchBuilder(path :: paths)
+          new FirstOfBuilder(path :: paths)
         }
       }
 
-      final class FromAggregateBuilder[A <: Aggregate] private[SwitchBuilder] (aggregateType: A, aggregate: A#Id) {
+      final class FromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
         def on[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          SwitchBuilder.this.on(selector)
+          FirstOfBuilder.this.on(selector)
         }
       }
     }

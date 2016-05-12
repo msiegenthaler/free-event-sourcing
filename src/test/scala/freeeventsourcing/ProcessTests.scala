@@ -101,56 +101,56 @@ class ProcessTests extends FlatSpec with Matchers {
     }""" should compile
   }
 
-  "Process.switch " should " accept a single selector with an execute (flatMap)" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept a single selector with an execute (flatMap)" in {
+    val r = firstOf(_.
       on(selectorOpened).execute((e: Opened) ⇒ terminate))
     "r : ProcessMonad[Unit :+: CNil]" should compile
 
-    val r2 = switch(_.
+    val r2 = firstOf(_.
       on(selectorOpened).flatMap((e: Opened) ⇒ terminate))
     "r2 : ProcessMonad[Unit :+: CNil]" should compile
   }
 
-  "Process.switch " should " accept a single selector with a map" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept a single selector with a map" in {
+    val r = firstOf(_.
       on(selectorOpened).map(_.owner))
     "r : ProcessMonad[String :+: CNil]" should compile
   }
 
-  "Process.switch " should " accept a single selector that returns the event" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept a single selector that returns the event" in {
+    val r = firstOf(_.
       on(selectorOpened).event)
     "r : ProcessMonad[Opened :+: CNil]" should compile
   }
 
-  "Process.switch " should " accept a single selector that terminates the process" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept a single selector that terminates the process" in {
+    val r = firstOf(_.
       on(selectorOpened).terminate)
     "r : ProcessMonad[Unit :+: CNil]" should compile
   }
 
-  "Process.switch " should " accept two selectors" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept two selectors" in {
+    val r = firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event)
     "r : ProcessMonad[Closed :+: Opened :+: CNil]" should compile
   }
 
-  "Process.switch " should " accept a single event from an aggregate" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept a single event from an aggregate" in {
+    val r = firstOf(_.
       from(Account.Id(1)).on[Opened].event)
     "r : ProcessMonad[Opened :+: CNil]" should compile
   }
 
-  "Process.switch " should " accept a two event from different aggregates" in {
-    val r = switch(_.
+  "Process.firstOf " should " accept a two event from different aggregates" in {
+    val r = firstOf(_.
       from(Account.Id(1)).on[Opened].event.
       from(Transaction.Id(1)).on[Created].event)
     "r : ProcessMonad[Created :+: Opened :+: CNil]" should compile
   }
 
-  "Process.switch " should " allow to mix selectors and events from aggregates" in {
-    val r = switch(_.
+  "Process.firstOf " should " allow to mix selectors and events from aggregates" in {
+    val r = firstOf(_.
       from(Account.Id(1)).on[Opened].terminate.
       on(selectorClosed).event.
       from(Transaction.Id(1)).on[Created].event.
@@ -158,27 +158,27 @@ class ProcessTests extends FlatSpec with Matchers {
     "r : ProcessMonad[Opened :+: Created :+: Closed :+: Unit :+: CNil]" should compile
   }
 
-  "Process.switchUnified " should " accept a single selector and return the event type" in {
-    val r = switchUnified(_.
+  "Process.firstOfUnified " should " accept a single selector and return the event type" in {
+    val r = firstOfUnified(_.
       on(selectorOpened).event)
     "r : ProcessMonad[Opened]" should compile
   }
 
-  "Process.switchUnified " should " accept a single selector with a map and return the result type of the map" in {
-    val r = switchUnified(_.
+  "Process.firstOfUnified " should " accept a single selector with a map and return the result type of the map" in {
+    val r = firstOfUnified(_.
       on(selectorOpened).map(_.owner))
     "r : ProcessMonad[String]" should compile
   }
 
-  "Process.switchUnified " should " accept a two selector and return the base type of the event type" in {
-    val r = switchUnified(_.
+  "Process.firstOfUnified " should " accept a two selector and return the base type of the event type" in {
+    val r = firstOfUnified(_.
       on(selectorOpened).event.
       on(selectorClosed).event)
     "r : ProcessMonad[Account.Event with Product with Serializable]" should compile
   }
 
-  "Process.switchUnified " should " accept a two selector mapping to the same type and return this type" in {
-    val r = switchUnified(_.
+  "Process.firstOfUnified " should " accept a two selector mapping to the same type and return this type" in {
+    val r = firstOfUnified(_.
       on(selectorOpened).map(_ ⇒ "hi").
       on(selectorClosed).map(_ ⇒ "there"))
     "r : ProcessMonad[String]" should compile
