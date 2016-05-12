@@ -2,8 +2,12 @@ language: scala
 scala:
    - 2.11.8
 
-script: "sbt clean coverage test"
-after_success: "sbt coverageReport coveralls"
+script: "sbt ++$TRAVIS_SCALA_VERSION coverage test"
+after_success: "sbt ++$TRAVIS_SCALA_VERSION coverageReport coveralls"
+
+jdk:
+  - oraclejdk8
+  - openjdk8
 
 cache:
   directories:
