@@ -18,7 +18,7 @@ sealed trait CompositeName {
 }
 
 object CompositeName {
-  def apply(value: String) = CompositeName.root / value
+  def apply(value: String*) = value.foldLeft(root)(_ / _)
   def unapplySeq(identifier: CompositeName): Option[Seq[String]] = Some(identifier.parts)
   def unapplySeq(value: String): Option[Seq[String]] = parse(value).flatMap(unapplySeq)
 
