@@ -2,7 +2,7 @@ package freeeventsourcing
 
 import cats.data.Xor
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ ::, CNil, HNil }
+import shapeless.{ ::, CNil, HNil, :+: }
 import freeeventsourcing.accountprocessing.Account.Command.{ BlockFunds, Open }
 import freeeventsourcing.accountprocessing.Account.Error.{ AlreadyOpen, InsufficientFunds, NotOpen }
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
@@ -139,73 +139,54 @@ class ProcessTests extends FlatSpec with Matchers {
       from(Transaction.Id(1)).event[Created])
   }
 
-  "Process.switch " should " accept a single selector" in {
+  "Process.switch " should " accept a single selector with an execute (flatMap)" in {
+    val r = switch(_.
+      on(selectorOpened).execute((e: Opened) ⇒ terminate))
+    //  TODO   "r : ProcessMonad[Unit :+: CNil]" should compile
+
     switch(_.
-      on(selectorOpened)(_ ⇒ terminate))
+      on(selectorOpened).flatMap((e: Opened) ⇒ terminate))
+  }
+
+  "Process.switch " should " accept a single selector with a map" in {
+    val r = switch(_.
+      on(selectorOpened).map(_.owner))
+    // TODO    "r : ProcessMonad[String :+: CNil]" should compile
+  }
+
+  "Process.switch " should " accept a single selector that returns the event" in {
+    val r = switch(_.
+      on(selectorOpened).event)
+    // TODO "r : ProcessMonad[Opened :+: CNil]" should compile
+  }
+
+  "Process.switch " should " accept a single selector that terminates the process" in {
+    switch(_.
+      on(selectorOpened).terminate)
   }
 
   "Process.switch " should " accept two selectors" in {
     switch(_.
-      on(selectorOpened)(_ ⇒ terminate).
-      on(selectorClosed)(_ ⇒ noop))
+      on(selectorOpened).execute(_ ⇒ terminate).
+      on(selectorClosed).execute(_ ⇒ noop))
   }
 
   "Process.switch " should " accept a single event from an aggregate" in {
     switch(_.
-      from(Account.Id(1)).event((e: Opened) ⇒ noop))
+      from(Account.Id(1)).on[Opened].execute(_ ⇒ noop))
   }
 
   "Process.switch " should " accept a two event from different aggregates" in {
     switch(_.
-      from(Account.Id(1)).event((e: Opened) ⇒ noop).
-      from(Transaction.Id(1)).event((e: Created) ⇒ terminate))
+      from(Account.Id(1)).on[Opened].execute(_ ⇒ noop).
+      from(Transaction.Id(1)).on[Created].execute(_ ⇒ terminate))
   }
 
   "Process.switch " should " allow to mix selectors and events from aggregates" in {
     switch(_.
-      from(Account.Id(1)).event((e: Opened) ⇒ noop).
-      on(selectorClosed)(_ ⇒ noop).
-      from(Transaction.Id(1)).event((e: Created) ⇒ terminate).
-      on(selectorOpened)(_ ⇒ terminate))
+      from(Account.Id(1)).on[Opened].execute(_ ⇒ noop).
+      on(selectorClosed).execute(_ ⇒ noop).
+      from(Transaction.Id(1)).on[Created].execute(_ ⇒ terminate).
+      on(selectorOpened).execute(_ ⇒ terminate))
   }
-}
-
-//TODO delete
-object Experiments {
-  val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-  val selectorBlocked = AggregateEventSelector(Account)(Account.Id(1))[Blocked]
-  def sel[S <: EventSelector.WithEventType](s: S)(implicit selector: EventSelector[S]) = selector
-  val b = sel(selectorOpened).castEvent(???)
-  println(b.owner)
-
-  val process = new Process(AccountProcessing)
-  import process.Syntax._
-
-  val tid = Transaction.Id(1)
-  val x = for {
-    tx ← from(tid).await[Created]
-    _ ← on(tx.from)
-      .execute(BlockFunds(tid, tx.amount)) {
-        _.catching[InsufficientFunds](_ ⇒ terminate).
-          catching[NotOpen](_ ⇒ terminate)
-      }
-
-    _ ← switch(_.
-      on(selectorOpened)(_ ⇒ noop).
-      on(selectorBlocked)(t ⇒
-        on(t.by).execute(Confirm()) {
-          _.catching[AlreadyCanceled](_ ⇒ terminate).
-            catching[DoesNotExist](_ ⇒ terminate)
-        }))
-
-    _ ← from(tx.from).await[Blocked]
-    _ ← on(tid).execute(Confirm()) {
-      _.catching[AlreadyCanceled](_ ⇒ terminate).
-        catching[DoesNotExist](_ ⇒ terminate)
-    }
-  } yield ()
-
-  //TODO how to access event metadata
-  //TODO all syntax?
-
 }

@@ -89,16 +89,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
     final class SwitchBuilder[A <: HList] private[Syntax] (paths: A) {
       /** Await an event using a selector. The event must be from this bounded context. */
-      def on[S <: WithEventType: EventSelector: ValidSelector, R](selector: S)(body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S] :: A] = {
-        def s = selector
-        val path = new SwitchPath {
-          type Selector = S
-          val selector = s
-          type Result = R
-          def effect(event: Event) = body(event)
-        }
-        new SwitchBuilder(path :: paths)
-      }
+      def on[S <: WithEventType: EventSelector: ValidSelector](selector: S) = new OnBuilder(selector)
 
       /** Await event from a specific aggregate. */
       def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
@@ -110,11 +101,33 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
       private[Syntax] def collect: A = paths
 
+      final class OnBuilder[S <: WithEventType: EventSelector: ValidSelector] private[SwitchBuilder] (selector: S) {
+        /** This is a flatMap */
+        def execute[R](body: S#Event ⇒ ProcessMonad[R]) = flatMap(body)
+
+        def map[R](f: S#Event ⇒ R) = flatMap(f.andThen(Monad[ProcessMonad].pure))
+
+        def event = map(identity)
+
+        /** Terminate the process if the event occurs. */
+        def terminate = flatMap(_ ⇒ Syntax.terminate)
+
+        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S] :: A] = {
+          val path = new SwitchPath {
+            type Selector = S
+            val selector = OnBuilder.this.selector
+            type Result = R
+            def effect(event: Event) = body(event)
+          }
+          new SwitchBuilder(path :: paths)
+        }
+      }
+
       final class FromAggregateBuilder[A <: Aggregate] private[SwitchBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def event[E <: A#Event: AggregateEventType, R](body: E ⇒ ProcessMonad[R])(implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+        def on[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          SwitchBuilder.this.on(selector)(body)
+          SwitchBuilder.this.on(selector)
         }
       }
     }
