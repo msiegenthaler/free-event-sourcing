@@ -195,4 +195,30 @@ class ProcessTests extends FlatSpec with Matchers {
       on(selectorOpened).event)
     "r : ProcessMonad[Opened :+: Created :+: Closed :+: Unit :+: CNil]" should compile
   }
+
+  "Process.switchUnified " should " accept a single selector and return the event type" in {
+    val r = switchUnified(_.
+      on(selectorOpened).event)
+    "r : ProcessMonad[Opened]" should compile
+  }
+
+  "Process.switchUnified " should " accept a single selector with a map and return the result type of the map" in {
+    val r = switchUnified(_.
+      on(selectorOpened).map(_.owner))
+    "r : ProcessMonad[String]" should compile
+  }
+
+  "Process.switchUnified " should " accept a two selector and return the base type of the event type" in {
+    val r = switchUnified(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event)
+    "r : ProcessMonad[Account.Event with Product with Serializable]" should compile
+  }
+
+  "Process.switchUnified " should " accept a two selector mapping to the same type and return this type" in {
+    val r = switchUnified(_.
+      on(selectorOpened).map(_ ⇒ "hi").
+      on(selectorClosed).map(_ ⇒ "there"))
+    "r : ProcessMonad[String]" should compile
+  }
 }

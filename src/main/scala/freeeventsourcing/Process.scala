@@ -75,6 +75,10 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         .flatMap(e ⇒ switch.effectFor(paths)(e))
     }
 
+    /** Wait for multiple events and run the path of the first event. */
+    def switchUnified[Paths <: HList, R <: Coproduct](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit s: Switch.Aux[Paths, R], u: Unifier[R]) =
+      switch(b).map(r ⇒ u(r))
+
     /** Terminate this process instance. */
     def terminate = Free.liftF[ProcessAction, Unit](End())
 
@@ -167,7 +171,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       def alternatives(paths: Paths): A
     }
     object Switch {
-      def apply[Paths <: HList](paths: Paths)(implicit switch: Switch[Paths]) = switch.alternatives(paths)
+      type Aux[P <: HList, R <: Coproduct] = Switch[P] { type Result = R }
 
       import Alternatives.Alternative
 
