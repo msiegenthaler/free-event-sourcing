@@ -6,6 +6,7 @@ scalaVersion := "2.11.8"
 scalacOptions += "-feature"
 scalacOptions += "-unchecked"
 scalacOptions += "-deprecation"
+javacOptions in Compile ++= Seq("-source", "1.8", "-target", "1.8")
 
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
