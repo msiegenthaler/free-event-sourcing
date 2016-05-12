@@ -36,11 +36,116 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   object Syntax {
     import ProcessAction._
 
+    /** Await an event using a selector. The event must be from this bounded context. */
+    def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
+      Free.liftF[ProcessAction, S#Event](AwaitEvent(selector))
+
+    /** Send commands to a specific aggregate. */
+    def on[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+      val aggregateType = afi.aggregate(boundedContext.aggregates)
+      new OnAggregateBuilder[afi.Out](aggregateType, aggregate)
+    }
+
+    /** Await events from a specific aggregate. */
+    def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+      val aggregateType = afi.aggregate(boundedContext.aggregates)
+      new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
+    }
+
+    /** Wait until the specified date/time. If the time has already passed it will still be called. */
+    def waitUntil(when: Instant) =
+      Free.liftF[ProcessAction, Unit](WaitUntil(when))
+
+    /** Gets the matching event that occurs first. This variant returns a coproduct over the resulting events. */
+    def awaitFirst[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A]): ProcessMonad[A#Events] = {
+      val initial = new AwaitFirstBuilder[Alternatives.No](Alternatives.No)
+      val await = FirstOf(b(initial).collect)
+      Free.liftF[ProcessAction, A#Events](await)
+    }
+
+    /** Gets the matching event that occurs first. This variant returns the common base type of the events. */
+    def awaitFirstUnified[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A])(implicit u: Unifier[A#Events]) =
+      awaitFirst(b).map(_.unify)
+
+    /** Wait for multiple events and run the path of the first event. */
     def switch[Paths <: HList](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[switch.Result] = {
       val paths = b(new SwitchBuilder(HNil)).collect
       val alternatives = switch.alternatives(paths)
       Free.liftF[ProcessAction, alternatives.Events](FirstOf(alternatives))
         .flatMap(e ⇒ switch.effectFor(paths)(e))
+    }
+
+    /** Terminate this process instance. */
+    def terminate = Free.liftF[ProcessAction, Unit](End())
+
+    /** Does nothing. */
+    def noop = Monad[Free[ProcessAction, ?]].pure(())
+
+    /** Helper class for awaitFirst */
+    final class AwaitFirstBuilder[A <: Alternatives] private[Syntax] (alternatives: A) {
+      import Alternatives.Alternative
+
+      /** Await an event using a selector. The event must be from this bounded context. */
+      def event[S <: WithEventType: EventSelector: ValidSelector](selector: S): AwaitFirstBuilder[S#Event Alternative A] = {
+        val a2 = Alternative(AwaitEvent(selector), alternatives)
+        new AwaitFirstBuilder(a2)
+      }
+
+      /** Await event from a specific aggregate. */
+      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+        val aggregateType = afi.aggregate(boundedContext.aggregates)
+        new FirstOfFromAggregateBuilder[afi.Out](aggregateType, aggregate)
+      }
+
+      private[Syntax] def collect = alternatives
+
+      final class FirstOfFromAggregateBuilder[A <: Aggregate] private[AwaitFirstBuilder] (aggregateType: A, aggregate: A#Id) {
+        /** Await an event from the aggregate. */
+        def event[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+          val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
+          AwaitFirstBuilder.this.event(selector)
+        }
+      }
+    }
+
+    /** Helper class for on. */
+    final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
+      /** Execute a command on the aggregate. */
+      def execute[R <: Coproduct](command: A#Command)(
+        catches: CommandErrorHandler.EmptyBuilder[command.Error] ⇒ CommandErrorHandler.Builder[command.Error, R]
+      )(implicit ev: ValidAggregate[A], ev2: AllErrorsHandled[R]) = {
+        val builder = CommandErrorHandler.builder[command.Error]
+        val errorHandler = catches(builder).errorHandler
+        Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command, errorHandler))
+      }
+    }
+
+    /** Helper class for from. */
+    final class FromAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
+      /** Await an event from the aggregate. */
+      def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+        val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
+        Syntax.await(selector)
+      }
+    }
+
+    /** Helper class for execute. */
+    type CommandErrorHandler[Error <: Coproduct] = Error ⇒ ProcessMonad[Unit]
+    object CommandErrorHandler {
+      private[Syntax] def builder[E <: Coproduct]() = new Builder[E, E](e ⇒
+        throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
+          "handle all cases. Should have been prevented by the compiler"))
+
+      type EmptyBuilder[E <: Coproduct] = Builder[E, E]
+
+      final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (handled: CommandErrorHandler[All]) {
+        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
+          new Builder[All, ev.Rest](error ⇒ s(error).map(handler).getOrElse(handled(error)))
+        }
+
+        /** Return the fully constructed error handler. Can only be called if all cases have been handled */
+        private[Syntax] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
+      }
     }
 
     sealed trait SwitchPath {
@@ -129,110 +234,6 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
           SwitchBuilder.this.on(selector)
         }
-      }
-    }
-
-    /** Await an event using a selector. The event must be from this bounded context. */
-    def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
-      Free.liftF[ProcessAction, S#Event](AwaitEvent(selector))
-
-    /** Send commands to a specific aggregate. */
-    def on[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-      val aggregateType = afi.aggregate(boundedContext.aggregates)
-      new OnAggregateBuilder[afi.Out](aggregateType, aggregate)
-    }
-
-    /** Await events from a specific aggregate. */
-    def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-      val aggregateType = afi.aggregate(boundedContext.aggregates)
-      new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
-    }
-
-    /** Wait until the specified date/time. If the time has already passed it will still be called. */
-    def waitUntil(when: Instant) =
-      Free.liftF[ProcessAction, Unit](WaitUntil(when))
-
-    /** Gets the matching event that occurs first. This variant returns a coproduct over the resulting events. */
-    def awaitFirst[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A]): ProcessMonad[A#Events] = {
-      val initial = new AwaitFirstBuilder[Alternatives.No](Alternatives.No)
-      val await = FirstOf(b(initial).collect)
-      Free.liftF[ProcessAction, A#Events](await)
-    }
-
-    /** Gets the matching event that occurs first. This variant returns the common base type of the events. */
-    def awaitFirstUnified[A <: Alternatives](b: AwaitFirstBuilder[Alternatives.No] ⇒ AwaitFirstBuilder[A])(implicit u: Unifier[A#Events]) =
-      awaitFirst(b).map(_.unify)
-
-    /** Terminate this process instance. */
-    def terminate = Free.liftF[ProcessAction, Unit](End())
-
-    /** Does nothing. */
-    def noop = Monad[Free[ProcessAction, ?]].pure(())
-
-    /** Helper class for awaitFirst */
-    final class AwaitFirstBuilder[A <: Alternatives] private[Syntax] (alternatives: A) {
-      import Alternatives.Alternative
-
-      /** Await an event using a selector. The event must be from this bounded context. */
-      def event[S <: WithEventType: EventSelector: ValidSelector](selector: S): AwaitFirstBuilder[S#Event Alternative A] = {
-        val a2 = Alternative(AwaitEvent(selector), alternatives)
-        new AwaitFirstBuilder(a2)
-      }
-
-      /** Await event from a specific aggregate. */
-      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-        val aggregateType = afi.aggregate(boundedContext.aggregates)
-        new FirstOfFromAggregateBuilder[afi.Out](aggregateType, aggregate)
-      }
-
-      private[Syntax] def collect = alternatives
-
-      final class FirstOfFromAggregateBuilder[A <: Aggregate] private[AwaitFirstBuilder] (aggregateType: A, aggregate: A#Id) {
-        /** Await an event from the aggregate. */
-        def event[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
-          val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          AwaitFirstBuilder.this.event(selector)
-        }
-      }
-    }
-
-    /** Helper class for on. */
-    final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
-      /** Execute a command on the aggregate. */
-      def execute[R <: Coproduct](command: A#Command)(
-        catches: CommandErrorHandler.EmptyBuilder[command.Error] ⇒ CommandErrorHandler.Builder[command.Error, R]
-      )(implicit ev: ValidAggregate[A], ev2: AllErrorsHandled[R]) = {
-        val builder = CommandErrorHandler.builder[command.Error]
-        val errorHandler = catches(builder).errorHandler
-        Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command, errorHandler))
-      }
-    }
-
-    /** Helper class for from. */
-    final class FromAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
-      /** Await an event from the aggregate. */
-      def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
-        val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-        Syntax.await(selector)
-      }
-    }
-
-    /** Helper class for execute. */
-    type CommandErrorHandler[Error <: Coproduct] = Error ⇒ ProcessMonad[Unit]
-    object CommandErrorHandler {
-      private[Syntax] def builder[E <: Coproduct]() = new Builder[E, E](e ⇒
-        throw new AssertionError("Error in CommandErrorHandler, type was constructed that does not " +
-          "handle all cases. Should have been prevented by the compiler"))
-
-      type EmptyBuilder[E <: Coproduct] = Builder[E, E]
-
-      final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (handled: CommandErrorHandler[All]) {
-        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: CPSelector[All, E]) = {
-          new Builder[All, ev.Rest](error ⇒ s(error).map(handler).getOrElse(handled(error)))
-        }
-
-        /** Return the fully constructed error handler. Can only be called if all cases have been handled */
-        private[Syntax] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
       }
     }
   }
