@@ -136,14 +136,17 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
       Free.liftF[ProcessAction, S#Event](AwaitEvent(selector))
 
-    /** Actions (execution and await) regarding a specific aggregate. */
+    /** Send commands to a specific aggregate. */
     def on[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
       val aggregateType = afi.aggregate(boundedContext.aggregates)
       new OnAggregateBuilder[afi.Out](aggregateType, aggregate)
     }
 
-    /** Alias for 'on'. */
-    def from[Id, A](id: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = on(id)
+    /** Await events from a specific aggregate. */
+    def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
+      val aggregateType = afi.aggregate(boundedContext.aggregates)
+      new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
+    }
 
     /** Wait until the specified date/time. If the time has already passed it will still be called. */
     def waitUntil(when: Instant) =
@@ -193,7 +196,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       }
     }
 
-    /** Helper class for on/from. */
+    /** Helper class for on. */
     final class OnAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
       /** Execute a command on the aggregate. */
       def execute[R <: Coproduct](command: A#Command)(
@@ -203,7 +206,10 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         val errorHandler = catches(builder).errorHandler
         Free.liftF[ProcessAction, Unit](Execute(aggregateType, aggregate, command, errorHandler))
       }
+    }
 
+    /** Helper class for from. */
+    final class FromAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
       def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]

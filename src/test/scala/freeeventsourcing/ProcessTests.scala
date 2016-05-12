@@ -49,7 +49,7 @@ class ProcessTests extends FlatSpec with Matchers {
 
   "Process " should " have a nice syntax to wait for events from aggregates " in {
     val account1 = Account.Id(1)
-    val r = on(account1).await[Opened]
+    val r = from(account1).await[Opened]
     r shouldBe await(AggregateEventSelector(Account)(account1)[Opened])
   }
 
