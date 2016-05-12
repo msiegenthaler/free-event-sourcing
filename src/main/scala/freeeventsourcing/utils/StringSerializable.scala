@@ -14,7 +14,7 @@ import scala.util.Try
   def parseFromString(serialized: String): Option[A]
 }
 
-object StringSerializable { // extends LabelledTypeClassCompanion[StringSerializable] {
+object StringSerializable {
   implicit def stringStringSerializable = new StringSerializable[String] {
     def serializeToString(value: String) = value
     def parseFromString(serialized: String) = Some(serialized)
