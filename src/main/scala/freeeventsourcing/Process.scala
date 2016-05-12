@@ -36,18 +36,19 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
   object Syntax {
     import ProcessAction._
 
-    def switch[Paths <: HList](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[Unit] = {
+    def switch[Paths <: HList](b: SwitchBuilder[HNil] ⇒ SwitchBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[switch.Result] = {
       val paths = b(new SwitchBuilder(HNil)).collect
       val alternatives = switch.alternatives(paths)
       Free.liftF[ProcessAction, alternatives.Events](FirstOf(alternatives))
-        .flatMap(switch.effectFor(paths))
+        .flatMap(e ⇒ switch.effectFor(paths)(e))
     }
 
     sealed trait SwitchPath {
       type Selector <: WithEventType
       type Event = Selector#Event
+      type Result
       val selector: Selector
-      def effect(event: Selector#Event): ProcessMonad[Unit]
+      def effect(event: Selector#Event): ProcessMonad[Result]
     }
     object SwitchPath {
       type Aux[S <: WithEventType] = SwitchPath { type Selector = S }
@@ -56,7 +57,8 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     sealed trait Switch[Paths <: HList] {
       type A <: Alternatives
       type Events <: Coproduct
-      def effectFor(paths: Paths)(event: A#Events): ProcessMonad[Unit]
+      type Result <: Coproduct
+      def effectFor(paths: Paths)(event: A#Events): ProcessMonad[Result]
       def alternatives(paths: Paths): A
     }
     object Switch {
@@ -67,28 +69,32 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
       implicit def end = new Switch[HNil] {
         type A = Alternatives.No
         type Events = CNil
-        def effectFor(paths: HNil)(event: CNil) = noop
+        type Result = CNil
+        def effectFor(paths: HNil)(event: CNil) = throw new AssertionError("Cannot be reached, the compiler is supposed to prevent that")
         def alternatives(paths: HNil) = Alternatives.No
       }
       implicit def head[S <: WithEventType: EventSelector: ValidSelector, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[S] :: T] {
         type A = S#Event Alternative t.A
-        type Events = SwitchPath.Aux[S]#Event :+: t.Events
-        def effectFor(paths: SwitchPath.Aux[S] :: T)(event: A#Events) = event match {
-          case Inl(myEvent)    ⇒ paths.head.effect(myEvent)
-          case Inr(otherEvent) ⇒ t.effectFor(paths.tail)(otherEvent)
+        type P = SwitchPath.Aux[S]
+        type Events = P#Event :+: t.Events
+        type Result = P#Result :+: t.Result
+        def effectFor(paths: P :: T)(event: A#Events) = event match {
+          case Inl(myEvent)    ⇒ paths.head.effect(myEvent).map(Inl(_))
+          case Inr(otherEvent) ⇒ t.effectFor(paths.tail)(otherEvent).map(Inr(_))
         }
-        def alternatives(paths: SwitchPath.Aux[S] :: T) =
+        def alternatives(paths: P :: T) =
           Alternative(AwaitEvent(paths.head.selector), t.alternatives(paths.tail))
       }
     }
 
     final class SwitchBuilder[A <: HList] private[Syntax] (paths: A) {
-      def on[S <: WithEventType: EventSelector: ValidSelector](selector: S)(body: S#Event ⇒ ProcessMonad[_]): SwitchBuilder[SwitchPath.Aux[S] :: A] = {
+      def on[S <: WithEventType: EventSelector: ValidSelector, R](selector: S)(body: S#Event ⇒ ProcessMonad[R]): SwitchBuilder[SwitchPath.Aux[S] :: A] = {
         def s = selector
         val path = new SwitchPath {
           type Selector = S
           val selector = s
-          def effect(event: Event) = body(event).map(_ ⇒ ())
+          type Result = R
+          def effect(event: Event) = body(event)
         }
         new SwitchBuilder(path :: paths)
       }
