@@ -1,8 +1,10 @@
 package freeeventsourcing
 
+import java.time.Instant
+import cats.Monad
 import cats.data.Xor
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ ::, CNil, HNil, :+: }
+import shapeless.{ :+:, ::, CNil, HNil }
 import freeeventsourcing.accountprocessing.Account.Command.{ BlockFunds, Open }
 import freeeventsourcing.accountprocessing.Account.Error.{ AlreadyOpen, InsufficientFunds, NotOpen }
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
@@ -182,5 +184,25 @@ class ProcessTests extends FlatSpec with Matchers {
       on(selectorOpened).map(_ ⇒ "hi").
       on(selectorClosed).map(_ ⇒ "there"))
     "r : ProcessMonad[String]" should compile
+  }
+
+  "Process.firstOf " should " accept a timeout" in {
+    val r = firstOf(_.
+      timeout(Instant.now)(terminate))
+    "r : ProcessMonad[Unit :+: CNil]" should compile
+  }
+
+  "Process.firstOf " should " accept a timeout and a selector" in {
+    val r = firstOf(_.
+      on(selectorClosed).event.
+      timeout(Instant.now)(terminate))
+    "r : ProcessMonad[Unit :+: Closed :+: CNil]" should compile
+  }
+
+  "Process.firstOf " should " accept a timeout that returns a value and a selector" in {
+    val r = firstOf(_.
+      on(selectorClosed).event.
+      timeout(Instant.now)(Monad[ProcessMonad].pure("timeout")))
+    "r : ProcessMonad[String :+: Closed :+: CNil]" should compile
   }
 }

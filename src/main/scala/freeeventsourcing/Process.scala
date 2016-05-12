@@ -116,14 +116,13 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
     /** Option inside a firstOf. */
     sealed trait SwitchPath {
-      type Selector <: WithEventType
-      type Event = Selector#Event
+      type Event
       type Result
-      val selector: Selector
-      def effect(event: Selector#Event): ProcessMonad[Result]
+      val action: Await[Event]
+      def effect(event: Event): ProcessMonad[Result]
     }
     object SwitchPath {
-      type Aux[S <: WithEventType, R] = SwitchPath { type Selector = S; type Result = R }
+      type Aux[E, R] = SwitchPath { type Event = E; type Result = R }
     }
     /** All options of a firstOf. */
     sealed trait Switch[Paths <: HList] {
@@ -145,9 +144,9 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         def effectFor(paths: HNil)(event: CNil) = throw new AssertionError("Cannot be reached, the compiler is supposed to prevent that")
         def alternatives(paths: HNil) = Alternatives.No
       }
-      implicit def head[S <: WithEventType: EventSelector: ValidSelector, R, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[S, R] :: T] {
-        type A = S#Event Alternative t.A
-        type P = SwitchPath.Aux[S, R]
+      implicit def head[E, R, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[E, R] :: T] {
+        type A = E Alternative t.A
+        type P = SwitchPath.Aux[E, R]
         type Events = P#Event :+: t.Events
         type Result = P#Result :+: t.Result
         def effectFor(paths: P :: T)(event: A#Events) = event match {
@@ -155,7 +154,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
           case Inr(otherEvent) ⇒ t.effectFor(paths.tail)(otherEvent).map(Inr(_))
         }
         def alternatives(paths: P :: T) =
-          Alternative(AwaitEvent(paths.head.selector), t.alternatives(paths.tail))
+          Alternative(paths.head.action, t.alternatives(paths.tail))
       }
     }
 
@@ -169,7 +168,17 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
       }
 
-      //TODO after time
+      /** Wait until the specified instant, then return unit. */
+      def timeout[R](when: Instant)(thenDo: ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[Unit, R] :: A] = {
+        val path = new SwitchPath {
+          type Event = Unit
+          type Result = R
+          val action = WaitUntil(when)
+          def effect(event: Unit) = thenDo
+
+        }
+        new FirstOfBuilder(path :: paths)
+      }
 
       private[Syntax] def collect: A = paths
 
@@ -184,11 +193,11 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
         /** Terminate the process if the event occurs. */
         def terminate = flatMap(_ ⇒ Syntax.terminate)
 
-        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[S, R] :: A] = {
+        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[S#Event, R] :: A] = {
           val path = new SwitchPath {
-            type Selector = S
-            val selector = OnBuilder.this.selector
+            type Event = S#Event
             type Result = R
+            val action = AwaitEvent(OnBuilder.this.selector)
             def effect(event: Event) = body(event)
           }
           new FirstOfBuilder(path :: paths)
