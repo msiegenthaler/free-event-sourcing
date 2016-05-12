@@ -1,0 +1,25 @@
+language: scala
+scala:
+   - 2.11.8
+
+script: "sbt ++$TRAVIS_SCALA_VERSION coverage test"
+after_success:
+   - "sbt ++$TRAVIS_SCALA_VERSION coverageReport coveralls"
+   - "bash <(curl -s https://codecov.io/bash)"
+
+jdk:
+  - oraclejdk8
+
+# Use container-based infrastructure
+sudo: false
+
+cache:
+  directories:
+  - $HOME/.sbt/0.13/dependency
+  - $HOME/.sbt/boot/scala*
+  - $HOME/.sbt/launchers
+  - $HOME/.ivy2/cache
+
+before_cache:
+  - find $HOME/.sbt -name "*.lock" -type f -delete
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete
