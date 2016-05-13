@@ -1,8 +1,10 @@
 package freeeventsourcing
 
+import java.time.Instant
+import cats.Monad
 import cats.data.Xor
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ ::, CNil, HNil }
+import shapeless.{ :+:, ::, CNil, HNil }
 import freeeventsourcing.accountprocessing.Account.Command.{ BlockFunds, Open }
 import freeeventsourcing.accountprocessing.Account.Error.{ AlreadyOpen, InsufficientFunds, NotOpen }
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
@@ -49,7 +51,7 @@ class ProcessTests extends FlatSpec with Matchers {
 
   "Process " should " have a nice syntax to wait for events from aggregates " in {
     val account1 = Account.Id(1)
-    val r = on(account1).await[Opened]
+    val r = from(account1).await[Opened]
     r shouldBe await(AggregateEventSelector(Account)(account1)[Opened])
   }
 
@@ -101,81 +103,106 @@ class ProcessTests extends FlatSpec with Matchers {
     }""" should compile
   }
 
-  "Process.awaitFirstUnified " should " reject an empty selector" in {
-    "awaitFirstUnified(identity)" shouldNot compile
+  "Process.firstOf " should " accept a single selector with an execute (flatMap)" in {
+    val r = firstOf(_.
+      on(selectorOpened).execute((e: Opened) ⇒ terminate))
+    "r : ProcessMonad[Unit :+: CNil]" should compile
+
+    val r2 = firstOf(_.
+      on(selectorOpened).flatMap((e: Opened) ⇒ terminate))
+    "r2 : ProcessMonad[Unit :+: CNil]" should compile
   }
 
-  "Process.awaitFirstUnified " should " accept a single selector and return the event type of the selector" in {
-    val a: ProcessMonad[Opened] = awaitFirstUnified(_.event(selectorOpened))
+  "Process.firstOf " should " accept a single selector with a map" in {
+    val r = firstOf(_.
+      on(selectorOpened).map(_.owner))
+    "r : ProcessMonad[String :+: CNil]" should compile
   }
 
-  "Process.awaitFirstUnified " should " accept an event from an aggregate and return the event type" in {
-    val a: ProcessMonad[Opened] = awaitFirstUnified(_.from(Account.Id(1)).event[Opened])
+  "Process.firstOf " should " accept a single selector that returns the event" in {
+    val r = firstOf(_.
+      on(selectorOpened).event)
+    "r : ProcessMonad[Opened :+: CNil]" should compile
   }
 
-  "Process.awaitFirstUnified " should " accept two selectors from the same aggregate and unify that to the aggregates event type" in {
-    val a: ProcessMonad[Account.Event with Product with Serializable] = awaitFirstUnified(_.
-      event(selectorOpened).
-      event(selectorClosed))
+  "Process.firstOf " should " accept a single selector that terminates the process" in {
+    val r = firstOf(_.
+      on(selectorOpened).terminate)
+    "r : ProcessMonad[Unit :+: CNil]" should compile
   }
 
-  "Process.awaitFirstUnified " should " accept two events from the same aggregate and unify that to the aggregates event type" in {
-    val a: ProcessMonad[Account.Event with Product with Serializable] = awaitFirstUnified(_.
-      from(Account.Id(1)).event[Opened].
-      from(Account.Id(1)).event[Closed])
+  "Process.firstOf " should " accept two selectors" in {
+    val r = firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event)
+    "r : ProcessMonad[Closed :+: Opened :+: CNil]" should compile
   }
 
-  "Process.awaitFirstUnified " should " accept three selectors with no common class and unify that to Product with Serializable" in {
-    val a: Product with Serializable = awaitFirstUnified(_.
-      event(selectorOpened).
-      event(selectorClosed).
-      event(selectorCreated))
+  "Process.firstOf " should " accept a single event from an aggregate" in {
+    val r = firstOf(_.
+      from(Account.Id(1)).on[Opened].event)
+    "r : ProcessMonad[Opened :+: CNil]" should compile
   }
 
-  "Process.awaitFirstUnified " should " accept events from different aggregates and unify that to Product with Serializable" in {
-    val a: Product with Serializable = awaitFirstUnified(_.
-      from(Account.Id(1)).event[Opened].
-      from(Account.Id(1)).event[Closed].
-      from(Transaction.Id(1)).event[Created])
+  "Process.firstOf " should " accept a two event from different aggregates" in {
+    val r = firstOf(_.
+      from(Account.Id(1)).on[Opened].event.
+      from(Transaction.Id(1)).on[Created].event)
+    "r : ProcessMonad[Created :+: Opened :+: CNil]" should compile
   }
-}
 
-//TODO delete
-object Experiments {
-  val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-  val selectorBlocked = AggregateEventSelector(Account)(Account.Id(1))[Blocked]
-  def sel[S <: EventSelector.WithEventType](s: S)(implicit selector: EventSelector[S]) = selector
-  val b = sel(selectorOpened).castEvent(???)
-  println(b.owner)
+  "Process.firstOf " should " allow to mix selectors and events from aggregates" in {
+    val r = firstOf(_.
+      from(Account.Id(1)).on[Opened].terminate.
+      on(selectorClosed).event.
+      from(Transaction.Id(1)).on[Created].event.
+      on(selectorOpened).event)
+    "r : ProcessMonad[Opened :+: Created :+: Closed :+: Unit :+: CNil]" should compile
+  }
 
-  val process = new Process(AccountProcessing)
-  import process.Syntax._
+  "Process.firstOfUnified " should " accept a single selector and return the event type" in {
+    val r = firstOfUnified(_.
+      on(selectorOpened).event)
+    "r : ProcessMonad[Opened]" should compile
+  }
 
-  val tid = Transaction.Id(1)
-  val x = for {
-    tx ← from(tid).await[Created]
-    _ ← on(tx.from)
-      .execute(BlockFunds(tid, tx.amount)) {
-        _.catching[InsufficientFunds](_ ⇒ terminate).
-          catching[NotOpen](_ ⇒ terminate)
-      }
+  "Process.firstOfUnified " should " accept a single selector with a map and return the result type of the map" in {
+    val r = firstOfUnified(_.
+      on(selectorOpened).map(_.owner))
+    "r : ProcessMonad[String]" should compile
+  }
 
-    _ ← switch(_.
-      on(selectorOpened)(_ ⇒ noop).
-      on(selectorBlocked)(t ⇒
-        on(t.by).execute(Confirm()) {
-          _.catching[AlreadyCanceled](_ ⇒ terminate).
-            catching[DoesNotExist](_ ⇒ terminate)
-        }))
+  "Process.firstOfUnified " should " accept a two selector and return the base type of the event type" in {
+    val r = firstOfUnified(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event)
+    "r : ProcessMonad[Account.Event with Product with Serializable]" should compile
+  }
 
-    _ ← from(tx.from).await[Blocked]
-    _ ← on(tid).execute(Confirm()) {
-      _.catching[AlreadyCanceled](_ ⇒ terminate).
-        catching[DoesNotExist](_ ⇒ terminate)
-    }
-  } yield ()
+  "Process.firstOfUnified " should " accept a two selector mapping to the same type and return this type" in {
+    val r = firstOfUnified(_.
+      on(selectorOpened).map(_ ⇒ "hi").
+      on(selectorClosed).map(_ ⇒ "there"))
+    "r : ProcessMonad[String]" should compile
+  }
 
-  //TODO how to access event metadata
-  //TODO all syntax?
+  "Process.firstOf " should " accept a timeout" in {
+    val r = firstOf(_.
+      timeout(Instant.now)(terminate))
+    "r : ProcessMonad[Unit :+: CNil]" should compile
+  }
 
+  "Process.firstOf " should " accept a timeout and a selector" in {
+    val r = firstOf(_.
+      on(selectorClosed).event.
+      timeout(Instant.now)(terminate))
+    "r : ProcessMonad[Unit :+: Closed :+: CNil]" should compile
+  }
+
+  "Process.firstOf " should " accept a timeout that returns a value and a selector" in {
+    val r = firstOf(_.
+      on(selectorClosed).event.
+      timeout(Instant.now)(Monad[ProcessMonad].pure("timeout")))
+    "r : ProcessMonad[String :+: Closed :+: CNil]" should compile
+  }
 }
