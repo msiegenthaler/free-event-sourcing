@@ -6,6 +6,7 @@ script: "sbt ++$TRAVIS_SCALA_VERSION coverage test"
 after_success:
    - "sbt ++$TRAVIS_SCALA_VERSION coverageReport coveralls"
    - "bash <(curl -s https://codecov.io/bash)"
+   - "sbt ++$TRAVIS_SCALA_VERSION versioneye:updateProject"
 
 jdk:
   - oraclejdk8
