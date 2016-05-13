@@ -2,16 +2,14 @@ package freeeventsourcing
 
 import java.time.Instant
 import cats.Monad
-import cats.data.Xor
-import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ :+:, ::, CNil, HNil }
 import freeeventsourcing.accountprocessing.Account.Command.{ BlockFunds, Open }
-import freeeventsourcing.accountprocessing.Account.Error.{ AlreadyOpen, InsufficientFunds, NotOpen }
-import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
-import freeeventsourcing.accountprocessing.Account.Event.{ Blocked, Closed, Opened }
-import freeeventsourcing.accountprocessing.Transaction.Command.Confirm
-import freeeventsourcing.accountprocessing.Transaction.Error.{ AlreadyCanceled, DoesNotExist }
+import freeeventsourcing.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen, AlreadyOpen }
+import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
+import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
+import freeeventsourcing.syntax.ProcessSyntax
+import org.scalatest.{ FlatSpec, Matchers }
+import shapeless.{ CNil, :+: }
 
 class ProcessTests extends FlatSpec with Matchers {
   object TestAggregate extends Aggregate {
@@ -34,15 +32,13 @@ class ProcessTests extends FlatSpec with Matchers {
   val selectorCreated = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
   val selectorMyEvent = AggregateEventSelector(TestAggregate)(TestAggregate.Id(1))[TestAggregate.Event.MyEvent]
 
-  val process = new Process(AccountProcessing)
-  import process.ProcessAction._
-  import process.ProcessMonad
-  import process.Syntax._
+  val process = new ProcessSyntax(AccountProcessing)
+  import process._
 
   "Process " should " allow selector for aggregate in the same bounded context" in {
-    "AwaitEvent(selectorOpened)" should compile
-    "AwaitEvent(selectorClosed)" should compile
-    "AwaitEvent(selectorCreated)" should compile
+    //    "AwaitEvent[AccountProcessing.type, selectorOpened.type](selectorOpened)" should compile
+    //    "AwaitEvent[AccountProcessing.type, selectorClosed.type](selectorClosed)" should compile
+    //    "AwaitEvent[AccountProcessing.type, selectorCreated.type](selectorCreated)" should compile
 
     "await(selectorOpened)" should compile
     "await(selectorClosed)" should compile
@@ -56,17 +52,17 @@ class ProcessTests extends FlatSpec with Matchers {
   }
 
   "Process " should " not allow selector for aggregate not in the same context" in {
-    "AwaitEvent(selectorMyEvent)" shouldNot compile
+    //    "AwaitEvent(selectorMyEvent)" shouldNot compile
     "await(selectorMyEvent)" shouldNot compile
   }
 
   "Process " should " allow commands of aggregates in the same context" in {
-    """Execute[Account.type, Open](Account, Account.Id(1), Open("Mario"), ???)""" should compile
+    //    """Execute[Account.type, Open](Account, Account.Id(1), Open("Mario"), ???)""" should compile
     """on(Account.Id(1)).execute(Open("Mario"))(_.catching[AlreadyOpen](_ ⇒ terminate))""" should compile
   }
 
   "Process " should " not allow commands of aggregates not in the same context" in {
-    """Execute[TestAggregate.type, TestAggregate.Command.MyCommand](TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"), ???)""" shouldNot compile
+    //    """Execute[TestAggregate.type, TestAggregate.Command.MyCommand](TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"), ???)""" shouldNot compile
     """on(TestAggregate.Id(1)).execute(TestAggregate.Command.MyCommand("Mario"))(???)""" shouldNot compile
   }
 
@@ -98,7 +94,9 @@ class ProcessTests extends FlatSpec with Matchers {
 
   "Process " should " allow the implementation to handle errors by the command" in {
     """
-    def execHandler(exec: Execute[Account.type, Open], r: Open#Error Xor Unit): process.ProcessMonad[Unit] = {
+    import cats.data.Xor
+    import freeeventsourcing.Process.ProcessAction.Execute
+    def execHandler(exec: Execute[AccountProcessing.type, Account.type, Open], r: Open#Error Xor Unit): ProcessMonad[Unit] = {
       r.fold(exec.errorHandler.apply, _ ⇒ noop)
     }""" should compile
   }
