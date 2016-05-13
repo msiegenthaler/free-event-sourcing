@@ -5,9 +5,9 @@ import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
 import freeeventsourcing.EventSelector._
-import freeeventsourcing.Process.ProcessAction
-import freeeventsourcing.Process.ProcessAction.Alternatives.Alternative
-import freeeventsourcing.Process.ProcessAction._
+import freeeventsourcing.ProcessAction
+import freeeventsourcing.ProcessAction._
+import freeeventsourcing.ProcessAction.FirstOf.{ Alternatives, Alternative }
 import freeeventsourcing._
 import freeeventsourcing.support.{ AggregateFromId, ValidAggregate }
 import freeeventsourcing.utils.StringSerializable
@@ -121,11 +121,11 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     type Aux[P <: HList, R <: Coproduct] = Switch[P] { type Result = R }
 
     implicit def end = new Switch[HNil] {
-      type A = Alternatives.No[BC]
+      type A = FirstOf.Empty[BC]
       type Events = CNil
       type Result = CNil
       def effectFor(paths: HNil)(event: CNil) = throw new AssertionError("Cannot be reached, the compiler is supposed to prevent that")
-      def alternatives(paths: HNil) = Alternatives.No()
+      def alternatives(paths: HNil) = FirstOf.Empty()
     }
     implicit def head[E, R, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[E, R] :: T] {
       type A = Alternative[BC, E, t.A]
