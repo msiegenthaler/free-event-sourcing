@@ -31,3 +31,10 @@ ScalariformKeys.preferences := ScalariformKeys.preferences.value
   .setPreference(MultilineScaladocCommentsStartOnFirstLine, true)
   .setPreference(RewriteArrowSymbols, true)
   .setPreference(PreserveDanglingCloseParenthesis, true)
+
+
+enablePlugins(VersionEyePlugin)
+propertiesPath in versioneye := ".versioneye.properties"
+baseUrl in versioneye := "https://www.versioneye.com"
+apiPath in versioneye := "/api/v2"
+publishCrossVersion in versioneye := true
