@@ -15,22 +15,22 @@ import scala.util.Try
 }
 
 object StringSerializable {
-  implicit def stringStringSerializable = new StringSerializable[String] {
+  implicit def string = new StringSerializable[String] {
     def serializeToString(value: String) = value
     def parseFromString(serialized: String) = Some(serialized)
   }
 
-  implicit def intStringSerializable = new StringSerializable[Int] {
+  implicit def int = new StringSerializable[Int] {
     def serializeToString(value: Int) = value.toString
     def parseFromString(serialized: String) = Try(serialized.toInt).toOption
   }
 
-  implicit def longStringSerializable = new StringSerializable[Long] {
+  implicit def long = new StringSerializable[Long] {
     def serializeToString(value: Long) = value.toString
     def parseFromString(serialized: String) = Try(serialized.toLong).toOption
   }
 
-  implicit def uuidStringSerializable = new StringSerializable[UUID] {
+  implicit def uuid = new StringSerializable[UUID] {
     def serializeToString(value: UUID) = value.toString
     def parseFromString(serialized: String) = Try(UUID.fromString(serialized)).toOption
   }
