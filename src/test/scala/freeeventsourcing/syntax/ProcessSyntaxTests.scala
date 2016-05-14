@@ -2,7 +2,7 @@ package freeeventsourcing.syntax
 
 import java.time.Instant
 import cats.Monad
-import freeeventsourcing.{ Aggregate, AggregateCommand, AggregateEventSelector }
+import freeeventsourcing.{ Aggregate, AggregateCommand, AggregateEventSelector, ProcessTestSupport }
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -11,11 +11,14 @@ import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ CNil, :+: }
+import shapeless.{ :+:, CNil }
 
 class ProcessSyntaxTests extends FlatSpec with Matchers {
   val process = new ProcessSyntax(AccountProcessing)
   import process._
+
+  val support = new ProcessTestSupport(AccountProcessing)
+  import support._
 
   val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
   val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]
@@ -45,6 +48,12 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.await " should " not allow selector for aggregate not in the same context" in {
     "await(selectorMyEvent)" shouldNot compile
+  }
+
+  "ProcessSyntax.await " should " result in a Await action" in {
+    await(selectorOpened) should runFromWithResult(
+      ExpectAwaitEvent.create(selectorOpened)(Opened("Mario"))
+    )(Opened("Mario"))
   }
 
   "ProcessSyntax " should " have a nice syntax to wait for events from aggregates " in {

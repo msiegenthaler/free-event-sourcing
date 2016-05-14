@@ -36,8 +36,11 @@ class ProcessTests extends FlatSpec with Matchers {
     AwaitEvent[AP, S](selector)
 
   def executeAction[A <: Aggregate, Cmd <: A#Command](
-    aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: Cmd#Error ⇒ ProcessMonad[AP, Unit])(
-      implicit ev: ValidAggregate[AP, A]) = {
+    aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: Cmd#Error ⇒ ProcessMonad[AP, Unit]
+  )(
+    implicit
+    ev: ValidAggregate[AP, A]
+  ) = {
     Execute[AP, A, Cmd](aggregateType, aggregate, command, errorHandler)
   }
 
