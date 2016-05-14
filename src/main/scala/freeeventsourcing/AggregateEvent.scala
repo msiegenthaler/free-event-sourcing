@@ -36,8 +36,8 @@ case class AggregateEventSelector[A <: Aggregate, E <: A#Event](aggregateType: A
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
-  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A, E]] {
-    def castEvent(e: Any) = ???
+  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: Typeable](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A, E]] {
+    def castEvent(e: Any): E = Typeable[E].cast(e).getOrElse(throw new AssertionError("Event type did not match."))
     def asTag(selector: AggregateEventSelector[A, E]) = selector.asTag
   }
 
