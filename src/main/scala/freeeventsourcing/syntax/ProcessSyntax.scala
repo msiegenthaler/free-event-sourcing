@@ -10,8 +10,8 @@ import freeeventsourcing.ProcessAction.FirstOf.{ Alternative, Alternatives }
 import freeeventsourcing.ProcessAction._
 import freeeventsourcing.support.{ AggregateFromId, ValidAggregate }
 import freeeventsourcing.utils.StringSerializable
+import shapeless._
 import shapeless.ops.coproduct.{ Remove, Selector, Unifier }
-import shapeless.{ :+:, ::, CNil, Coproduct, HList, HNil, Inl, Inr }
 
 /** Nice monadic syntax to write processes. */
 class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
@@ -62,7 +62,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
   /////////////////////////////////////////////////////
 
-  private def lift[A](action: ProcessAction[BC, A]) = Free.liftF[ProcessAction[BC, ?], A](action)
+  private[this] def lift[A](action: ProcessAction[BC, A]) = Free.liftF[ProcessAction[BC, ?], A](action)
 
   /** Internas used by the above functions. Need to be public but are not meant to be used directly. */
   object Builders {
