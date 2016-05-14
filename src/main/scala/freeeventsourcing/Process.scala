@@ -4,9 +4,9 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
+import shapeless._
 import shapeless.ops.coproduct.{ Remove, Unifier, Selector ⇒ CPSelector }
 import shapeless.ops.hlist.Selector
-import shapeless.{ :+:, ::, CNil, Coproduct, HList, HNil, Inl, Inr }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.support.AggregateFromId
 import freeeventsourcing.utils.StringSerializable
@@ -89,7 +89,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
     /** Helper class for from. */
     final class FromAggregateBuilder[A <: Aggregate] private[Syntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
-      def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+      def await[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
         Syntax.await(selector)
       }
@@ -206,7 +206,7 @@ class Process[BC <: BoundedContext](boundedContext: BC) {
 
       final class FromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def on[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
+        def on[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[A], idser: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
           FirstOfBuilder.this.on(selector)
         }

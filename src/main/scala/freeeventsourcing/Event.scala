@@ -4,9 +4,8 @@ import scala.language.implicitConversions
 import scala.collection.immutable.Traversable
 import simulacrum.typeclass
 
-trait EventTime {
-  //TODO compareable (before, concurrent, after)
-}
+//TODO add a way to compare (before, concurrent, after)
+trait EventTime
 
 @typeclass trait Event[E] {
   def eventTime(e: E): EventTime

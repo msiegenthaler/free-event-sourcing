@@ -66,7 +66,8 @@ class ProcessTests extends FlatSpec with Matchers {
   }
 
   "Process " should " not allow commands of aggregates not in the same context" in {
-    """Execute[TestAggregate.type, TestAggregate.Command.MyCommand](TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"), ???)""" shouldNot compile
+    """Execute[TestAggregate.type, TestAggregate.Command.MyCommand]
+        (TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"), ???)""".stripMargin shouldNot compile
     """on(TestAggregate.Id(1)).execute(TestAggregate.Command.MyCommand("Mario"))(???)""" shouldNot compile
   }
 
