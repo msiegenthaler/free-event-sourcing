@@ -66,7 +66,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.on().execute " should " have a nice syntax to catch multiple errors on a command" in {
-    on(Account.Id(1)).execute(BlockFunds(Transaction.Id(2), 100)) {
+    on(Account.Id(1)).execute(BlockFunds(Transaction.Id(2), 1)) {
       _.catching[InsufficientFunds](_ ⇒ terminate).
         catching[NotOpen](_ ⇒ terminate)
     }
