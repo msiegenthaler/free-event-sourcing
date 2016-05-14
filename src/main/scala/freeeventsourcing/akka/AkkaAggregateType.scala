@@ -9,7 +9,7 @@ object AkkaAggregateType {
   def props[A <: Aggregate: SupportedAggregate](aggregate: A, ider: A#Id ⇒ String) =
     Props(new ActorImpl[A](aggregate, ider))
 
-  private class ActorImpl[A <: Aggregate](aggregate: A, ider: A#Id ⇒ String)(implicit impl: SupportedAggregate[A]) extends Actor {
+  private[this] class ActorImpl[A <: Aggregate](aggregate: A, ider: A#Id ⇒ String)(implicit impl: SupportedAggregate[A]) extends Actor {
     var aggregates = Map.empty[A#Id, ActorRef].withDefault(createAggregateActor)
 
     def createAggregateActor(id: A#Id) = {
@@ -28,7 +28,7 @@ object AkkaAggregateType {
     }
 
     // Helpers for pattern matching
-    private object Id {
+    private[this] object Id {
       def unapply(a: Any): Option[A#Id] = impl.typeableId.cast(a)
     }
   }

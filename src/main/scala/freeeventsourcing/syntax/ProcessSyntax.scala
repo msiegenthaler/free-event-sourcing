@@ -81,7 +81,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     /** Helper class for from. */
     final class FromAggregateBuilder[A <: Aggregate] private[ProcessSyntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
-      def await[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) = {
+      def await[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
         ProcessSyntax.this.await(selector)
       }
@@ -198,7 +198,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
       final class FromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def on[E <: A#Event: AggregateEventType](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) = {
+        def on[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
           FirstOfBuilder.this.on(selector)
         }

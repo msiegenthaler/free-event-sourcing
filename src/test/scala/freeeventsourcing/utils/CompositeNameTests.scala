@@ -92,7 +92,7 @@ class CompositeNameTests extends FlatSpec with Matchers {
     val ser = name.serialize
     val par = CompositeName.parse(ser)
     par shouldBe Some(name)
-    par.get.serialize shouldBe ser
+    par.map(_.serialize) shouldBe Some(ser)
   }
 
   "CompositeName.toString " should " equal the serialization" in testData.foreach { name ⇒
