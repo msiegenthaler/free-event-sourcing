@@ -28,7 +28,7 @@ object AkkaAggregateType {
     }
 
     // Helpers for pattern matching
-    private object Id {
+    private[this] object Id {
       def unapply(a: Any): Option[A#Id] = impl.typeableId.cast(a)
     }
   }
