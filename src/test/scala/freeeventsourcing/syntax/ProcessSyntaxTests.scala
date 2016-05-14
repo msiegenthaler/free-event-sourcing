@@ -189,4 +189,16 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       timeout(Instant.now)(Monad[ProcessMonad].pure("timeout")))
     "r : ProcessMonad[String :+: Closed :+: CNil]" should compile
   }
+
+  "ProcessSyntax.noop " should " do nothing and return unit" in {
+    "val a: ProcessMonad[Unit] = noop" should compile
+  }
+
+  "ProcessSyntax.terminate " should " end the process and return unit" in {
+    "val a: ProcessMonad[Unit] = terminate" should compile
+  }
+
+  "ProcessSyntax.waitUntil " should " accept a specific time and return unit" in {
+    "val a: ProcessMonad[Unit] = waitUntil(Instant.now)" should compile
+  }
 }
