@@ -1,13 +1,10 @@
 package freeeventsourcing.utils
 
-import java.util.UUID
-
-import shapeless.{ :+:, ::, CNil, Coproduct, Generic, HList, HNil, LabelledTypeClass, LabelledTypeClassCompanion, Lazy }
-
 import scala.language.implicitConversions
-import simulacrum.typeclass
-
+import java.util.UUID
 import scala.util.Try
+import shapeless._
+import simulacrum.typeclass
 
 @typeclass trait StringSerializable[A] { self ⇒
   def serializeToString(value: A): String
