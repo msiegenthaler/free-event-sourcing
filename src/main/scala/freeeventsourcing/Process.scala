@@ -4,9 +4,9 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
+import shapeless._
 import shapeless.ops.coproduct.{ Remove, Unifier, Selector ⇒ CPSelector }
 import shapeless.ops.hlist.Selector
-import shapeless.{ :+:, ::, CNil, Coproduct, HList, HNil, Inl, Inr, Typeable }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.support.AggregateFromId
 import freeeventsourcing.utils.StringSerializable
