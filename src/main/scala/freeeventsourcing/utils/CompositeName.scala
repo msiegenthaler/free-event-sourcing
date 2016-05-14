@@ -39,8 +39,8 @@ object CompositeName {
     }.toOption
   }
 
-  private[this] val separator = "/"
-  private[this] val charset = "UTF-8"
+  private val separator = "/"
+  private val charset = "UTF-8"
   private case class CompositeNameCons(parent: CompositeName, part: String) extends CompositeName {
     def /(part: String) = CompositeNameCons(this, part)
     def appendTo(other: CompositeName) = parent.appendTo(other) / part
