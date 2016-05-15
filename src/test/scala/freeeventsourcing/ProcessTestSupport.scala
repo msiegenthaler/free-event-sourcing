@@ -9,12 +9,34 @@ import freeeventsourcing.Process.ProcessMonad
 import freeeventsourcing.ProcessAction._
 import org.scalatest.matchers.{ MatchResult, Matcher }
 
+/** Supports writing expectations agains process definitions. Usage:
+ *  <code>
+ *  val support = new ProcessTestSupport(AccountProcessing)
+ *  import support._
+ *
+ *  waitUntil(i) should runFromWithResult(Expect.waitUntil(i))(())
+ *  </code>
+ */
 class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
+  /** Matcher to check if the process monad results in the expected actions. */
   def runFrom(expectations: Expectation*) =
     ProcessMatcher(expectations.toList, _ ⇒ Xor.right(()))
+
+  /** Matcher to check if the process monad results in the expected actions and return the specified result. */
   def runFromWithResult(expectations: Expectation*)(toResult: Any) =
     ProcessMatcher(expectations.toList, r ⇒
       if (r == toResult) Xor.right(()) else Xor.left(s"produced non matching result: ${r} instead of ${toResult}"))
+
+  /** Helper methods to construct the expectations. */
+  object Expect {
+    import Expectation._
+    def awaitEvent[S <: WithEventType](selector: S)(result: S#Event) =
+      ExpectAwaitEvent(selector, result)
+    def waitUntil(instant: Instant) = ExpectWaitUntil(instant)
+    def command[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C)(result: command.Error Xor Unit) =
+      ExpectCommand(aggregateType, aggregate, command, result)
+    def end = ExpectEnd
+  }
 
   case class ProcessMatcher(expectations: List[Expectation], checkResult: Any ⇒ String Xor Unit) extends Matcher[M[_]] {
     def apply(process: M[_]) = {
@@ -32,26 +54,21 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     }
   }
 
-  sealed trait Expectation
-  case class ExpectAwaitEvent[S <: WithEventType](selector: S, result: S#Event) extends Expectation
-  object ExpectAwaitEvent {
-    def create[S <: WithEventType](selector: S)(result: selector.Event): ExpectAwaitEvent[S] =
-      ExpectAwaitEvent(selector, result)
-  }
-  case class ExpectWaitUntil(instant: Instant) extends Expectation
-  case object ExpectEnd extends Expectation
-  case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
-    aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit
-  ) extends Expectation
-  object ExpectCommand {
-    def create[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C)(result: command.Error Xor Unit): ExpectCommand[A, command.type] =
-      ExpectCommand(aggregateType, aggregate, command, result)
-  }
-
   type Action[+A] = ProcessAction[BC, A]
   type M[A] = ProcessMonad[BC, A]
 
+  sealed trait Expectation
+  object Expectation {
+    case class ExpectAwaitEvent[S <: WithEventType](selector: S, result: S#Event) extends Expectation
+    case class ExpectWaitUntil(instant: Instant) extends Expectation
+    case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
+      aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit) extends Expectation
+    case object ExpectEnd extends Expectation
+  }
+
   private[this] object Implementation {
+    import Expectation._
+
     type OrFail[A] = Xor[String, A]
     type Expectations[A] = StateT[OrFail, List[Expectation], A]
     object Expectations {

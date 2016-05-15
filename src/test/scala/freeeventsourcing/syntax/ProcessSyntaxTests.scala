@@ -53,7 +53,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.await " should " result in a Await action" in {
     await(selectorOpened) should runFromWithResult(
-      ExpectAwaitEvent.create(selectorOpened)(Opened("Mario"))
+      Expect.awaitEvent(selectorOpened)(Opened("Mario"))
     )(Opened("Mario"))
   }
 
@@ -73,7 +73,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       _.catching[InsufficientFunds](_ ⇒ terminate).
         catching[NotOpen](_ ⇒ terminate)
     ) should runFromWithResult(
-        ExpectCommand.create(Account, Account.Id(1), cmd)(Xor.right(()))
+        Expect.command(Account, Account.Id(1), cmd)(Xor.right(()))
       )(())
   }
 
@@ -215,11 +215,11 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.terminate " should " end the process and return unit" in {
-    terminate should runFromWithResult(ExpectEnd)(())
+    terminate should runFromWithResult(Expect.end)(())
   }
 
   "ProcessSyntax.waitUntil " should " accept a specific time and return unit" in {
     val i = Instant.now
-    waitUntil(i) should runFromWithResult(ExpectWaitUntil(i))(())
+    waitUntil(i) should runFromWithResult(Expect.waitUntil(i))(())
   }
 }
