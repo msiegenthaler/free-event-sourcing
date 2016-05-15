@@ -2,7 +2,6 @@ package freeeventsourcing
 
 import java.time.Instant
 import cats.data.{ State, StateT, Xor, XorT }
-import cats.free.Free
 import cats.{ Monad, ~> }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.Process.ProcessMonad
@@ -62,7 +61,8 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     case class ExpectAwaitEvent[S <: WithEventType](selector: S, result: S#Event) extends Expectation
     case class ExpectWaitUntil(instant: Instant) extends Expectation
     case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
-      aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit) extends Expectation
+      aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit
+    ) extends Expectation
     case object ExpectEnd extends Expectation
   }
 
@@ -77,36 +77,39 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
         case Nil    ⇒ Xor.left(s"No more expectations, but got ${received}")
       }
       def check[A](action: ProcessAction[BC, A]): Expectations[A] = next(action.toString).flatMap { exp ⇒
-        val r: String Xor A = (action, exp) match {
-          case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) ⇒
+        def lifted(x: String Xor A): Expectations[A] = lift(s ⇒ x.map(r ⇒ (s, r)))
+        (action, exp) match {
+          case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) ⇒ lifted {
             if (s1 == s2) Xor.right(result)
             else Xor.left(s"AwaitEvent: selector mismatch ${s1} != ${s2}")
-          case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒
+          }
+
+          case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒ lifted {
             if (i1 == i2) Xor.right(())
             else Xor.left(s"WaitUntil: time is different: ${i1} != ${i2}")
-          case (End(), ExpectEnd) ⇒
+          }
+
+          case (End(), ExpectEnd) ⇒ lifted {
             Xor.right(())
-          case (Execute(at1, a1, c1, errorHandler), ExpectCommand(at2, a2, c2, r)) ⇒
-            if (at1 != at2) Xor.left(s"Execute: Aggregate type is different: ${at1} != ${at2}")
-            else if (a1 != a2) Xor.left(s"Execute: Aggregate id is different: ${a1} != ${a2}")
-            else if (c1 != c2) Xor.left(s"Execute: Command is different: ${c1} != ${c2}")
+          }
+
+          case (Execute(at1, a1, c1, errorHandler), e @ ExpectCommand(at2, a2, c2, r)) ⇒
+            if (at1 != at2) lifted(Xor.left(s"Execute: Aggregate type is different: ${at1} != ${at2}"))
+            else if (a1 != a2) lifted(Xor.left(s"Execute: Aggregate id is different: ${a1} != ${a2}"))
+            else if (c1 != c2) lifted(Xor.left(s"Execute: Command is different: ${c1} != ${c2}"))
             else {
-              Xor.right {
-                r.fold(
-                  //TODO actually we should evaluate recursivly...
-                  //                e ⇒ errorHandler(e.asInstanceOf), //not really save, but don't care in tests..
-                  e ⇒ (), //not really save, but don't care in tests..
-                  _ ⇒ ()
-                )
-              }
+              r.fold({ error ⇒
+                val subprocess: M[Unit] = errorHandler(error.asInstanceOf) //could be proved, but for tests a ClassCase Exception is ok
+                val x = subprocess.foldMap(Implementation.Transform)
+                lift(s ⇒ x.run(s))
+              }, u ⇒ lifted(Xor.right(u)))
             }
 
-          //TODO Other expectations
-          //        case FirstOf(alternatives) ⇒ ???
-          case _ ⇒ ???
-          //TODO catch non matching and produce a nice error
+          // TODO case FirstOf(alternatives) ⇒ ???
+
+          case (a, b) ⇒
+            lifted(Xor.left(s"Expected ${a} but got ${b}"))
         }
-        lift(s ⇒ r.map(x ⇒ (s, x)))
       }
 
       private[this] def lift[A](f: List[Expectation] ⇒ OrFail[(List[Expectation], A)]) =
