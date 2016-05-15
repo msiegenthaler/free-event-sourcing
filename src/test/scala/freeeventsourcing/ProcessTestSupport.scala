@@ -76,44 +76,46 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
         case h :: t ⇒ Xor.right((t, h))
         case Nil    ⇒ Xor.left(s"No more expectations, but got ${received}")
       }
-      def check[A](action: ProcessAction[BC, A]): Expectations[A] = next(action.toString).flatMap { exp ⇒
-        def lifted(x: String Xor A): Expectations[A] = lift(s ⇒ x.map(r ⇒ (s, r)))
-        (action, exp) match {
-          case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) ⇒ lifted {
-            if (s1 == s2) Xor.right(result)
-            else Xor.left(s"AwaitEvent: selector mismatch ${s1} != ${s2}")
-          }
 
-          case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒ lifted {
-            if (i1 == i2) Xor.right(())
-            else Xor.left(s"WaitUntil: time is different: ${i1} != ${i2}")
-          }
-
-          case (End(), ExpectEnd) ⇒ lifted {
-            Xor.right(())
-          }
-
-          case (Execute(at1, a1, c1, errorHandler), e @ ExpectCommand(at2, a2, c2, r)) ⇒
-            if (at1 != at2) lifted(Xor.left(s"Execute: Aggregate type is different: ${at1} != ${at2}"))
-            else if (a1 != a2) lifted(Xor.left(s"Execute: Aggregate id is different: ${a1} != ${a2}"))
-            else if (c1 != c2) lifted(Xor.left(s"Execute: Command is different: ${c1} != ${c2}"))
-            else {
-              r.fold({ error ⇒
-                val subprocess: M[Unit] = errorHandler(error.asInstanceOf) //could be proved, but for tests a ClassCase Exception is ok
-                val x = subprocess.foldMap(Implementation.Transform)
-                lift(s ⇒ x.run(s))
-              }, u ⇒ lifted(Xor.right(u)))
-            }
-
-          // TODO case FirstOf(alternatives) ⇒ ???
-
-          case (a, b) ⇒
-            lifted(Xor.left(s"Expected ${a} but got ${b}"))
+      def check[A](action: Action[A]): Expectations[A] = next(action.toString).flatMap { exp ⇒
+        compare.lift((action, exp)).getOrElse {
+          lifted(Xor.left(s"Expected ${exp} but got ${action}"))
         }
+      }
+
+      private[this] def compare[A]: PartialFunction[(Action[A], Expectation), Expectations[A]] = {
+        case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) ⇒ lifted {
+          if (s1 == s2) Xor.right(result)
+          else Xor.left(s"AwaitEvent: selector mismatch ${s1} != ${s2}")
+        }
+
+        case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒ lifted {
+          if (i1 == i2) Xor.right(())
+          else Xor.left(s"WaitUntil: time is different: ${i1} != ${i2}")
+        }
+
+        case (End(), ExpectEnd) ⇒ lifted {
+          Xor.right(())
+        }
+
+        case (Execute(at1, a1, c1, errorHandler), e @ ExpectCommand(at2, a2, c2, r)) ⇒
+          if (at1 != at2) lifted(Xor.left(s"Execute: Aggregate type is different: ${at1} != ${at2}"))
+          else if (a1 != a2) lifted(Xor.left(s"Execute: Aggregate id is different: ${a1} != ${a2}"))
+          else if (c1 != c2) lifted(Xor.left(s"Execute: Command is different: ${c1} != ${c2}"))
+          else {
+            r.fold({ error ⇒
+              val subprocess: M[Unit] = errorHandler(error.asInstanceOf) //could be proved, but for tests a ClassCase Exception is ok
+              val x = subprocess.foldMap(Implementation.Transform)
+              lift(s ⇒ x.run(s))
+            }, u ⇒ lifted(Xor.right(u)))
+          }
+
+        // TODO case FirstOf(alternatives) ⇒ ???
       }
 
       private[this] def lift[A](f: List[Expectation] ⇒ OrFail[(List[Expectation], A)]) =
         StateT[OrFail, List[Expectation], A](f)
+      private[this] def lifted[A](x: String Xor A): Expectations[A] = lift(s ⇒ x.map(r ⇒ (s, r)))
     }
 
     object Transform extends (Action ~> Expectations) {
