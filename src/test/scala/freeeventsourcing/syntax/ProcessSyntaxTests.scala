@@ -2,6 +2,7 @@ package freeeventsourcing.syntax
 
 import java.time.Instant
 import cats.Monad
+import cats.data.Xor
 import freeeventsourcing.{ Aggregate, AggregateCommand, AggregateEventSelector, ProcessTestSupport }
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
@@ -64,6 +65,16 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.on().execute " should " allow commands of aggregates in the same context" in {
     """on(Account.Id(1)).execute(Open("Mario"))(???)""" should compile
+  }
+
+  "ProcessSyntax.on().execute " should " execute the command and return unit if successful" in {
+    val cmd = BlockFunds(Transaction.Id(2), 1)
+    on(Account.Id(1)).execute(cmd)(
+      _.catching[InsufficientFunds](_ ⇒ terminate).
+        catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        ExpectCommand.create(Account, Account.Id(1), cmd)(Xor.right(()))
+      )(())
   }
 
   "ProcessSyntax.on().execute " should " not allow commands of aggregates not in the same context" in {
@@ -200,14 +211,15 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.noop " should " do nothing and return unit" in {
-    "val a: ProcessMonad[Unit] = noop" should compile
+    noop should runFromWithResult()(())
   }
 
   "ProcessSyntax.terminate " should " end the process and return unit" in {
-    "val a: ProcessMonad[Unit] = terminate" should compile
+    terminate should runFromWithResult(ExpectEnd)(())
   }
 
   "ProcessSyntax.waitUntil " should " accept a specific time and return unit" in {
-    "val a: ProcessMonad[Unit] = waitUntil(Instant.now)" should compile
+    val i = Instant.now
+    waitUntil(i) should runFromWithResult(ExpectWaitUntil(i))(())
   }
 }

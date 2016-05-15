@@ -1,5 +1,6 @@
 package freeeventsourcing
 
+import java.time.Instant
 import cats.data.{ State, StateT, Xor, XorT }
 import cats.free.Free
 import cats.{ Monad, ~> }
@@ -37,6 +38,15 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     def create[S <: WithEventType](selector: S)(result: selector.Event): ExpectAwaitEvent[S] =
       ExpectAwaitEvent(selector, result)
   }
+  case class ExpectWaitUntil(instant: Instant) extends Expectation
+  case object ExpectEnd extends Expectation
+  case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
+    aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit
+  ) extends Expectation
+  object ExpectCommand {
+    def create[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C)(result: command.Error Xor Unit): ExpectCommand[A, command.type] =
+      ExpectCommand(aggregateType, aggregate, command, result)
+  }
 
   type Action[+A] = ProcessAction[BC, A]
   type M[A] = ProcessMonad[BC, A]
@@ -54,12 +64,30 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
           case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) ⇒
             if (s1 == s2) Xor.right(result)
             else Xor.left(s"AwaitEvent: selector mismatch ${s1} != ${s2}")
+          case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒
+            if (i1 == i2) Xor.right(())
+            else Xor.left(s"WaitUntil: time is different: ${i1} != ${i2}")
+          case (End(), ExpectEnd) ⇒
+            Xor.right(())
+          case (Execute(at1, a1, c1, errorHandler), ExpectCommand(at2, a2, c2, r)) ⇒
+            if (at1 != at2) Xor.left(s"Execute: Aggregate type is different: ${at1} != ${at2}")
+            else if (a1 != a2) Xor.left(s"Execute: Aggregate id is different: ${a1} != ${a2}")
+            else if (c1 != c2) Xor.left(s"Execute: Command is different: ${c1} != ${c2}")
+            else {
+              Xor.right {
+                r.fold(
+                  //TODO actually we should evaluate recursivly...
+                  //                e ⇒ errorHandler(e.asInstanceOf), //not really save, but don't care in tests..
+                  e ⇒ (), //not really save, but don't care in tests..
+                  _ ⇒ ()
+                )
+              }
+            }
+
           //TODO Other expectations
-          //        case WaitUntil(instant) ⇒ ???
           //        case FirstOf(alternatives) ⇒ ???
-          //        case Execute(aggregateType, aggregate, command, errorHandler) ⇒ ???
-          //        case End() ⇒ ???
           case _ ⇒ ???
+          //TODO catch non matching and produce a nice error
         }
         lift(s ⇒ r.map(x ⇒ (s, x)))
       }
