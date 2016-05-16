@@ -57,8 +57,11 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   /** Terminate this process instance. */
   def terminate = lift[Unit](End[BC]())
 
+  /** Lifts a value into the monad. Same as Monad.pure(v). */
+  def value[A](v: A) = Monad[ProcessMonad].pure(v)
+
   /** Does nothing. */
-  def noop = Monad[ProcessMonad].pure(())
+  def noop = value(())
 
   /////////////////////////////////////////////////////
 

@@ -210,6 +210,11 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     "r : ProcessMonad[String :+: Closed :+: CNil]" should compile
   }
 
+  "ProcessSyntax.value " should " do nothing and return the value" in {
+    process.value(1) should runFromWithResult()(1)
+    process.value("hi") should runFromWithResult()("hi")
+  }
+
   "ProcessSyntax.noop " should " do nothing and return unit" in {
     noop should runFromWithResult()(())
   }
