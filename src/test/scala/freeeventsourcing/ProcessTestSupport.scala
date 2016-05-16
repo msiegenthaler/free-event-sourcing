@@ -49,7 +49,10 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
       val y = x
         .run(expectations)
         .leftMap(error ⇒ s"did not match the expectations: ${error}")
-        .flatMap(r ⇒ if (r._1.isEmpty) Xor.right(r._2) else Xor.left(s"rmaining expectations: ${r._1}"))
+        .flatMap {
+          case (Nil, r)       ⇒ Xor.right(r)
+          case (remaining, _) ⇒ Xor.left(s"remaining expectations: ${remaining.mkString(", ")}")
+        }
         .flatMap(checkResult)
       new MatchResult(
         y.isRight,
