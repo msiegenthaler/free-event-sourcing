@@ -11,25 +11,7 @@ import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.CNil
 
 class ProcessTests extends FlatSpec with Matchers {
-  object TestAggregate extends Aggregate {
-    val name = "Test Aggregate"
-    case class Id(id: Int)
-    sealed trait Event
-    object Event {
-      case class MyEvent(value: String) extends Event
-    }
-    sealed trait Command extends AggregateCommand
-    object Command {
-      case class MyCommand(value: String) extends Command {
-        type Error = CNil
-      }
-    }
-  }
-
-  val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-  val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]
-  val selectorCreated = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
-  val selectorMyEvent = AggregateEventSelector(TestAggregate)(TestAggregate.Id(1))[TestAggregate.Event.MyEvent]
+  import ProcessTests._
   type AP = AccountProcessing.type
 
   def awaitEvent[S <: WithEventType: EventSelector](selector: S)(implicit ev: ValidSelector[AP, S]) =
@@ -73,4 +55,25 @@ class ProcessTests extends FlatSpec with Matchers {
         r.fold(exec.errorHandler.apply, _ ⇒ ???)
       }""" should compile
   }
+}
+object ProcessTests {
+  object TestAggregate extends Aggregate {
+    val name = "Test Aggregate"
+    case class Id(id: Int)
+    sealed trait Event
+    object Event {
+      case class MyEvent(value: String) extends Event
+    }
+    sealed trait Command extends AggregateCommand
+    object Command {
+      case class MyCommand(value: String) extends Command {
+        type Error = CNil
+      }
+    }
+  }
+
+  val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
+  val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]
+  val selectorCreated = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
+  val selectorMyEvent = AggregateEventSelector(TestAggregate)(TestAggregate.Id(1))[TestAggregate.Event.MyEvent]
 }

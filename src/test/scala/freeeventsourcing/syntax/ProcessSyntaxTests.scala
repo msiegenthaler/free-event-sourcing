@@ -2,8 +2,7 @@ package freeeventsourcing.syntax
 
 import java.time.Instant
 import cats.Monad
-import cats.data.Xor
-import freeeventsourcing.{ Aggregate, AggregateCommand, AggregateEventSelector, ProcessTestSupport }
+import freeeventsourcing._
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -20,26 +19,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   val support = new ProcessTestSupport(AccountProcessing)
   import support._
-
-  val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-  val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]
-  val selectorCreated = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
-  val selectorMyEvent = AggregateEventSelector(TestAggregate)(TestAggregate.Id(1))[TestAggregate.Event.MyEvent]
-
-  object TestAggregate extends Aggregate {
-    val name = "Test Aggregate"
-    case class Id(id: Int)
-    sealed trait Event
-    object Event {
-      case class MyEvent(value: String) extends Event
-    }
-    sealed trait Command extends AggregateCommand
-    object Command {
-      case class MyCommand(value: String) extends Command {
-        type Error = CNil
-      }
-    }
-  }
+  import ProcessTests._
 
   "ProcessSyntax.await " should " support event from selectors of the same bounded context" in {
     "await(selectorOpened)" should compile
