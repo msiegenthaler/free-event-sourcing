@@ -7,6 +7,7 @@ import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.Process.ProcessMonad
 import freeeventsourcing.ProcessAction._
 import org.scalatest.matchers.{ MatchResult, Matcher }
+import shapeless.ops.coproduct.Inject
 
 /** Supports writing expectations agains process definitions. Usage:
  *  <code>
@@ -32,8 +33,13 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     def awaitEvent[S <: WithEventType](selector: S)(result: S#Event) =
       ExpectAwaitEvent(selector, result)
     def waitUntil(instant: Instant) = ExpectWaitUntil(instant)
-    def command[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C)(result: command.Error Xor Unit) =
-      ExpectCommand(aggregateType, aggregate, command, result)
+    def commandSuccessful[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C) =
+      ExpectCommand(aggregateType, aggregate, command, Xor.right(()))
+    def commandFailed[A <: Aggregate, C <: A#Command, E](aggregateType: A, aggregate: A#Id, command: C)(result: E)(
+      implicit
+      i: Inject[C#Error, E]
+    ) =
+      ExpectCommand(aggregateType, aggregate, command, Xor.left(i(result)))
     def end = ExpectEnd
   }
 
@@ -98,13 +104,15 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
           Xor.right(())
         }
 
-        case (Execute(at1, a1, c1, errorHandler), e @ ExpectCommand(at2, a2, c2, r)) ⇒
+        case (ex @ Execute(at1, a1, c1, errorHandler), e @ ExpectCommand(at2, a2, c2, r)) ⇒
           if (at1 != at2) lifted(Xor.left(s"Execute: Aggregate type is different: ${at1} != ${at2}"))
           else if (a1 != a2) lifted(Xor.left(s"Execute: Aggregate id is different: ${a1} != ${a2}"))
           else if (c1 != c2) lifted(Xor.left(s"Execute: Command is different: ${c1} != ${c2}"))
           else {
             r.fold({ error ⇒
-              val subprocess: M[Unit] = errorHandler(error.asInstanceOf) //could be proved, but for tests a ClassCase Exception is ok
+              //could be proved, but for tests a ClassCastException is ok
+              val err: ex.Error = error.asInstanceOf[ex.Error]
+              val subprocess: M[Unit] = errorHandler(err).asInstanceOf[M[Unit]]
               val x = subprocess.foldMap(Implementation.Transform)
               lift(s ⇒ x.run(s))
             }, u ⇒ lifted(Xor.right(u)))

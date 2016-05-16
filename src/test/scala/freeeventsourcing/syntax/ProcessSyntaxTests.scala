@@ -73,7 +73,28 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       _.catching[InsufficientFunds](_ ⇒ terminate).
         catching[NotOpen](_ ⇒ terminate)
     ) should runFromWithResult(
-        Expect.command(Account, Account.Id(1), cmd)(Xor.right(()))
+        Expect.commandSuccessful(Account, Account.Id(1), cmd)
+      )(())
+  }
+
+  "ProcessSyntax.on().execute " should " execute the command and run the command handler if command failed" in {
+    val cmd = BlockFunds(Transaction.Id(2), 1)
+    on(Account.Id(1)).execute(cmd)(
+      _.catching[InsufficientFunds](_ ⇒ terminate).
+        catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(1), cmd)(InsufficientFunds()),
+        Expect.end
+      )(())
+  }
+
+  "ProcessSyntax.on().execute " should " execute the command and run the command handler that does nothing" in {
+    val cmd = BlockFunds(Transaction.Id(1), 2)
+    on(Account.Id(0)).execute(cmd)(
+      _.catching[InsufficientFunds](_ ⇒ noop).
+        catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(0), cmd)(InsufficientFunds())
       )(())
   }
 

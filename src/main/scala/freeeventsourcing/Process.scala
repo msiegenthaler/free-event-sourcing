@@ -47,7 +47,10 @@ object ProcessAction {
   case class Execute[BC <: BoundedContext, A <: Aggregate, Cmd <: A#Command](
     aggregateType: A, aggregate: A#Id, command: A#Command, errorHandler: Cmd#Error ⇒ ProcessMonad[BC, Unit]
   )(implicit ev: ValidAggregate[BC, A])
-      extends ProcessAction[BC, Unit]
+      extends ProcessAction[BC, Unit] {
+    type Command = Cmd
+    type Error = Cmd#Error
+  }
 
   /** Terminate the process */
   case class End[BC <: BoundedContext]() extends ProcessAction[BC, Unit]
