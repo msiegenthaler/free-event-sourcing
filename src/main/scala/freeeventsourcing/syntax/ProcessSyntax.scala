@@ -51,8 +51,12 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   }
 
   /** Wait for multiple events and run the path of the first event. */
-  def firstOfUnified[Paths <: HList, R <: Coproduct, R2 <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit s: Switch.Aux[Paths, R], r: Reverse.Aux[R, R2], u: Unifier[R2]) =
-    firstOf(b).map(r ⇒ u(r))
+  def firstOfUnified[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit switch: Switch.Aux[Paths, R], u: Unifier[R]) = {
+    val paths = b(new FirstOfBuilder(HNil)).collect
+    val alternatives = switch.alternatives(paths)
+    lift[alternatives.Events](FirstOf[BC, alternatives.type](alternatives))
+      .flatMap(e ⇒ switch.effectFor(paths)(e).map(r ⇒ u(r)))
+  }
 
   /** Terminate this process instance. */
   def terminate = lift[Unit](End[BC]())
