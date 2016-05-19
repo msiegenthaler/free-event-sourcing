@@ -219,6 +219,68 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     )(Coproduct[Opened :+: CNil](evt))
   }
 
+  "ProcessSyntax.firstOf(_.waitUntil.noop) " should " should use one selectors and return unit" in {
+    val instant = Instant.now()
+    firstOf(_.
+      timeout(instant)(noop)) should runFromWithResult(
+      Expect.firstOf(FirstOfUntil(instant))(0, ())
+    )(Coproduct[Unit :+: CNil](()))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event).1 " should " should use two selectors and return the first event" in {
+    val evt = Closed()
+    firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event) should runFromWithResult(
+      Expect.firstOf(
+        FirstOfSelector(selectorOpened),
+        FirstOfSelector(selectorClosed)
+      )(1, evt)
+    )(Coproduct[Opened :+: Closed :+: CNil](evt))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event).2 " should " should use two selectors and return the second event" in {
+    val evt = Opened("Mario")
+    firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event) should runFromWithResult(
+      Expect.firstOf(
+        FirstOfSelector(selectorOpened),
+        FirstOfSelector(selectorClosed)
+      )(0, evt)
+    )(Coproduct[Opened :+: Closed :+: CNil](evt))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event and timeout).1 " should " should use two selectors, a timeout and return the first event" in {
+    val evt = Opened("Mario")
+    val instant = Instant.now()
+    firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event.
+      timeout(instant)(noop)) should runFromWithResult(
+      Expect.firstOf(
+        FirstOfSelector(selectorOpened),
+        FirstOfSelector(selectorClosed),
+        FirstOfUntil(instant)
+      )(0, evt)
+    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](evt))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event and timeout).2 " should " should use two selectors, a timeout and return the second event" in {
+    val evt = Closed()
+    val instant = Instant.now()
+    firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event.
+      timeout(instant)(noop)) should runFromWithResult(
+      Expect.firstOf(
+        FirstOfSelector(selectorOpened),
+        FirstOfSelector(selectorClosed),
+        FirstOfUntil(instant)
+      )(1, evt)
+    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](evt))
+  }
+
   //TODO more tests
 
   "ProcessSyntax.value " should " do nothing and return the value" in {
