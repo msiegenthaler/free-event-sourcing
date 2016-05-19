@@ -450,7 +450,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.firstOfUnified(s1, s2, s3).3 with mappings " should " return directly the event" in {
-    val event = Created(Account.Id(1), Account.Id(2), 100)
+    val event = Created(Account.Id(1), Account.Id(2), 1)
     val p = firstOfUnified(_.
       on(selectorOpened).map(_.owner).
       on(selectorClosed).value("closed").
@@ -464,7 +464,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
     p should runFromWithResult(
       expect
-    )("created: 100")
+    )("created: 1")
   }
 
   "ProcessSyntax.value " should " do nothing and return the value" in {
