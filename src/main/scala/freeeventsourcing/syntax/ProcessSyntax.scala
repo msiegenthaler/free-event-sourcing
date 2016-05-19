@@ -11,7 +11,7 @@ import freeeventsourcing.ProcessAction._
 import freeeventsourcing.support.{ AggregateFromId, ValidAggregate }
 import freeeventsourcing.utils.StringSerializable
 import shapeless._
-import shapeless.ops.coproduct.{ Remove, Selector, Unifier }
+import shapeless.ops.coproduct.{ Remove, Reverse, Selector, Unifier }
 
 /** Nice monadic syntax to write processes. */
 class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
@@ -43,15 +43,15 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     lift[Unit](WaitUntil[BC](when))
 
   /** Wait for multiple events and run the path of the first event. */
-  def firstOf[Paths <: HList](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit switch: Switch[Paths]): ProcessMonad[switch.Result] = {
+  def firstOf[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit switch: Switch.Aux[Paths, R], r: Reverse[R]): ProcessMonad[r.Out] = {
     val paths = b(new FirstOfBuilder(HNil)).collect
     val alternatives = switch.alternatives(paths)
     lift[alternatives.Events](FirstOf[BC, alternatives.type](alternatives))
-      .flatMap(e ⇒ switch.effectFor(paths)(e))
+      .flatMap(e ⇒ switch.effectFor(paths)(e).map(_.reverse))
   }
 
   /** Wait for multiple events and run the path of the first event. */
-  def firstOfUnified[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit s: Switch.Aux[Paths, R], u: Unifier[R]) =
+  def firstOfUnified[Paths <: HList, R <: Coproduct, R2 <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit s: Switch.Aux[Paths, R], r: Reverse.Aux[R, R2], u: Unifier[R2]) =
     firstOf(b).map(r ⇒ u(r))
 
   /** Terminate this process instance. */

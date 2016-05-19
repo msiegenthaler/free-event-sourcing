@@ -114,10 +114,8 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
 
         case (FirstOf(as), ExpectFirstOf(s2, index, result)) ⇒
           val s1 = fromAlts(as)
-          if (s1.zip(s2).forall {
-            case (a, b) ⇒ a == b
-          }) {
-            val r = Coproduct.unsafeMkCoproduct(index, result) //not pretty, but does the job in a test
+          if (s1.zip(s2).forall { case (a, b) ⇒ a == b }) {
+            val r = Coproduct.unsafeMkCoproduct(s2.length - index - 1, result) //not pretty, but does the job in a test
             ok(r.asInstanceOf[A]) //Just cast it, it'll result in an error later (good enough for test)
           } else {
             fail(s"Different expectations in FirstOf: ${s1.mkString(", ")} vs ${s2.mkString(", ")}.")
@@ -146,11 +144,11 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
         case FirstOf.Empty() ⇒
           Nil
         case FirstOf.Alternative(a @ AwaitEvent(selector), tail) ⇒
-          FirstOfSelector(selector)(a.eventSelector) :: fromAlts(tail)
+          fromAlts(tail) :+ FirstOfSelector(selector)(a.eventSelector)
         case FirstOf.Alternative(WaitUntil(instant), tail) ⇒
-          FirstOfUntil(instant) :: fromAlts(tail)
+          fromAlts(tail) :+ FirstOfUntil(instant)
         case FirstOf.Alternative(FirstOf(alts), tail) ⇒
-          fromAlts(alts) ::: fromAlts(tail)
+          fromAlts(tail) ::: fromAlts(alts)
       }
 
       private[this] def ok[A](value: A) = lifted(Xor.right[String, A](value))

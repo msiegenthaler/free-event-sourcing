@@ -140,7 +140,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     val r = firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event)
-    "r : ProcessMonad[Closed :+: Opened :+: CNil]" should compile
+    "r : ProcessMonad[Opened :+: Closed:+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single event from an aggregate" in {
@@ -153,7 +153,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     val r = firstOf(_.
       from(Account.Id(1)).on[Opened].event.
       from(Transaction.Id(1)).on[Created].event)
-    "r : ProcessMonad[Created :+: Opened :+: CNil]" should compile
+    "r : ProcessMonad[Opened :+: Created :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " allow to mix selectors and events from aggregates" in {
@@ -162,7 +162,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       on(selectorClosed).event.
       from(Transaction.Id(1)).on[Created].event.
       on(selectorOpened).event)
-    "r : ProcessMonad[Opened :+: Created :+: Closed :+: Unit :+: CNil]" should compile
+    "r : ProcessMonad[Unit :+: Closed :+: Created :+: Opened :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOfUnified " should " accept a single selector and return the event type" in {
@@ -201,14 +201,14 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     val r = firstOf(_.
       on(selectorClosed).event.
       timeout(Instant.now)(terminate))
-    "r : ProcessMonad[Unit :+: Closed :+: CNil]" should compile
+    "r : ProcessMonad[Closed :+: Unit :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a timeout that returns a value and a selector" in {
     val r = firstOf(_.
       on(selectorClosed).event.
       timeout(Instant.now)(Monad[ProcessMonad].pure("timeout")))
-    "r : ProcessMonad[String :+: Closed :+: CNil]" should compile
+    "r : ProcessMonad[Closed :+: String :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf(_.selector.event) " should " should use one selectors and return the event" in {
