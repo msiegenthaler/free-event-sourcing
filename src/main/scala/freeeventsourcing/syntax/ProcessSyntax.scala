@@ -43,7 +43,10 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     lift[Unit](WaitUntil[BC](when))
 
   /** Wait for multiple events and run the path of the first event. */
-  def firstOf[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit switch: Switch.Aux[Paths, R], r: Reverse[R]): ProcessMonad[r.Out] = {
+  def firstOf[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(
+    implicit
+    switch: Switch.Aux[Paths, R], r: Reverse[R]
+  ): ProcessMonad[r.Out] = {
     val paths = b(new FirstOfBuilder(HNil)).collect
     val alternatives = switch.alternatives(paths)
     lift[alternatives.Events](FirstOf[BC, alternatives.type](alternatives))
