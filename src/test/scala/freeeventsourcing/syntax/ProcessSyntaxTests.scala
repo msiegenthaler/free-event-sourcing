@@ -254,31 +254,131 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   "ProcessSyntax.firstOf(two _.selector.event and timeout).1 " should " should use two selectors, a timeout and return the first event" in {
     val evt = Opened("Mario")
     val instant = Instant.now()
-    firstOf(_.
+    val p = firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event.
-      timeout(instant)(noop)) should runFromWithResult(
-      Expect.firstOf(
-        FirstOfSelector(selectorOpened),
-        FirstOfSelector(selectorClosed),
-        FirstOfUntil(instant)
-      )(0, evt)
+      timeout(instant)(noop))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(0, evt)
+
+    p should runFromWithResult(
+      expect
     )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](evt))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event and timeout).2 " should " should use two selectors, a timeout and return the second event" in {
     val evt = Closed()
     val instant = Instant.now()
-    firstOf(_.
+    val p = firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event.
-      timeout(instant)(noop)) should runFromWithResult(
-      Expect.firstOf(
-        FirstOfSelector(selectorOpened),
-        FirstOfSelector(selectorClosed),
-        FirstOfUntil(instant)
-      )(1, evt)
+      timeout(instant)(noop))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(1, evt)
+
+    p should runFromWithResult(
+      expect
     )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](evt))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event with map and timeout).1 " should " should use two selectors, a timeout and return the mapped first event" in {
+    val instant = Instant.now()
+    val p = firstOf(_.
+      on(selectorOpened).map(_.owner).
+      on(selectorClosed).event.
+      timeout(instant)(noop))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(0, Opened("Mario"))
+
+    p should runFromWithResult(
+      expect
+    )(Coproduct[String :+: Closed :+: Unit :+: CNil]("Mario"))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event with flatMap to terminate).1 " should " should use two selectors, a timeout and return the unit and end" in {
+    val instant = Instant.now()
+    val p = firstOf(_.
+      on(selectorOpened).flatMap(_ ⇒ terminate).
+      on(selectorClosed).event.
+      timeout(instant)(noop))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(0, Opened("Mario"))
+
+    p should runFromWithResult(
+      expect,
+      Expect.end
+    )(Coproduct[Unit :+: Closed :+: Unit :+: CNil](()))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event and timeout).3 " should " should use two selectors, a timeout and return unit" in {
+    val instant = Instant.now()
+    val p = firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event.
+      timeout(instant)(noop))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(2, ())
+
+    p should runFromWithResult(
+      expect
+    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](()))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event and timeout(terminate)).3 " should " should use two selectors, a timeout and return unit and then end" in {
+    val instant = Instant.now()
+    val p = firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event.
+      timeout(instant)(terminate))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(2, ())
+
+    p should runFromWithResult(
+      expect,
+      Expect.end
+    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](()))
+  }
+
+  "ProcessSyntax.firstOf(two _.selector.event and timeout(mapToString).3 " should " should use two selectors, a timeout and return a string" in {
+    val instant = Instant.now()
+    val p = firstOf(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event.
+      timeout(instant)(Monad[ProcessMonad].pure("hi there")))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfUntil(instant)
+    )(2, ())
+
+    p should runFromWithResult(
+      expect
+    )(Coproduct[Opened :+: Closed :+: String :+: CNil]("hi there"))
   }
 
   //TODO more tests
