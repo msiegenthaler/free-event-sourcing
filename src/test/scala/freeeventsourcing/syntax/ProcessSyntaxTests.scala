@@ -381,7 +381,91 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     )(Coproduct[Opened :+: Closed :+: String :+: CNil]("hi there"))
   }
 
-  //TODO more tests
+  "ProcessSyntax.firstOfUnified(s1, s2).1 from the same aggregate " should " return directly the event" in {
+    val event = Opened("Mario")
+    val p = firstOfUnified(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event)
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed)
+    )(0, event)
+
+    p should runFromWithResult(
+      expect
+    )(event)
+  }
+
+  "ProcessSyntax.firstOfUnified(s1, s2).2 from the same aggregate " should " return directly the event" in {
+    val event = Closed()
+    val p = firstOfUnified(_.
+      on(selectorOpened).event.
+      on(selectorClosed).event)
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed)
+    )(1, event)
+
+    p should runFromWithResult(
+      expect
+    )(event)
+  }
+
+  "ProcessSyntax.firstOfUnified(s1, s2, s3).1 with mappings " should " return directly the event" in {
+    val event = Opened("Mario")
+    val p = firstOfUnified(_.
+      on(selectorOpened).map(_.owner).
+      on(selectorClosed).value("closed").
+      on(selectorCreated).value("created"))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfSelector(selectorCreated)
+    )(0, event)
+
+    p should runFromWithResult(
+      expect
+    )("Mario")
+  }
+
+  "ProcessSyntax.firstOfUnified(s1, s2, s3).2 with mappings " should " return directly the event" in {
+    val event = Closed()
+    val p = firstOfUnified(_.
+      on(selectorOpened).map(_.owner).
+      on(selectorClosed).value("closed").
+      on(selectorCreated).value("created"))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfSelector(selectorCreated)
+    )(1, event)
+
+    p should runFromWithResult(
+      expect
+    )("closed")
+  }
+
+  "ProcessSyntax.firstOfUnified(s1, s2, s3).3 with mappings " should " return directly the event" in {
+    val event = Created(Account.Id(1), Account.Id(2), 100)
+    val p = firstOfUnified(_.
+      on(selectorOpened).map(_.owner).
+      on(selectorClosed).value("closed").
+      on(selectorCreated).map(e ⇒ s"created: ${e.amount}"))
+
+    val expect = Expect.firstOf(
+      FirstOfSelector(selectorOpened),
+      FirstOfSelector(selectorClosed),
+      FirstOfSelector(selectorCreated)
+    )(2, event)
+
+    p should runFromWithResult(
+      expect
+    )("created: 100")
+  }
 
   "ProcessSyntax.value " should " do nothing and return the value" in {
     process.value(1) should runFromWithResult()(1)
