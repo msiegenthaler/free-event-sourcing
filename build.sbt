@@ -11,7 +11,7 @@ javacOptions in Compile ++= Seq("-source", "1.8", "-target", "1.8")
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
 
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.0"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.1"
 libraryDependencies += "org.typelevel" %% "cats" % "0.5.0"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.4"
