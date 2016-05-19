@@ -20,9 +20,9 @@ object ProcessAction {
   sealed trait Await[BC <: BoundedContext, +A] extends ProcessAction[BC, A]
 
   /** Wait for a selector to match an event. */
-  case class AwaitEvent[BC <: BoundedContext, S <: WithEventType: EventSelector](selector: S)(
+  case class AwaitEvent[BC <: BoundedContext, S <: WithEventType](selector: S)(
     implicit
-    ev: ValidSelector[BC, S]
+    val eventSelector: EventSelector[S], ev: ValidSelector[BC, S]
   ) extends Await[BC, S#Event]
 
   /** Wait until the specified instant (date/time). */
