@@ -190,6 +190,8 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
         def map[R](f: S#Event ⇒ R) = flatMap(f.andThen(Monad[ProcessMonad].pure))
 
+        def value[R](value: R) = map(_ ⇒ value)
+
         def event = map(identity)
 
         /** Terminate the process if the event occurs. */
