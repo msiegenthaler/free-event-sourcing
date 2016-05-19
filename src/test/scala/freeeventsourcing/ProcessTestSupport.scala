@@ -101,17 +101,23 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
         }
       }
 
-      private[this] def compare[A]: PartialFunction[(Action[A], Expectation), Expectations[A]] = {
+      private[this]type Comparer[A] = PartialFunction[(Action[A], Expectation), Expectations[A]]
+
+      private[this] def awaitEvent[A]: Comparer[A] = {
         case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) if s1 == s2 ⇒
           ok(result)
         case (AwaitEvent(s1), ExpectAwaitEvent(s2, _)) ⇒
           fail(s"AwaitEvent: selector mismatch ${s1} != ${s2}")
+      }
 
+      private[this] def waitUnit[A]: Comparer[A] = {
         case (WaitUntil(i1), ExpectWaitUntil(i2)) if i1 == i2 ⇒
           ok(())
         case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒
           fail(s"WaitUntil: time is different: ${i1} != ${i2}")
+      }
 
+      private[this] def firstOf[A]: Comparer[A] = {
         case (FirstOf(as), ExpectFirstOf(s2, index, result)) ⇒
           val s1 = fromAlts(as)
           if (s1.zip(s2).forall { case (a, b) ⇒ a == b }) {
@@ -120,10 +126,8 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
           } else {
             fail(s"Different expectations in FirstOf: ${s1.mkString(", ")} vs ${s2.mkString(", ")}.")
           }
-
-        case (End(), ExpectEnd) ⇒
-          ok(())
-
+      }
+      private[this] def execute[A]: Comparer[A] = {
         case (Execute(at1, _, _, _), ExpectCommand(at2, _, _, _)) if at1 != at2 ⇒
           fail(s"Execute: Aggregate type is different: ${at1} != ${at2}")
         case (Execute(_, a1, _, _), ExpectCommand(_, a2, _, _)) if a1 != a2 ⇒
@@ -139,6 +143,14 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
             lift(s ⇒ x.run(s))
           }, ok)
       }
+
+      private[this] def end[A]: Comparer[A] = {
+        case (End(), ExpectEnd) ⇒
+          ok(())
+      }
+
+      private[this] def compare[A]: Comparer[A] =
+        awaitEvent[A] orElse waitUnit[A] orElse firstOf[A] orElse execute[A] orElse end[A]
 
       private[this] def fromAlts(alt: Alternatives[BC]): List[FirstOfOption] = alt match {
         case FirstOf.Empty() ⇒
