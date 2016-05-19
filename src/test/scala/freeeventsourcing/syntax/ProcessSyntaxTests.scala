@@ -11,7 +11,7 @@ import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ :+:, CNil }
+import shapeless.{ :+:, CNil, Coproduct }
 
 class ProcessSyntaxTests extends FlatSpec with Matchers {
   val process = new ProcessSyntax(AccountProcessing)
@@ -210,6 +210,16 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       timeout(Instant.now)(Monad[ProcessMonad].pure("timeout")))
     "r : ProcessMonad[String :+: Closed :+: CNil]" should compile
   }
+
+  "ProcessSyntax.firstOf(_.selector.event) " should " should use one selectors and return the event" in {
+    val evt = Opened("Mario")
+    firstOf(_.
+      on(selectorOpened).event) should runFromWithResult(
+      Expect.firstOf(FirstOfSelector(selectorOpened))(0, evt)
+    )(Coproduct[Opened :+: CNil](evt))
+  }
+
+  //TODO more tests
 
   "ProcessSyntax.value " should " do nothing and return the value" in {
     process.value(1) should runFromWithResult()(1)

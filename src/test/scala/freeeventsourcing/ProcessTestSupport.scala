@@ -5,8 +5,10 @@ import cats.data.{ State, StateT, Xor, XorT }
 import cats.{ Monad, ~> }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.Process.ProcessMonad
+import freeeventsourcing.ProcessAction.FirstOf.Alternatives
 import freeeventsourcing.ProcessAction._
 import org.scalatest.matchers.{ MatchResult, Matcher }
+import shapeless.Coproduct
 import shapeless.ops.coproduct.Inject
 
 /** Supports writing expectations agains process definitions. Usage:
@@ -35,6 +37,8 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     def waitUntil(instant: Instant) = ExpectWaitUntil(instant)
     def commandSuccessful[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C) =
       ExpectCommand(aggregateType, aggregate, command, Xor.right(()))
+    def firstOf(selectors: FirstOfOption*)(resultIndex: Int, result: Any) =
+      ExpectFirstOf(selectors.toList, resultIndex, result)
     def commandFailed[A <: Aggregate, C <: A#Command, E](aggregateType: A, aggregate: A#Id, command: C)(result: E)(
       implicit
       i: Inject[C#Error, E]
@@ -69,11 +73,16 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
   object Expectation {
     case class ExpectAwaitEvent[S <: WithEventType](selector: S, result: S#Event) extends Expectation
     case class ExpectWaitUntil(instant: Instant) extends Expectation
+    case class ExpectFirstOf(of: List[FirstOfOption], resultIndex: Int, result: Any) extends Expectation
     case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
       aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit
     ) extends Expectation
     case object ExpectEnd extends Expectation
   }
+
+  sealed trait FirstOfOption
+  case class FirstOfSelector[S <: WithEventType](selector: S)(implicit val es: EventSelector[S]) extends FirstOfOption
+  case class FirstOfUntil(instant: Instant) extends FirstOfOption
 
   private[this] object Implementation {
     import Expectation._
@@ -103,6 +112,17 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
         case (WaitUntil(i1), ExpectWaitUntil(i2)) ⇒
           fail(s"WaitUntil: time is different: ${i1} != ${i2}")
 
+        case (FirstOf(as), ExpectFirstOf(s2, index, result)) ⇒
+          val s1 = fromAlts(as)
+          if (s1.zip(s2).forall {
+            case (a, b) ⇒ a == b
+          }) {
+            val r = Coproduct.unsafeMkCoproduct(index, result) //not pretty, but does the job in a test
+            ok(r.asInstanceOf[A]) //Just cast it, it'll result in an error later (good enough for test)
+          } else {
+            fail(s"Different expectations in FirstOf: ${s1.mkString(", ")} vs ${s2.mkString(", ")}.")
+          }
+
         case (End(), ExpectEnd) ⇒
           ok(())
 
@@ -120,8 +140,17 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
             val x = subprocess.foldMap(Implementation.Transform)
             lift(s ⇒ x.run(s))
           }, ok)
+      }
 
-        // TODO case FirstOf(alternatives) ⇒ ???
+      private[this] def fromAlts(alt: Alternatives[BC]): List[FirstOfOption] = alt match {
+        case FirstOf.Empty() ⇒
+          Nil
+        case FirstOf.Alternative(a @ AwaitEvent(selector), tail) ⇒
+          FirstOfSelector(selector)(a.eventSelector) :: fromAlts(tail)
+        case FirstOf.Alternative(WaitUntil(instant), tail) ⇒
+          FirstOfUntil(instant) :: fromAlts(tail)
+        case FirstOf.Alternative(FirstOf(alts), tail) ⇒
+          fromAlts(alts) ::: fromAlts(tail)
       }
 
       private[this] def ok[A](value: A) = lifted(Xor.right[String, A](value))
