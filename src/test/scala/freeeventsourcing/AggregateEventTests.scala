@@ -12,31 +12,31 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   val event1 = AggregateEvent[Account.type](Account, Account.Id(1), Opened("Mario"), MockEventTime(1))
 
-  "AggregateEventTagger " should " produce the same tag as the matching AggregateEventSelector" in {
+  "AggregateEventTagger " should " produce the same topic as the matching AggregateEventSelector" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
     val selector = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-    indexed shouldBe selector.asTag
+    indexed shouldBe selector.topic
   }
 
-  "AggregateEventTagger " should " produce a different tag than an AggregateEventSelector that does not match the event type" in {
+  "AggregateEventTagger " should " produce a different topic than an AggregateEventSelector that does not match the event type" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
     val selector = AggregateEventSelector(Account)(Account.Id(1))[Closed]
-    indexed should not be (selector.asTag)
+    indexed should not be (selector.topic)
   }
 
-  "AggregateEventTagger " should " produce a different tag than an AggregateEventSelector that does not match the aggregate" in {
+  "AggregateEventTagger " should " produce a different topic than an AggregateEventSelector that does not match the aggregate" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
     val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    indexed should not be (selector.asTag)
+    indexed should not be (selector.topic)
   }
 
   "AggregateEventSelector " should " fail to compile if the base event class is used" in {
@@ -49,7 +49,7 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   "AggregateEventSelector " should " be an instance of EventSelector" in {
     val selector = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    def ser[S <: WithEventType: EventSelector](s: S) = implicitly[EventSelector[S]].asTag(s)
+    def ser[S <: WithEventType: EventSelector](s: S) = implicitly[EventSelector[S]].topic(s)
     "ser(selector)" should compile
   }
 
