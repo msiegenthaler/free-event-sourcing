@@ -4,7 +4,7 @@ import java.time.Instant
 import cats.data.{ State, StateT, Xor, XorT }
 import cats.{ Monad, ~> }
 import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.Process.ProcessMonad
+import freeeventsourcing.ProcessDefinition.ProcessMonad
 import freeeventsourcing.ProcessAction.FirstOf.Alternatives
 import freeeventsourcing.ProcessAction._
 import org.scalatest.matchers.{ MatchResult, Matcher }

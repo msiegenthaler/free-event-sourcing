@@ -1,7 +1,7 @@
 package freeeventsourcing
 
 import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.Process.ProcessMonad
+import freeeventsourcing.ProcessDefinition.ProcessMonad
 import freeeventsourcing.ProcessAction._
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
