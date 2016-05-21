@@ -10,8 +10,8 @@ import freeeventsourcing.support.{ ValidAggregate, ValidSelector }
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.CNil
 
-class ProcessTests extends FlatSpec with Matchers {
-  import ProcessTests._
+class ProcessActionTests extends FlatSpec with Matchers {
+  import ProcessActionTests._
   type AP = AccountProcessing.type
 
   def awaitEvent[S <: WithEventType: EventSelector](selector: S)(implicit ev: ValidSelector[AP, S]) =
@@ -26,28 +26,28 @@ class ProcessTests extends FlatSpec with Matchers {
     Execute[AP, A, Cmd](aggregateType, aggregate, command, errorHandler)
   }
 
-  "Process " should " allow selector for aggregate in the same bounded context" in {
+  "ProcessAction " should " allow selector for aggregate in the same bounded context" in {
     "awaitEvent(selectorOpened)" should compile
     "awaitEvent(selectorClosed)" should compile
     "awaitEvent(selectorCreated)" should compile
   }
 
-  "Process " should " not allow selector for aggregate not in the same context" in {
+  "ProcessAction " should " not allow selector for aggregate not in the same context" in {
     "awaitEvent(selectorMyEvent)" shouldNot compile
   }
 
-  "Process " should " allow commands of aggregates in the same context" in {
+  "ProcessAction " should " allow commands of aggregates in the same context" in {
     """
       import freeeventsourcing.accountprocessing.Account.Command.Open
       executeAction[Account.type, Open](Account, Account.Id(1), Open("Mario"), ???)""" should compile
   }
 
-  "Process " should " not allow commands of aggregates not in the same context" in {
+  "ProcessAction " should " not allow commands of aggregates not in the same context" in {
     """executeAction[TestAggregate.type, TestAggregate.Command.MyCommand](
         TestAggregate, TestAggregate.Id(1), TestAggregate.Command.MyCommand("Mario"), ???)""" shouldNot compile
   }
 
-  "Process " should " allow the implementation to handle errors by the command" in {
+  "ProcessAction " should " allow the implementation to handle errors by the command" in {
     """
       import cats.data.Xor
       import freeeventsourcing.accountprocessing.Account.Command.Open
@@ -56,7 +56,7 @@ class ProcessTests extends FlatSpec with Matchers {
       }""" should compile
   }
 }
-object ProcessTests {
+object ProcessActionTests {
   object TestAggregate extends Aggregate {
     val name = "Test Aggregate"
     case class Id(id: Int)

@@ -19,7 +19,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   val support = new ProcessTestSupport(AccountProcessing)
   import support._
-  import ProcessTests._
+  import ProcessActionTests._
 
   "ProcessSyntax.await " should " support event from selectors of the same bounded context" in {
     "await(selectorOpened)" should compile
