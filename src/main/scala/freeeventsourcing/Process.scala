@@ -8,7 +8,13 @@ import freeeventsourcing.ProcessAction.FirstOf.Alternatives
 import freeeventsourcing.support.{ ValidAggregate, ValidSelector }
 import shapeless.{ :+:, CNil, Coproduct }
 
+//trait Process[BC <: BoundedContext] {
+//  def initiator:
+//}
 object Process {
+  def apply[BC <: BoundedContext, S <: WithEventType: ValidSelector[BC, ?]](in: BC, initiator: S)(body: S#Event ⇒ ProcessMonad[BC, _]) =
+    ???
+
   type ProcessMonad[BC <: BoundedContext, A] = Free[ProcessAction[BC, ?], A]
 }
 
