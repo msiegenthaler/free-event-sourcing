@@ -15,7 +15,8 @@ trait EventTime
 
 /** Selects a specific subset of events. */
 @typeclass trait EventSelector[S <: EventSelector.WithEventType] {
-  def castEvent(e: Any): S#Event
+  /** Checks if the event received on the topic matches this selector. */
+  def select(event: Any): Option[S#Event]
 
   /** Topics are used for more efficient filtering of events. Only events on this topic will be delivered to the selector. */
   def topic(selector: S): EventTopic
