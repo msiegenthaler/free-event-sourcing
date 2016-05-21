@@ -6,6 +6,7 @@ import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
+import freeeventsourcing.utils.CompositeName
 
 class AggregateEventTests extends FlatSpec with Matchers {
   val accountIndexer = AggregateEventRouter(Account)
@@ -79,6 +80,13 @@ class AggregateEventTests extends FlatSpec with Matchers {
     val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
     def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
     selector(s).select(Closed) shouldBe None
+  }
+
+  "AggregateEventSelector.topic " should " be under aggregate and contain the type and the id" in {
+    val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
+    def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
+    val expected = CompositeName.root / "aggregate" / "Account" / "2" / "freeeventsourcing.accountprocessing.Account$Event$Opened"
+    selector(s).topic(s) shouldBe EventTopic(expected)
   }
 }
 
