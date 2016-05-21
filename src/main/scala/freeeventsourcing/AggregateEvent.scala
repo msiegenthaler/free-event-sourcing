@@ -40,7 +40,7 @@ object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
   implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: Typeable](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A, E]] {
-    def select(e: Any) = Typeable[E].cast(e)
+    def select(selector: AggregateEventSelector[A, E], e: Any) = Typeable[E].cast(e)
     def topic(selector: AggregateEventSelector[A, E]) = selector.topic
   }
 

@@ -73,13 +73,13 @@ class AggregateEventTests extends FlatSpec with Matchers {
   "AggregateEventSelector.select " should " match a correct event" in {
     val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
     def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
-    selector(s).select(Opened("Mario")) shouldBe Some(Opened("Mario"))
+    selector(s).select(s, Opened("Mario")) shouldBe Some(Opened("Mario"))
   }
 
   "AggregateEventSelector.select " should " not match a wrong event" in {
     val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
     def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
-    selector(s).select(Closed) shouldBe None
+    selector(s).select(s, Closed) shouldBe None
   }
 
   "AggregateEventSelector.topic " should " be under aggregate and contain the type and the id" in {
