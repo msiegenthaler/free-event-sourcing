@@ -8,11 +8,11 @@ import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
 
 class AggregateEventTests extends FlatSpec with Matchers {
-  val accountIndexer = AggregateEventTagger(Account)
+  val accountIndexer = AggregateEventRouter(Account)
 
   val event1 = AggregateEvent[Account.type](Account, Account.Id(1), Opened("Mario"), MockEventTime(1))
 
-  "AggregateEventTagger " should " produce the same topic as the matching AggregateEventSelector" in {
+  "AggregateEventRouter " should " produce the same topic as the matching AggregateEventSelector" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
@@ -21,7 +21,7 @@ class AggregateEventTests extends FlatSpec with Matchers {
     indexed shouldBe selector.topic
   }
 
-  "AggregateEventTagger " should " produce a different topic than an AggregateEventSelector that does not match the event type" in {
+  "AggregateEventRouter " should " produce a different topic than an AggregateEventSelector that does not match the event type" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
@@ -30,7 +30,7 @@ class AggregateEventTests extends FlatSpec with Matchers {
     indexed should not be (selector.topic)
   }
 
-  "AggregateEventTagger " should " produce a different topic than an AggregateEventSelector that does not match the aggregate" in {
+  "AggregateEventRouter " should " produce a different topic than an AggregateEventSelector that does not match the aggregate" in {
     val toIndex = accountIndexer.apply(event1)
     toIndex.size shouldBe 1
     val indexed = toIndex.head

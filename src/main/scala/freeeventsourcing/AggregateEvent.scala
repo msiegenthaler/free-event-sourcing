@@ -70,8 +70,8 @@ object AggregateEventSelector {
   }
 }
 
-object AggregateEventTagger {
-  def apply[A <: Aggregate](aggregate: A)(implicit t: Typeable[AggregateEvent[A]], idser: StringSerializable[A#Id]) = EventTagger { event ⇒
+object AggregateEventRouter {
+  def apply[A <: Aggregate](aggregate: A)(implicit t: Typeable[AggregateEvent[A]], idser: StringSerializable[A#Id]) = EventRouter { event ⇒
     t.cast(event).filter(_.aggregateType == aggregate).map { event ⇒
       val eventType = event.event.getClass.getName //TODO change to more robust implementation
       val selector = AggregateEventSelector(aggregate, event.aggregate, eventType)

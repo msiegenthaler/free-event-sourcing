@@ -1,7 +1,7 @@
 package freeeventsourcing
 
 import scala.language.implicitConversions
-import scala.collection.immutable.Traversable
+import scala.collection.immutable.Set
 import freeeventsourcing.utils.CompositeName
 import simulacrum.typeclass
 
@@ -29,13 +29,14 @@ case class EventTopic(composedTopic: CompositeName) extends AnyVal {
   def topic = composedTopic.serialize
 }
 
-object EventTagger {
-  type EventTagger = Any ⇒ Traversable[EventTopic] // TODO find different return type..
+/** Responsible for routing events to the correct topics. */
+object EventRouter {
+  type EventRouter = Any ⇒ Set[EventTopic]
 
-  def apply(f: PartialFunction[Any, EventTopic]): EventTagger =
+  def apply(f: PartialFunction[Any, EventTopic]): EventRouter =
     apply(f.lift)
-  def apply(f: Any ⇒ Option[EventTopic]): EventTagger =
-    e ⇒ f(e).toList
-  def multi(f: PartialFunction[Any, Traversable[EventTopic]]): EventTagger =
-    e ⇒ f.lift(e).getOrElse(Nil)
+  def apply(f: Any ⇒ Option[EventTopic]): EventRouter =
+    e ⇒ f(e).toSet
+  def multi(f: PartialFunction[Any, Set[EventTopic]]): EventRouter =
+    e ⇒ f.lift(e).getOrElse(Set.empty)
 }
