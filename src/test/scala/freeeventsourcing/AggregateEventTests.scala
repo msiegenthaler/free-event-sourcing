@@ -68,6 +68,18 @@ class AggregateEventTests extends FlatSpec with Matchers {
     type L = Account.type :: HNil
     "implicitly[AggregateEventSelector.ValidFor[AggregateEventSelector[Transaction.type, Created], L]]" shouldNot compile
   }
+
+  "AggregateEventSelector.select " should " match a correct event" in {
+    val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
+    def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
+    selector(s).select(Opened("Mario")) shouldBe Some(Opened("Mario"))
+  }
+
+  "AggregateEventSelector.select " should " not match a wrong event" in {
+    val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
+    def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
+    selector(s).select(Closed) shouldBe None
+  }
 }
 
 case class MockEventTime(t: Int) extends EventTime
