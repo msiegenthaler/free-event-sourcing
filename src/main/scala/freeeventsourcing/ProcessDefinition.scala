@@ -10,33 +10,28 @@ import freeeventsourcing.support.ValidSelector
  */
 sealed trait ProcessDefinition[BC <: BoundedContext] {
   val name: String
-  type Id
   val boundedContext: BC
 
   def initiator: Initiator
   type Initiator <: WithEventType
   implicit def initiatorSelector: ValidSelector[BC, Initiator]
 
-  def spawn(event: Initiator#Event): Option[Id]
-
-  def body(id: Id): ProcessMonad[BC, _]
+  def body(initialEvent: Initiator#Event)(implicit e: Event[Initiator#Event]): ProcessMonad[BC, Unit]
 }
 object ProcessDefinition {
   /** Create a new process definition. */
-  def apply[BC <: BoundedContext, S <: WithEventType: ValidSelector[BC, ?], I](
+  def apply[BC <: BoundedContext, S <: WithEventType: ValidSelector[BC, ?]](
     in: BC, name_ : String
-  )(initiator_ : S, spawn_ : S#Event ⇒ Option[I])(
-    body_ : I ⇒ ProcessMonad[BC, _]
-  ) = {
+  )(initiator_ : S)(
+    body_ : S#Event ⇒ ProcessMonad[BC, _]
+  )(implicit e: Event[S#Event]) = {
     new ProcessDefinition[BC] {
       val name = name_
-      type Id = I
       val boundedContext = in
       val initiator = initiator_
       type Initiator = S
       val initiatorSelector = implicitly[ValidSelector[BC, S]]
-      def spawn(event: S#Event) = spawn_(event)
-      def body(id: Id) = body_(id)
+      def body(initialEvent: Initiator#Event)(implicit e: Event[Initiator#Event]) = body(initialEvent)
     }
   }
 
