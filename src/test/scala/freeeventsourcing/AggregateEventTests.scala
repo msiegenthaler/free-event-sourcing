@@ -3,6 +3,7 @@ package freeeventsourcing
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, HNil }
 import freeeventsourcing.EventSelector.WithEventType
+import freeeventsourcing.EventSelector.ops._
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
@@ -72,21 +73,18 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   "AggregateEventSelector.select " should " match a correct event" in {
     val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
-    selector(s).select(s, Opened("Mario")) shouldBe Some(Opened("Mario"))
+    s.select(Opened("Mario")) shouldBe Some(Opened("Mario"))
   }
 
   "AggregateEventSelector.select " should " not match a wrong event" in {
     val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
-    selector(s).select(s, Closed) shouldBe None
+    s.select(Closed) shouldBe None
   }
 
   "AggregateEventSelector.topic " should " be under aggregate and contain the type and the id" in {
     val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    def selector[S <: WithEventType: EventSelector](s: S): EventSelector[S] = implicitly[EventSelector[S]]
     val expected = CompositeName.root / "aggregate" / "Account" / "2" / "freeeventsourcing.accountprocessing.Account$Event$Opened"
-    selector(s).topic(s) shouldBe EventTopic(expected)
+    s.topic shouldBe EventTopic(expected)
   }
 }
 
