@@ -31,17 +31,17 @@ case class AggregateEventSelector[A <: Aggregate, E <: A#Event](aggregateType: A
     idser: StringSerializable[A#Id]
 ) {
   type Event = E
-  def asTag = {
-    val key = CompositeName.root / aggregateType.name / aggregate.serializeToString / eventType
-    EventTag("aggregateEventSelector", key.serialize)
+  def topic = {
+    val key = CompositeName("aggregate") / aggregateType.name / aggregate.serializeToString / eventType
+    EventTopic(key)
   }
 }
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
   implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: Typeable](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A, E]] {
-    def castEvent(e: Any): E = Typeable[E].cast(e).getOrElse(throw new AssertionError("Event type did not match."))
-    def asTag(selector: AggregateEventSelector[A, E]) = selector.asTag
+    def select(selector: AggregateEventSelector[A, E], e: Any) = Typeable[E].cast(e)
+    def topic(selector: AggregateEventSelector[A, E]) = selector.topic
   }
 
   class EventCatcher[A <: Aggregate](aggregateType: A, aggregate: A#Id) {
@@ -70,12 +70,12 @@ object AggregateEventSelector {
   }
 }
 
-object AggregateEventTagger {
-  def apply[A <: Aggregate](aggregate: A)(implicit t: Typeable[AggregateEvent[A]], idser: StringSerializable[A#Id]) = EventTagger { event ⇒
+object AggregateEventRouter {
+  def apply[A <: Aggregate](aggregate: A)(implicit t: Typeable[AggregateEvent[A]], idser: StringSerializable[A#Id]) = EventRouter { event ⇒
     t.cast(event).filter(_.aggregateType == aggregate).map { event ⇒
       val eventType = event.event.getClass.getName //TODO change to more robust implementation
       val selector = AggregateEventSelector(aggregate, event.aggregate, eventType)
-      selector.asTag
+      selector.topic
     }
   }
 }
