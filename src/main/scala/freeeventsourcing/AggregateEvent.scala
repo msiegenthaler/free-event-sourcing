@@ -4,50 +4,60 @@ import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
 import scala.reflect._
 import shapeless.ops.hlist.Selector
-import shapeless.{ ::, HList, Typeable }
+import shapeless.{ ::, HList, TypeCase, Typeable }
 import simulacrum.typeclass
 import freeeventsourcing.utils.{ =!=, CompositeName, StringSerializable }
 import freeeventsourcing.utils.StringSerializable.ops._
 
-case class AggregateEvent[A <: Aggregate](aggregateType: A, aggregate: A#Id, event: A#Event, eventTime: EventTime)
+/** Wraps an event from an aggregate to preserve the information about the source. Is used as the event type of the bus. */
+case class AggregateEvent[A <: Aggregate, E <: A#Event](aggregateType: A, aggregate: A#Id, event: E)(implicit et: AggregateEventType[A, E]) {
+  lazy val eventType = et.eventType
+}
 
-@typeclass trait AggregateEventType[E] {
-  def eventType: String
+/** String representation of an event type for the aggregate. */
+trait AggregateEventType[A <: Aggregate, E <: A#Event] {
+  private[freeeventsourcing] def eventType: String
 }
 object AggregateEventType {
-  //TODO temporary, this is not the most robust solution (refactorings)
-  implicit def fromClass[E: ClassTag] = new AggregateEventType[E] {
-    def eventType = classTag[E].runtimeClass.getName
+  def apply[A <: Aggregate, E <: A#Event](implicit e: AggregateEventType[A, E]) = e
+
+  implicit def fromClass[A <: Aggregate: ClassTag, E <: A#Event: ClassTag] = new AggregateEventType[A, E] {
+    def eventType = {
+      //try to shorten it as much as possible to be more resistant to refactorings.
+      val aggregateClass = classTag[A].runtimeClass.getName
+      def dropAggregatePrefix(name: String) = {
+        if (name.startsWith(aggregateClass)) name.drop(aggregateClass.length)
+        else name
+      }
+      def dropCommonEventPrefixes(name: String) = {
+        val prefixes = List("Event$", "Events$")
+        prefixes.
+          filter(name.startsWith).
+          take(1).map(p ⇒ name.drop(p.length)).
+          headOption.getOrElse(name)
+      }
+      dropCommonEventPrefixes(dropAggregatePrefix(classTag[E].runtimeClass.getName))
+    }
   }
 }
 
-case class AggregateEventSelector[A <: Aggregate, E <: A#Event](aggregateType: A, aggregate: A#Id, eventType: String)(
-    implicit
-    idser: StringSerializable[A#Id]
-) {
+case class AggregateEventSelector[A <: Aggregate, E <: A#Event] private (private val topic: EventTopic) {
   type Event = E
-  def topic = {
-    val key = CompositeName("aggregate") / aggregateType.name / aggregate.serializeToString / eventType
-    EventTopic(key)
-  }
 }
+
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
-  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: Typeable](implicit s: StringSerializable[A#Id]) = new EventSelector[AggregateEventSelector[A, E]] {
-    def select(selector: AggregateEventSelector[A, E], e: Any) = Typeable[E].cast(e)
-    def topic(selector: AggregateEventSelector[A, E]) = selector.topic
+  class EventCatcher[A <: Aggregate](aggregateType: A, aggregate: A#Id) {
+    def apply[E <: A#Event: AggregateEventType[A, ?]](implicit i: StringSerializable[A#Id], ev: ConcreteEvent[A, E]): AggregateEventSelector[A, E] = {
+      val topic = topicFor(aggregateType, aggregate, AggregateEventType[A, E].eventType)
+      AggregateEventSelector(topic)
+    }
   }
 
-  class EventCatcher[A <: Aggregate](aggregateType: A, aggregate: A#Id) {
-    def apply[E <: A#Event](
-      implicit
-      et: AggregateEventType[E],
-      idser: StringSerializable[A#Id],
-      notBaseType: ConcreteEvent[A, E]
-    ): AggregateEventSelector[A, E] = {
-      AggregateEventSelector[A, E](aggregateType, aggregate, et.eventType)
-    }
+  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: Typeable] = new EventSelector[AggregateEventSelector[A, E]] {
+    def select(selector: AggregateEventSelector[A, E], event: Any) = Typeable[E].cast(event)
+    def topic(selector: AggregateEventSelector[A, E]) = selector.topic
   }
 
   // Just so we get nicer error messages
@@ -63,14 +73,22 @@ object AggregateEventSelector {
     implicit def selector[A <: Aggregate, E <: A#Event, AS <: HList](implicit ev: Selector[AS, A]) =
       new ValidFor[AggregateEventSelector[A, E], AS] {}
   }
-}
 
-object AggregateEventRouter {
-  def apply[A <: Aggregate](aggregate: A)(implicit t: Typeable[AggregateEvent[A]], idser: StringSerializable[A#Id]) = EventRouter { event ⇒
-    t.cast(event).filter(_.aggregateType == aggregate).map { event ⇒
-      val eventType = event.event.getClass.getName //TODO change to more robust implementation
-      val selector = AggregateEventSelector(aggregate, event.aggregate, eventType)
-      selector.topic
+  object Router {
+    def forAggregate[A <: Aggregate: ClassTag](aggregateType: A)(implicit t: Typeable[A#Id], i: StringSerializable[A#Id]) = {
+      val Id = TypeCase[A#Id]
+      EventRouter {
+        case e @ AggregateEvent(`aggregateType`, Id(aggregate), _) ⇒
+          topicFor(aggregateType, aggregate, e.eventType)
+      }
     }
+  }
+
+  private[AggregateEventSelector] def topicFor[A <: Aggregate](aggregateType: A, aggregate: A#Id, eventType: String)(
+    implicit
+    s: StringSerializable[A#Id]
+  ): EventTopic = {
+    val name = CompositeName("aggregate") / aggregateType.name / aggregate.serializeToString / eventType
+    EventTopic(name)
   }
 }

@@ -40,8 +40,8 @@ object EventRouter {
   type EventRouter = Any ⇒ Set[EventTopic]
 
   def apply(f: PartialFunction[Any, EventTopic]): EventRouter =
-    apply(f.lift)
-  def apply(f: Any ⇒ Option[EventTopic]): EventRouter =
+    option(f.lift)
+  def option(f: Any ⇒ Option[EventTopic]): EventRouter =
     e ⇒ f(e).toSet
   def multi(f: PartialFunction[Any, Set[EventTopic]]): EventRouter =
     e ⇒ f.lift(e).getOrElse(Set.empty)
