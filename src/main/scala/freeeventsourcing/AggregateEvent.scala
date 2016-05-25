@@ -45,7 +45,7 @@ object AggregateEventType {
   }
 }
 
-case class AggregateEventSelector[A <: Aggregate, E <: A#Event] private (aggregateType: A, aggregate: A#Id, private val topic: EventTopic) {
+case class AggregateEventSelector[A <: Aggregate, E <: A#Event] private (aggregateType: A, aggregate: A#Id, topic: EventTopic) {
   type Event = AggregateEvent[A, E]
 }
 

@@ -38,8 +38,8 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     def commandSuccessful[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C) =
       ExpectCommand(aggregateType, aggregate, command, Xor.right(()))
     def firstOf(selectors: FirstOfOption*)(resultIndex: Int, result: Any) = result match {
-      case ()    ⇒ ExpectFirstOf(selectors.toList, resultIndex, ())
-      case event ⇒ ExpectFirstOf(selectors.toList, resultIndex, EventWithMetadata(result, EventMetadata(MockEventId(), MockEventTime())))
+      case () ⇒ ExpectFirstOf(selectors.toList, resultIndex, ())
+      case _  ⇒ ExpectFirstOf(selectors.toList, resultIndex, EventWithMetadata(result, EventMetadata(MockEventId(), MockEventTime())))
     }
     def commandFailed[A <: Aggregate, C <: A#Command, E](aggregateType: A, aggregate: A#Id, command: C)(result: E)(
       implicit
