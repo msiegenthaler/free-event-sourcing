@@ -10,11 +10,6 @@ import freeeventsourcing.utils.{ =!=, CompositeName, StringSerializable }
 import freeeventsourcing.utils.StringSerializable.ops._
 
 case class AggregateEvent[A <: Aggregate](aggregateType: A, aggregate: A#Id, event: A#Event, eventTime: EventTime)
-object AggregateEvent {
-  implicit def eventInstance[A <: Aggregate] = new Event[AggregateEvent[A]] {
-    def eventTime(e: AggregateEvent[A]) = e.eventTime
-  }
-}
 
 @typeclass trait AggregateEventType[E] {
   def eventType: String

@@ -23,7 +23,7 @@ object ProcessAction {
   case class AwaitEvent[BC <: BoundedContext, S <: WithEventType](selector: S)(
     implicit
     val eventSelector: EventSelector[S], ev: ValidSelector[BC, S]
-  ) extends Await[BC, S#Event]
+  ) extends Await[BC, EventWithMetadata[S#Event]]
 
   /** Wait until the specified instant (date/time). */
   case class WaitUntil[BC <: BoundedContext](when: Instant) extends Await[BC, Unit]

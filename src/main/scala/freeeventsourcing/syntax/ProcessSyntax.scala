@@ -24,6 +24,10 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
   /** Await an event using a selector. The event must be from this bounded context. */
   def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
+    awaitMetadata(selector).map(_.event)
+
+  /** Await an event (including its metadata) using a selector. The event must be from this bounded context. */
+  def awaitMetadata[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
     lift(AwaitEvent[BC, S](selector))
 
   /** Send commands to a specific aggregate. */
@@ -91,9 +95,13 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     /** Helper class for from. */
     final class FromAggregateBuilder[A <: Aggregate] private[ProcessSyntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
-      def await[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) = {
+      def await[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) =
+        awaitMetadata.map(_.event)
+
+      /** Await an event (including its metdata) from the aggregate. */
+      def awaitMetadata[E <: A#Event: AggregateEventType: Typeable](implicit ev: ValidAggregate[BC, A], idser: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-        ProcessSyntax.this.await(selector)
+        ProcessSyntax.this.awaitMetadata(selector)
       }
     }
 
@@ -190,16 +198,23 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
         def map[R](f: S#Event ⇒ R) = flatMap(f.andThen(Monad[ProcessMonad].pure))
 
+        def mapMetadata[R](f: EventWithMetadata[S#Event] ⇒ R) = flatMapMetadata(f.andThen(Monad[ProcessMonad].pure))
+
         def value[R](value: R) = map(_ ⇒ value)
 
         def event = map(identity)
 
+        def eventWithMetadata = mapMetadata(identity)
+
         /** Terminate the process if the event occurs. */
         def terminate = flatMap(_ ⇒ ProcessSyntax.this.terminate)
 
-        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[S#Event, R] :: A] = {
+        def flatMap[R](body: S#Event ⇒ ProcessMonad[R]) =
+          flatMapMetadata(e ⇒ body(e.event))
+
+        def flatMapMetadata[R](body: EventWithMetadata[S#Event] ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[EventWithMetadata[S#Event], R] :: A] = {
           val path = new SwitchPath {
-            type Event = S#Event
+            type Event = EventWithMetadata[S#Event]
             type Result = R
             val action = AwaitEvent[BC, S](OnBuilder.this.selector)
             def effect(event: Event) = body(event)

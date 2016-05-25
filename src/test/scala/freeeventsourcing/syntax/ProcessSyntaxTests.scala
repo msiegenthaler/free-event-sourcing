@@ -21,6 +21,8 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   import support._
   import ProcessTests._
 
+  val metadata = EventMetadata(MockEventId(), MockEventTime())
+
   "ProcessSyntax.await " should " support event from selectors of the same bounded context" in {
     "await(selectorOpened)" should compile
     "await(selectorClosed)" should compile
@@ -37,10 +39,22 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     )(Opened("Mario"))
   }
 
+  "ProcessSyntax.awaitMetadata " should " result in a Await action" in {
+    awaitMetadata(selectorOpened) should runFromWithResult(
+      Expect.awaitEvent(selectorOpened)(Opened("Mario"))
+    )(EventWithMetadata(Opened("Mario"), metadata))
+  }
+
   "ProcessSyntax " should " have a nice syntax to wait for events from aggregates " in {
     val account1 = Account.Id(1)
-    val r = from(account1).await[Opened]
-    r shouldBe await(AggregateEventSelector(Account)(account1)[Opened])
+    "from(account1).await[Opened]" should compile
+    "val x: M[Opened] = from(account1).await[Opened]" should compile
+  }
+
+  "ProcessSyntax " should " have a nice syntax to wait for events with metadata from aggregates " in {
+    val account1 = Account.Id(1)
+    "from(account1).awaitMetadata[Opened]" should compile
+    "val x: M[EventWithMetadata[Opened]] = from(account1).awaitMetadata[Opened]" should compile
   }
 
   "ProcessSyntax.on().execute " should " allow commands of aggregates in the same context" in {
@@ -118,16 +132,38 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     "r2 : ProcessMonad[Unit :+: CNil]" should compile
   }
 
+  "ProcessSyntax.firstOf " should " accept a single selector with an flatMap with metadata" in {
+    val r = firstOf(_.
+      on(selectorOpened).flatMapMetadata((e: EventWithMetadata[Opened]) ⇒ terminate))
+    "r : ProcessMonad[Unit :+: CNil]" should compile
+  }
+
   "ProcessSyntax.firstOf " should " accept a single selector with a map" in {
     val r = firstOf(_.
       on(selectorOpened).map(_.owner))
     "r : ProcessMonad[String :+: CNil]" should compile
   }
 
+  "ProcessSyntax.firstOf " should " accept a single selector with a map with metadata" in {
+    val r = firstOf(_.
+      on(selectorOpened).mapMetadata(_.event.owner))
+    "r : ProcessMonad[String :+: CNil]" should compile
+
+    val r2 = firstOf(_.
+      on(selectorOpened).mapMetadata(_.metadata.id))
+    "r2 : ProcessMonad[EventId :+: CNil]" should compile
+  }
+
   "ProcessSyntax.firstOf " should " accept a single selector that returns the event" in {
     val r = firstOf(_.
       on(selectorOpened).event)
     "r : ProcessMonad[Opened :+: CNil]" should compile
+  }
+
+  "ProcessSyntax.firstOf " should " accept a single selector that returns the event with metadata" in {
+    val r = firstOf(_.
+      on(selectorOpened).eventWithMetadata)
+    "r : ProcessMonad[EventWithMetadata[Opened] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single selector that terminates the process" in {
