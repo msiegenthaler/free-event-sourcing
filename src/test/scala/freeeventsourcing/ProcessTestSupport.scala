@@ -33,12 +33,14 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
   object Expect {
     import Expectation._
     def awaitEvent[S <: WithEventType](selector: S)(result: S#Event) =
-      ExpectAwaitEvent(selector, result)
+      ExpectAwaitEvent(selector, EventWithMetadata(result, EventMetadata(MockEventId(), MockEventTime())))
     def waitUntil(instant: Instant) = ExpectWaitUntil(instant)
     def commandSuccessful[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C) =
       ExpectCommand(aggregateType, aggregate, command, Xor.right(()))
-    def firstOf(selectors: FirstOfOption*)(resultIndex: Int, result: Any) =
-      ExpectFirstOf(selectors.toList, resultIndex, result)
+    def firstOf(selectors: FirstOfOption*)(resultIndex: Int, result: Any) = result match {
+      case () ⇒ ExpectFirstOf(selectors.toList, resultIndex, ())
+      case _  ⇒ ExpectFirstOf(selectors.toList, resultIndex, EventWithMetadata(result, EventMetadata(MockEventId(), MockEventTime())))
+    }
     def commandFailed[A <: Aggregate, C <: A#Command, E](aggregateType: A, aggregate: A#Id, command: C)(result: E)(
       implicit
       i: Inject[C#Error, E]
@@ -46,6 +48,9 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
       ExpectCommand(aggregateType, aggregate, command, Xor.left(i(result)))
     def end = ExpectEnd
   }
+
+  case class MockEventId() extends EventId
+  case class MockEventTime() extends EventTime
 
   case class ProcessMatcher(expectations: List[Expectation], checkResult: Any ⇒ String Xor Unit) extends Matcher[M[_]] {
     def apply(process: M[_]) = {
@@ -71,7 +76,7 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
 
   sealed trait Expectation
   object Expectation {
-    case class ExpectAwaitEvent[S <: WithEventType](selector: S, result: S#Event) extends Expectation
+    case class ExpectAwaitEvent[S <: WithEventType](selector: S, result: EventWithMetadata[S#Event]) extends Expectation
     case class ExpectWaitUntil(instant: Instant) extends Expectation
     case class ExpectFirstOf(of: List[FirstOfOption], resultIndex: Int, result: Any) extends Expectation
     case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
@@ -104,8 +109,10 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
       private[this]type Comparer[A] = PartialFunction[(Action[A], Expectation), Expectations[A]]
 
       private[this] def awaitEvent[A]: Comparer[A] = {
-        case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) if s1 == s2 ⇒
+        case (AwaitEvent(s1), ExpectAwaitEvent(s2, result)) if s1 == s2 ⇒ {
+          val metadata = EventMetadata(MockEventId(), MockEventTime())
           ok(result)
+        }
         case (AwaitEvent(s1), ExpectAwaitEvent(s2, _)) ⇒
           fail(s"AwaitEvent: selector mismatch ${s1} != ${s2}")
       }
@@ -124,7 +131,7 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
             val r = Coproduct.unsafeMkCoproduct(s2.length - index - 1, result) //not pretty, but does the job in a test
             ok(r.asInstanceOf[A]) //Just cast it, it'll result in an error later (good enough for test)
           } else {
-            fail(s"Different expectations in FirstOf: ${s1.mkString(", ")} vs ${s2.mkString(", ")}.")
+            fail(s"Different expectations in FirstOf: ${s1.mkString(", ")} vs ${s2.mkString(", ")}")
           }
       }
       private[this] def execute[A]: Comparer[A] = {
