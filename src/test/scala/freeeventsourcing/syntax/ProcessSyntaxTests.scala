@@ -23,6 +23,9 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   val metadata = EventMetadata(MockEventId(), MockEventTime())
 
+  val openedEvent = AggregateEvent.create(Account)(Account.Id(1), Opened("Mario"))
+  val closedEvent = AggregateEvent.create(Account)(Account.Id(1), Closed())
+
   "ProcessSyntax.await " should " support event from selectors of the same bounded context" in {
     "await(selectorOpened)" should compile
     "await(selectorClosed)" should compile
@@ -35,14 +38,14 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.await " should " result in a Await action" in {
     await(selectorOpened) should runFromWithResult(
-      Expect.awaitEvent(selectorOpened)(Opened("Mario"))
-    )(Opened("Mario"))
+      Expect.awaitEvent(selectorOpened)(openedEvent)
+    )(openedEvent)
   }
 
   "ProcessSyntax.awaitMetadata " should " result in a Await action" in {
     awaitMetadata(selectorOpened) should runFromWithResult(
-      Expect.awaitEvent(selectorOpened)(Opened("Mario"))
-    )(EventWithMetadata(Opened("Mario"), metadata))
+      Expect.awaitEvent(selectorOpened)(openedEvent)
+    )(EventWithMetadata(openedEvent, metadata))
   }
 
   "ProcessSyntax " should " have a nice syntax to wait for events from aggregates " in {
@@ -54,7 +57,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   "ProcessSyntax " should " have a nice syntax to wait for events with metadata from aggregates " in {
     val account1 = Account.Id(1)
     "from(account1).awaitMetadata[Opened]" should compile
-    "val x: M[EventWithMetadata[Opened]] = from(account1).awaitMetadata[Opened]" should compile
+    "val x: M[EventWithMetadata[AggregateEvent[Account.type, Opened]]] = from(account1).awaitMetadata[Opened]" should compile
   }
 
   "ProcessSyntax.on().execute " should " allow commands of aggregates in the same context" in {
@@ -124,29 +127,29 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.firstOf " should " accept a single selector with an execute (flatMap)" in {
     val r = firstOf(_.
-      on(selectorOpened).execute((e: Opened) ⇒ terminate))
+      on(selectorOpened).execute((e: AggregateEvent[Account.type, Opened]) ⇒ terminate))
     "r : ProcessMonad[Unit :+: CNil]" should compile
 
     val r2 = firstOf(_.
-      on(selectorOpened).flatMap((e: Opened) ⇒ terminate))
+      on(selectorOpened).flatMap((e: AggregateEvent[Account.type, Opened]) ⇒ terminate))
     "r2 : ProcessMonad[Unit :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single selector with an flatMap with metadata" in {
     val r = firstOf(_.
-      on(selectorOpened).flatMapMetadata((e: EventWithMetadata[Opened]) ⇒ terminate))
+      on(selectorOpened).flatMapMetadata((e: EventWithMetadata[AggregateEvent[Account.type, Opened]]) ⇒ terminate))
     "r : ProcessMonad[Unit :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single selector with a map" in {
     val r = firstOf(_.
-      on(selectorOpened).map(_.owner))
+      on(selectorOpened).map(_.event.owner))
     "r : ProcessMonad[String :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single selector with a map with metadata" in {
     val r = firstOf(_.
-      on(selectorOpened).mapMetadata(_.event.owner))
+      on(selectorOpened).mapMetadata(_.event.event.owner))
     "r : ProcessMonad[String :+: CNil]" should compile
 
     val r2 = firstOf(_.
@@ -157,13 +160,13 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   "ProcessSyntax.firstOf " should " accept a single selector that returns the event" in {
     val r = firstOf(_.
       on(selectorOpened).event)
-    "r : ProcessMonad[Opened :+: CNil]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single selector that returns the event with metadata" in {
     val r = firstOf(_.
       on(selectorOpened).eventWithMetadata)
-    "r : ProcessMonad[EventWithMetadata[Opened] :+: CNil]" should compile
+    "r : ProcessMonad[EventWithMetadata[AggregateEvent[Account.type, Opened]] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single selector that terminates the process" in {
@@ -176,20 +179,20 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     val r = firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event)
-    "r : ProcessMonad[Opened :+: Closed:+: CNil]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a single event from an aggregate" in {
     val r = firstOf(_.
       from(Account.Id(1)).on[Opened].event)
-    "r : ProcessMonad[Opened :+: CNil]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a two event from different aggregates" in {
     val r = firstOf(_.
       from(Account.Id(1)).on[Opened].event.
       from(Transaction.Id(1)).on[Created].event)
-    "r : ProcessMonad[Opened :+: Created :+: CNil]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Transaction.type, Created] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " allow to mix selectors and events from aggregates" in {
@@ -198,18 +201,19 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       on(selectorClosed).event.
       from(Transaction.Id(1)).on[Created].event.
       on(selectorOpened).event)
-    "r : ProcessMonad[Unit :+: Closed :+: Created :+: Opened :+: CNil]" should compile
+    "r : ProcessMonad[Unit :+: AggregateEvent[Account.type, Closed] :+: " +
+      "AggregateEvent[Transaction.type, Created] :+: AggregateEvent[Account.type, Opened] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOfUnified " should " accept a single selector and return the event type" in {
     val r = firstOfUnified(_.
       on(selectorOpened).event)
-    "r : ProcessMonad[Opened]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened]]" should compile
   }
 
   "ProcessSyntax.firstOfUnified " should " accept a single selector with a map and return the result type of the map" in {
     val r = firstOfUnified(_.
-      on(selectorOpened).map(_.owner))
+      on(selectorOpened).map(_.event.owner))
     "r : ProcessMonad[String]" should compile
   }
 
@@ -217,7 +221,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     val r = firstOfUnified(_.
       on(selectorOpened).event.
       on(selectorClosed).event)
-    "r : ProcessMonad[Account.Event with Product with Serializable]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Account.Event with Product with Serializable]]" should compile
   }
 
   "ProcessSyntax.firstOfUnified " should " accept a two selector mapping to the same type and return this type" in {
@@ -237,22 +241,21 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     val r = firstOf(_.
       on(selectorClosed).event.
       timeout(Instant.now)(terminate))
-    "r : ProcessMonad[Closed :+: Unit :+: CNil]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Closed] :+: Unit :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " accept a timeout that returns a value and a selector" in {
     val r = firstOf(_.
       on(selectorClosed).event.
       timeout(Instant.now)(Monad[ProcessMonad].pure("timeout")))
-    "r : ProcessMonad[Closed :+: String :+: CNil]" should compile
+    "r : ProcessMonad[AggregateEvent[Account.type, Closed] :+: String :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf(_.selector.event) " should " should use one selectors and return the event" in {
-    val evt = Opened("Mario")
     firstOf(_.
       on(selectorOpened).event) should runFromWithResult(
-      Expect.firstOf(FirstOfSelector(selectorOpened))(0, evt)
-    )(Coproduct[Opened :+: CNil](evt))
+      Expect.firstOf(FirstOfSelector(selectorOpened))(0, openedEvent)
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: CNil](openedEvent))
   }
 
   "ProcessSyntax.firstOf(_.waitUntil.noop) " should " should use one selectors and return unit" in {
@@ -264,31 +267,28 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.firstOf(two _.selector.event).1 " should " should use two selectors and return the first event" in {
-    val evt = Closed()
     firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event) should runFromWithResult(
       Expect.firstOf(
         FirstOfSelector(selectorOpened),
         FirstOfSelector(selectorClosed)
-      )(1, evt)
-    )(Coproduct[Opened :+: Closed :+: CNil](evt))
+      )(1, closedEvent)
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: CNil](closedEvent))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event).2 " should " should use two selectors and return the second event" in {
-    val evt = Opened("Mario")
     firstOf(_.
       on(selectorOpened).event.
       on(selectorClosed).event) should runFromWithResult(
       Expect.firstOf(
         FirstOfSelector(selectorOpened),
         FirstOfSelector(selectorClosed)
-      )(0, evt)
-    )(Coproduct[Opened :+: Closed :+: CNil](evt))
+      )(0, openedEvent)
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: CNil](openedEvent))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event and timeout).1 " should " should use two selectors, a timeout and return the first event" in {
-    val evt = Opened("Mario")
     val instant = Instant.now()
     val p = firstOf(_.
       on(selectorOpened).event.
@@ -299,15 +299,14 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       FirstOfSelector(selectorOpened),
       FirstOfSelector(selectorClosed),
       FirstOfUntil(instant)
-    )(0, evt)
+    )(0, openedEvent)
 
     p should runFromWithResult(
       expect
-    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](evt))
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: Unit :+: CNil](openedEvent))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event and timeout).2 " should " should use two selectors, a timeout and return the second event" in {
-    val evt = Closed()
     val instant = Instant.now()
     val p = firstOf(_.
       on(selectorOpened).event.
@@ -318,17 +317,17 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       FirstOfSelector(selectorOpened),
       FirstOfSelector(selectorClosed),
       FirstOfUntil(instant)
-    )(1, evt)
+    )(1, closedEvent)
 
     p should runFromWithResult(
       expect
-    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](evt))
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: Unit :+: CNil](closedEvent))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event with map and timeout).1 " should " should use two selectors, a timeout and return the mapped first event" in {
     val instant = Instant.now()
     val p = firstOf(_.
-      on(selectorOpened).map(_.owner).
+      on(selectorOpened).map(_.event.owner).
       on(selectorClosed).event.
       timeout(instant)(noop))
 
@@ -336,11 +335,11 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       FirstOfSelector(selectorOpened),
       FirstOfSelector(selectorClosed),
       FirstOfUntil(instant)
-    )(0, Opened("Mario"))
+    )(0, openedEvent)
 
     p should runFromWithResult(
       expect
-    )(Coproduct[String :+: Closed :+: Unit :+: CNil]("Mario"))
+    )(Coproduct[String :+: AggregateEvent[Account.type, Closed] :+: Unit :+: CNil]("Mario"))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event with flatMap to terminate).1 " should " should use two selectors, a timeout and return the unit and end" in {
@@ -354,12 +353,12 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       FirstOfSelector(selectorOpened),
       FirstOfSelector(selectorClosed),
       FirstOfUntil(instant)
-    )(0, Opened("Mario"))
+    )(0, openedEvent)
 
     p should runFromWithResult(
       expect,
       Expect.end
-    )(Coproduct[Unit :+: Closed :+: Unit :+: CNil](()))
+    )(Coproduct[Unit :+: AggregateEvent[Account.type, Closed] :+: Unit :+: CNil](()))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event and timeout).3 " should " should use two selectors, a timeout and return unit" in {
@@ -377,7 +376,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
     p should runFromWithResult(
       expect
-    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](()))
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: Unit :+: CNil](()))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event and timeout(terminate)).3 " should " should use two selectors, a timeout and return unit and then end" in {
@@ -396,7 +395,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     p should runFromWithResult(
       expect,
       Expect.end
-    )(Coproduct[Opened :+: Closed :+: Unit :+: CNil](()))
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: Unit :+: CNil](()))
   }
 
   "ProcessSyntax.firstOf(two _.selector.event and timeout(mapToString).3 " should " should use two selectors, a timeout and return a string" in {
@@ -414,7 +413,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
     p should runFromWithResult(
       expect
-    )(Coproduct[Opened :+: Closed :+: String :+: CNil]("hi there"))
+    )(Coproduct[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Account.type, Closed] :+: String :+: CNil]("hi there"))
   }
 
   "ProcessSyntax.firstOfUnified(s1, s2).1 from the same aggregate " should " return directly the event" in {
@@ -450,9 +449,8 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.firstOfUnified(s1, s2, s3).1 with mappings " should " return directly the event" in {
-    val event = Opened("Mario")
     val p = firstOfUnified(_.
-      on(selectorOpened).map(_.owner).
+      on(selectorOpened).map(_.event.owner).
       on(selectorClosed).value("closed").
       on(selectorCreated).value("created"))
 
@@ -460,7 +458,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       FirstOfSelector(selectorOpened),
       FirstOfSelector(selectorClosed),
       FirstOfSelector(selectorCreated)
-    )(0, event)
+    )(0, openedEvent)
 
     p should runFromWithResult(
       expect
@@ -470,7 +468,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   "ProcessSyntax.firstOfUnified(s1, s2, s3).2 with mappings " should " return directly the event" in {
     val event = Closed()
     val p = firstOfUnified(_.
-      on(selectorOpened).map(_.owner).
+      on(selectorOpened).map(_.event.owner).
       on(selectorClosed).value("closed").
       on(selectorCreated).value("created"))
 
@@ -486,11 +484,11 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.firstOfUnified(s1, s2, s3).3 with mappings " should " return directly the event" in {
-    val event = Created(Account.Id(1), Account.Id(2), 1)
+    val event = AggregateEvent.create(Transaction)(Transaction.Id(1), Created(Account.Id(1), Account.Id(0), 1))
     val p = firstOfUnified(_.
-      on(selectorOpened).map(_.owner).
+      on(selectorOpened).map(_.event.owner).
       on(selectorClosed).value("closed").
-      on(selectorCreated).map(e ⇒ s"created: ${e.amount}"))
+      on(selectorCreated).map(e ⇒ s"created: ${e.event.amount} on ${e.aggregate}"))
 
     val expect = Expect.firstOf(
       FirstOfSelector(selectorOpened),
@@ -500,7 +498,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
     p should runFromWithResult(
       expect
-    )("created: 1")
+    )("created: 1 on Id(1)")
   }
 
   "ProcessSyntax.value " should " do nothing and return the value" in {

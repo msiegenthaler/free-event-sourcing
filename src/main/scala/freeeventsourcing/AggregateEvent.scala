@@ -10,8 +10,12 @@ import freeeventsourcing.utils.{ =!=, CompositeName, StringSerializable }
 import freeeventsourcing.utils.StringSerializable.ops._
 
 /** Wraps an event from an aggregate to preserve the information about the source. Is used as the event type of the bus. */
-case class AggregateEvent[A <: Aggregate, E <: A#Event](aggregateType: A, aggregate: A#Id, event: E)(implicit et: AggregateEventType[A, E]) {
+case class AggregateEvent[A <: Aggregate, +E <: A#Event](aggregateType: A, aggregate: A#Id, event: E)(implicit et: AggregateEventType[A, E]) {
   lazy val eventType = et.eventType
+}
+object AggregateEvent {
+  def create[A <: Aggregate, E <: A#Event: AggregateEventType[A, ?]](aggregateType: A)(aggregate: A#Id, event: E) =
+    AggregateEvent(aggregateType, aggregate, event)
 }
 
 /** String representation of an event type for the aggregate. */
@@ -41,23 +45,34 @@ object AggregateEventType {
   }
 }
 
-case class AggregateEventSelector[A <: Aggregate, E <: A#Event] private (private val topic: EventTopic) {
-  type Event = E
+case class AggregateEventSelector[A <: Aggregate, E <: A#Event] private (aggregateType: A, aggregate: A#Id, private val topic: EventTopic) {
+  type Event = AggregateEvent[A, E]
 }
 
 object AggregateEventSelector {
   def apply[A <: Aggregate](tpe: A)(id: A#Id) = new EventCatcher[A](tpe, id)
 
   class EventCatcher[A <: Aggregate](aggregateType: A, aggregate: A#Id) {
-    def apply[E <: A#Event: AggregateEventType[A, ?]](implicit i: StringSerializable[A#Id], ev: ConcreteEvent[A, E]): AggregateEventSelector[A, E] = {
+    def apply[E <: A#Event: AggregateEventType[A, ?]](
+      implicit
+      i: StringSerializable[A#Id],
+      ev: ConcreteEvent[A, E]
+    ): AggregateEventSelector[A, E] = {
       val topic = topicFor(aggregateType, aggregate, AggregateEventType[A, E].eventType)
-      AggregateEventSelector(topic)
+      AggregateEventSelector(aggregateType, aggregate, topic)
     }
   }
 
-  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: Typeable] = new EventSelector[AggregateEventSelector[A, E]] {
-    def select(selector: AggregateEventSelector[A, E], event: Any) = Typeable[E].cast(event)
-    def topic(selector: AggregateEventSelector[A, E]) = selector.topic
+  implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: AggregateEventType[A, ?]: Typeable] = {
+    new EventSelector[AggregateEventSelector[A, E]] {
+      def select(selector: AggregateEventSelector[A, E], event: Any) = event match {
+        case AggregateEvent(selector.aggregateType, selector.aggregate, event) ⇒
+          Typeable[E].cast(event).map(e ⇒
+            AggregateEvent(selector.aggregateType, selector.aggregate, e))
+        case _ ⇒ None
+      }
+      def topic(selector: AggregateEventSelector[A, E]) = selector.topic
+    }
   }
 
   // Just so we get nicer error messages
