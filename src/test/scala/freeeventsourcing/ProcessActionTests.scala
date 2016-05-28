@@ -71,6 +71,7 @@ object ProcessActionTests {
       }
     }
   }
+  case class OtherEvent() extends TestAggregate.Event
 
   val selectorOpened = AggregateEventSelector(Account)(Account.Id(1))[Opened]
   val selectorClosed = AggregateEventSelector(Account)(Account.Id(1))[Closed]

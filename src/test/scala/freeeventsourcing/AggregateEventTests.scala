@@ -4,18 +4,29 @@ import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, HNil }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.EventSelector.ops._
+import freeeventsourcing.ProcessTests.{ OtherEvent, TestAggregate }
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
 import freeeventsourcing.utils.CompositeName
 
 class AggregateEventTests extends FlatSpec with Matchers {
-  val accountIndexer = AggregateEventRouter(Account)
+  val router = AggregateEventSelector.Router.forAggregate(Account)
 
-  val event1 = AggregateEvent[Account.type](Account, Account.Id(1), Opened("Mario"), MockEventTime(1))
+  val openedEvent = AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario"))
 
-  "AggregateEventRouter " should " produce the same topic as the matching AggregateEventSelector" in {
-    val toIndex = accountIndexer.apply(event1)
+  "AggregateEvent " should " have eventType equal to the relative classname of the event within the aggregate" in {
+    val e = AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario"))
+    e.eventType shouldBe "Opened"
+  }
+
+  "AggregateEvent " should " have eventType equal to the absolute classname of the event when not nested in the aggregate" in {
+    val e = AggregateEvent[TestAggregate.type, OtherEvent](TestAggregate, TestAggregate.Id(1), OtherEvent())
+    e.eventType shouldBe "freeeventsourcing.ProcessTests$OtherEvent"
+  }
+
+  "AggregateEventSelector.Router " should " produce the same topic as the matching AggregateEventSelector" in {
+    val toIndex = router.apply(openedEvent)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
@@ -23,8 +34,8 @@ class AggregateEventTests extends FlatSpec with Matchers {
     indexed shouldBe selector.topic
   }
 
-  "AggregateEventRouter " should " produce a different topic than an AggregateEventSelector that does not match the event type" in {
-    val toIndex = accountIndexer.apply(event1)
+  "AggregateEventSelector.Router " should " produce a different topic than an AggregateEventSelector that does not match the event type" in {
+    val toIndex = router.apply(openedEvent)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
@@ -32,8 +43,8 @@ class AggregateEventTests extends FlatSpec with Matchers {
     indexed should not be (selector.topic)
   }
 
-  "AggregateEventRouter " should " produce a different topic than an AggregateEventSelector that does not match the aggregate" in {
-    val toIndex = accountIndexer.apply(event1)
+  "AggregateEventSelector.Router " should " produce a different topic than an AggregateEventSelector that does not match the aggregate" in {
+    val toIndex = router.apply(openedEvent)
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
@@ -72,20 +83,30 @@ class AggregateEventTests extends FlatSpec with Matchers {
   }
 
   "AggregateEventSelector.select " should " match a correct event" in {
-    val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    s.select(Opened("Mario")) shouldBe Some(Opened("Mario"))
+    val s = AggregateEventSelector(Account)(Account.Id(1))[Opened]
+    s.select(openedEvent) shouldBe Some(openedEvent)
   }
 
-  "AggregateEventSelector.select " should " not match a wrong event" in {
-    val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    s.select(Closed) shouldBe None
+  "AggregateEventSelector.select " should " not match a wrong event type" in {
+    val s = AggregateEventSelector(Account)(Account.Id(1))[Closed]
+    s.select(Opened("Mario")) shouldBe None
+    s.select(Closed()) shouldBe None
+    s.select(openedEvent) shouldBe None
+  }
+
+  "AggregateEventSelector.select " should " not match a wrong aggregate" in {
+    val s = AggregateEventSelector(Account)(Account.Id(0))[Opened]
+    s.select(openedEvent) shouldBe None
+  }
+
+  "AggregateEventSelector.select " should " not match a wrong aggregate type" in {
+    val s = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
+    s.select(openedEvent) shouldBe None
   }
 
   "AggregateEventSelector.topic " should " be under aggregate and contain the type and the id" in {
-    val s = AggregateEventSelector(Account)(Account.Id(2))[Opened]
-    val expected = CompositeName.root / "aggregate" / "Account" / "2" / "freeeventsourcing.accountprocessing.Account$Event$Opened"
+    val s = AggregateEventSelector(Account)(Account.Id(1))[Opened]
+    val expected = CompositeName.root / "aggregate" / "Account" / "1" / "Opened"
     s.topic shouldBe EventTopic(expected)
   }
 }
-
-case class MockEventTime(t: Int) extends EventTime
