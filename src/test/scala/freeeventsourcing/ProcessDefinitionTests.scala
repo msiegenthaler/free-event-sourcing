@@ -16,7 +16,7 @@ class ProcessDefinitionTests extends FlatSpec with Matchers {
     val sel = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
     ProcessDefinition(AccountProcessing, "BlockFunds")(sel) { created ⇒
       for {
-        _ ← on(created.from).execute(BlockFunds(???, created.amount))(
+        _ ← on(created.event.event.from).execute(BlockFunds(???, created.event.event.amount))(
           _.catching[InsufficientFunds](_ ⇒ terminate).
             catching[NotOpen](_ ⇒ terminate)
         )

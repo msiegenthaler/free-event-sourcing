@@ -4,7 +4,7 @@ import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, HNil }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.EventSelector.ops._
-import freeeventsourcing.ProcessTests.{ OtherEvent, TestAggregate }
+import freeeventsourcing.ProcessActionTests.{ OtherEvent, TestAggregate }
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
@@ -22,7 +22,7 @@ class AggregateEventTests extends FlatSpec with Matchers {
 
   "AggregateEvent " should " have eventType equal to the absolute classname of the event when not nested in the aggregate" in {
     val e = AggregateEvent[TestAggregate.type, OtherEvent](TestAggregate, TestAggregate.Id(1), OtherEvent())
-    e.eventType shouldBe "freeeventsourcing.ProcessTests$OtherEvent"
+    e.eventType shouldBe "freeeventsourcing.ProcessActionTests$OtherEvent"
   }
 
   "AggregateEventSelector.Router " should " produce the same topic as the matching AggregateEventSelector" in {
