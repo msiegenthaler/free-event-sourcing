@@ -1,6 +1,6 @@
 package freeeventsourcing
 
-import freeeventsourcing.accountprocessing.Account.Command.{ BlockFunds }
+import freeeventsourcing.accountprocessing.Account.Command.BlockFunds
 import freeeventsourcing.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
@@ -16,13 +16,12 @@ class ProcessDefinitionTests extends FlatSpec with Matchers {
     val sel = AggregateEventSelector(Transaction)(Transaction.Id(1))[Created]
     ProcessDefinition(AccountProcessing, "BlockFunds")(sel) { created ⇒
       for {
-        _ ← on(created.event.event.from).execute(BlockFunds(???, created.event.event.amount))(
+        _ ← on(created.event.from).execute(BlockFunds(???, created.event.amount))(
           _.catching[InsufficientFunds](_ ⇒ terminate).
             catching[NotOpen](_ ⇒ terminate)
         )
       } yield ()
     }
-
   }
 
 }

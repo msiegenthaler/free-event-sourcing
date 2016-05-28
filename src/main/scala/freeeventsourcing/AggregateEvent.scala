@@ -5,7 +5,6 @@ import scala.annotation.implicitNotFound
 import scala.reflect._
 import shapeless.ops.hlist.Selector
 import shapeless.{ ::, HList, TypeCase, Typeable }
-import simulacrum.typeclass
 import freeeventsourcing.utils.{ =!=, CompositeName, StringSerializable }
 import freeeventsourcing.utils.StringSerializable.ops._
 

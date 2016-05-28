@@ -24,7 +24,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
   /** Await an event using a selector. The event must be from this bounded context. */
   def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
-    awaitMetadata(selector).map(_.event)
+    awaitMetadata(selector).map(_.payload)
 
   /** Await an event (including its metadata) using a selector. The event must be from this bounded context. */
   def awaitMetadata[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
@@ -96,7 +96,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     final class FromAggregateBuilder[A <: Aggregate] private[ProcessSyntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
       def await[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) =
-        awaitMetadata.map(_.event.event)
+        awaitMetadata.map(_.payload.event)
 
       /** Await an event (including its metdata) from the aggregate. */
       def awaitMetadata[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
@@ -210,7 +210,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
         def terminate = flatMap(_ ⇒ ProcessSyntax.this.terminate)
 
         def flatMap[R](body: S#Event ⇒ ProcessMonad[R]) =
-          flatMapMetadata(e ⇒ body(e.event))
+          flatMapMetadata(e ⇒ body(e.payload))
 
         def flatMapMetadata[R](body: EventWithMetadata[S#Event] ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[EventWithMetadata[S#Event], R] :: A] = {
           val path = new SwitchPath {

@@ -149,7 +149,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.firstOf " should " accept a single selector with a map with metadata" in {
     val r = firstOf(_.
-      on(selectorOpened).mapMetadata(_.event.event.owner))
+      on(selectorOpened).mapMetadata(_.payload.event.owner))
     "r : ProcessMonad[String :+: CNil]" should compile
 
     val r2 = firstOf(_.
