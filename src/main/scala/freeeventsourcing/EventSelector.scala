@@ -14,7 +14,8 @@ import simulacrum.typeclass
   def selectWithMetadata(selector: S, event: Any, metadata: EventMetadata): Option[EventWithMetadata[S#Event]] =
     select(selector, event).map(EventWithMetadata(_, metadata))
 
-  /** Topics are used for more efficient filtering of events. Only events on this topic will be delivered to the selector. */
+  /** Topics are used for more efficient filtering of events.
+    * Only events on this topic will be delivered to the selector's select method. */
   def topic(selector: S): EventTopic
 }
 object EventSelector {
@@ -27,6 +28,7 @@ case class EventTopic(composedTopic: CompositeName) extends AnyVal {
 }
 
 /** Responsible for routing events to the correct topics. */
+//TODO merge with event selector?
 object EventRouter {
   type EventRouter = Any ⇒ Set[EventTopic]
 
