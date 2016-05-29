@@ -29,7 +29,6 @@ case class EventTopic(composedTopic: CompositeName) extends AnyVal {
 }
 
 /** Responsible for routing events to the correct topics. */
-//TODO merge with event selector?
 object EventRouter {
   type EventRouter = Any ⇒ Set[EventTopic]
 
