@@ -49,9 +49,6 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     def end = ExpectEnd
   }
 
-  case class MockEventId() extends EventId
-  case class MockEventTime() extends EventTime
-
   case class ProcessMatcher(expectations: List[Expectation], checkResult: Any ⇒ String Xor Unit) extends Matcher[M[_]] {
     def apply(process: M[_]) = {
       val x = process.foldMap(Implementation.Transform)
