@@ -3,6 +3,7 @@ package freeeventsourcing.eventselector
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
 import freeeventsourcing._
+import freeeventsourcing.support.ValidSelector
 import freeeventsourcing.utils.StringSerializable.ops._
 import freeeventsourcing.utils.{ =!=, CompositeName, StringSerializable }
 import shapeless.ops.hlist.Selector
@@ -52,6 +53,9 @@ object AggregateEventSelector {
     implicit def selector[A <: Aggregate, E <: A#Event, AS <: HList](implicit ev: Selector[AS, A]) =
       new ValidFor[AggregateEventSelector[A, E], AS] {}
   }
+
+  implicit def validSelector[BC <: BoundedContext, S](implicit ev: ValidFor[S, BC#Aggregates]) =
+    new ValidSelector[BC, S] {}
 
   object Router {
     def forAggregateType[A <: Aggregate: ClassTag](aggregateType: A)(implicit t: Typeable[A#Id], i: StringSerializable[A#Id]) = {

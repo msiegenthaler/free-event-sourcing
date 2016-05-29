@@ -1,10 +1,13 @@
 package freeeventsourcing.eventselector
 
+import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
 import freeeventsourcing.eventselector.AggregateEventSelector.ConcreteEvent
 import freeeventsourcing._
+import freeeventsourcing.support.ValidSelector
 import freeeventsourcing.utils.CompositeName
-import shapeless.Typeable
+import shapeless.ops.hlist.Selector
+import shapeless.{ HList, Typeable }
 
 /** Selector for a type of events across all instances of an aggregate type. */
 case class AggregateTypeEventSelector[A <: Aggregate, E <: A#Event] private (aggregateType: A, topic: EventTopic) {
@@ -34,6 +37,16 @@ object AggregateTypeEventSelector {
       def topic(selector: AggregateTypeEventSelector[A, E]) = selector.topic
     }
   }
+
+  @implicitNotFound("${S} is not a valid aggregate type event selector for the aggregates ${Aggregates}")
+  sealed trait ValidFor[S, Aggregates <: HList]
+  object ValidFor {
+    implicit def selector[A <: Aggregate, E <: A#Event, AS <: HList](implicit ev: Selector[AS, A]) =
+      new ValidFor[AggregateTypeEventSelector[A, E], AS] {}
+  }
+
+  implicit def validSelector[BC <: BoundedContext, S](implicit ev: ValidFor[S, BC#Aggregates]) =
+    new ValidSelector[BC, S] {}
 
   object Router {
     def forAggregateType[A <: Aggregate: ClassTag](aggregateType: A) = EventRouter {
