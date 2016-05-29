@@ -1,10 +1,11 @@
-package freeeventsourcing
+package freeeventsourcing.eventselector
 
+import freeeventsourcing._
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.EventSelector.ops._
-import freeeventsourcing.accountprocessing.{ Account, Transaction }
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
+import freeeventsourcing.accountprocessing.{ Account, Transaction }
 import freeeventsourcing.utils.CompositeName
 import org.scalatest.{ FlatSpec, Matchers }
 

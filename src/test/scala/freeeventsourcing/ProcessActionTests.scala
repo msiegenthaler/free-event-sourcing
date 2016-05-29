@@ -6,6 +6,7 @@ import freeeventsourcing.ProcessAction._
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
+import freeeventsourcing.eventselector.AggregateEventSelector
 import freeeventsourcing.support.{ ValidAggregate, ValidSelector }
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.CNil

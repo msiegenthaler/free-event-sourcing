@@ -1,14 +1,14 @@
-package freeeventsourcing
+package freeeventsourcing.eventselector
 
-import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ ::, HNil }
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.EventSelector.ops._
-import freeeventsourcing.ProcessActionTests.{ OtherEvent, TestAggregate }
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
 import freeeventsourcing.utils.CompositeName
+import freeeventsourcing.{ AggregateEvent, EventSelector, EventTopic }
+import org.scalatest.{ FlatSpec, Matchers }
+import shapeless.{ ::, HNil }
 
 class AggregateEventSelectorTests extends FlatSpec with Matchers {
   val router = AggregateEventSelector.Router.forAggregateType(Account)

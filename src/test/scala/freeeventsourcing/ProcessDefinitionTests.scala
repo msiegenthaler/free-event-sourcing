@@ -4,6 +4,7 @@ import freeeventsourcing.accountprocessing.Account.Command.BlockFunds
 import freeeventsourcing.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
+import freeeventsourcing.eventselector.AggregateEventSelector
 import freeeventsourcing.syntax.ProcessSyntax
 import org.scalatest.{ FlatSpec, Matchers }
 

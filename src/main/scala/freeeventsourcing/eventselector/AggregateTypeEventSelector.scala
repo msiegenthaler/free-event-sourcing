@@ -1,9 +1,10 @@
-package freeeventsourcing
+package freeeventsourcing.eventselector
 
 import scala.reflect.ClassTag
-import freeeventsourcing.AggregateEventSelector.ConcreteEvent
+import freeeventsourcing.eventselector.AggregateEventSelector.ConcreteEvent
+import freeeventsourcing._
 import freeeventsourcing.utils.CompositeName
-import shapeless.{ TypeCase, Typeable }
+import shapeless.Typeable
 
 /** Selector for a type of events across all instances of an aggregate type. */
 case class AggregateTypeEventSelector[A <: Aggregate, E <: A#Event] private (aggregateType: A, topic: EventTopic) {
