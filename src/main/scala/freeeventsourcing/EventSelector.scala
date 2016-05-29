@@ -15,7 +15,8 @@ import simulacrum.typeclass
     select(selector, event).map(EventWithMetadata(_, metadata))
 
   /** Topics are used for more efficient filtering of events.
-    * Only events on this topic will be delivered to the selector's select method. */
+   *  Only events on this topic will be delivered to the selector's select method.
+   */
   def topic(selector: S): EventTopic
 }
 object EventSelector {

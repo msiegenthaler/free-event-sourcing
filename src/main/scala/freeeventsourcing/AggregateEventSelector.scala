@@ -53,7 +53,7 @@ object AggregateEventSelector {
   }
 
   object Router {
-    def forAggregate[A <: Aggregate: ClassTag](aggregateType: A)(implicit t: Typeable[A#Id], i: StringSerializable[A#Id]) = {
+    def forAggregateType[A <: Aggregate: ClassTag](aggregateType: A)(implicit t: Typeable[A#Id], i: StringSerializable[A#Id]) = {
       val Id = TypeCase[A#Id]
       EventRouter {
         case e @ AggregateEvent(`aggregateType`, Id(aggregate), _) ⇒

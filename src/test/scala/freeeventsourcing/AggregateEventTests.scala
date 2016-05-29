@@ -11,7 +11,7 @@ import freeeventsourcing.accountprocessing._
 import freeeventsourcing.utils.CompositeName
 
 class AggregateEventTests extends FlatSpec with Matchers {
-  val router = AggregateEventSelector.Router.forAggregate(Account)
+  val router = AggregateEventSelector.Router.forAggregateType(Account)
 
   val openedEvent = AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario"))
 
