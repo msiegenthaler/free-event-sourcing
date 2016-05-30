@@ -117,6 +117,16 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       )(())
   }
 
+  "ProcessSyntax.on().execute " should " also catch if the ProcessMonad is not unit" in {
+    val cmd = BlockFunds(Transaction.Id(1), 2)
+    on(Account.Id(0)).execute(cmd)(
+      _.catching[InsufficientFunds](_ ⇒ noop.map(_ ⇒ "hi")).
+        catched[NotOpen](noop.map(_ ⇒ "ho"))
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(0), cmd)(InsufficientFunds())
+      )(())
+  }
+
   "ProcessSyntax.on().execute " should " not allow commands of aggregates not in the same context" in {
     """on(TestAggregate.Id(1)).execute(TestAggregate.Command.MyCommand("Mario"))(???)""" shouldNot compile
   }

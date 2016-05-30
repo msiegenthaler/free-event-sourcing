@@ -70,12 +70,12 @@ object BlockFundsProcess {
         from(fromAccount).on[TxAborted].execute(main).
         from(fromAccount).on[Opened].execute(main).
         timeout(completeUntil)(abortTransaction)
-    ).map(_ ⇒ ()) //TODO allow the methods to accept ProcessMonad[_]
+    )
 
-    def waitForDepositAccount: ProcessMonad[Unit] = firstOf(
+    def waitForDepositAccount = firstOf(
       _.from(toAccount).on[Opened].execute(main).
         timeout(completeUntil)(abortTransaction)
-    ).map(_ ⇒ ()) //TODO allow the methods to accept ProcessMonad[_]
+    )
   }
 
 }
