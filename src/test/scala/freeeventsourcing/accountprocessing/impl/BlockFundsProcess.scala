@@ -1,16 +1,15 @@
 package freeeventsourcing.accountprocessing.impl
 
-import java.time.Instant
-import freeeventsourcing.accountprocessing.Account.Command.{ AnnounceDeposit, BlockFunds }
-import freeeventsourcing.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen }
+import freeeventsourcing.accountprocessing.Account.Command._
+import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
-import freeeventsourcing.{ AggregateEvent, EventWithMetadata, ProcessDefinition }
 import freeeventsourcing.accountprocessing.Transaction.Command._
-import freeeventsourcing.accountprocessing.Transaction.Error.{ AlreadyCanceled, AlreadyConfirmed, DoesNotExist }
+import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
-import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
+import freeeventsourcing.accountprocessing.{ AccountProcessing, Transaction }
 import freeeventsourcing.eventselector.AggregateTypeEventSelector
 import freeeventsourcing.syntax.ProcessSyntax
+import freeeventsourcing.{ AggregateEvent, EventWithMetadata, ProcessDefinition }
 
 /** Blocks the funds in the debited account and confirms/aborts the tx based on the result.
  *  Updating the accounts then happens in the separate TransactionResultProcess.
@@ -33,49 +32,42 @@ object BlockFundsProcess {
 
     def main: ProcessMonad[Unit] = for {
       //Block the money in the from account and announce it to the to account
-      _ ← on(fromAccount).execute(BlockFunds(tx, amount))(
-        _.catched[InsufficientFunds](waitForDebitedAccount).
-          catching[NotOpen](_ ⇒ waitForDebitedAccount)
-      )
-      _ ← on(toAccount).execute(AnnounceDeposit(tx, amount))(
-        _.catched[NotOpen](waitForDepositAccount)
-      )
+      _ ← on(fromAccount).execute(BlockFunds(tx, amount))(_.
+        catched[InsufficientFunds](waitForDebitedAccount).
+        catched[NotOpen](waitForDebitedAccount))
+      _ ← on(toAccount).execute(AnnounceDeposit(tx, amount))(_.
+        catched[NotOpen](waitForDepositAccount))
 
       //Wait for confirmation of the successful blocking of the money in the from account
-      _ ← firstOf(
+      _ ← firstOf(_.
         //TODO we need to be able to filter that to our tx
-        _.from(fromAccount).on[Blocked].event.
-          timeout(completeUntil)(abortTransaction)
-      )
+        from(fromAccount).on[Blocked].event.
+        timeout(completeUntil)(abortTransaction))
 
       //Confirm the transaction
-      _ ← on(tx).execute(Confirm())(
-        _.terminateOn[DoesNotExist].
-        terminateOn[AlreadyCanceled]
-      )
+      _ ← on(tx).execute(Confirm())(_.
+        terminateOn[DoesNotExist].
+        terminateOn[AlreadyCanceled])
     } yield ()
 
     def abortTransaction = for {
-      _ ← on(tx).execute(Cancel())(
-        _.terminateOn[AlreadyConfirmed].
-        terminateOn[DoesNotExist]
-      )
+      _ ← on(tx).execute(Cancel())(_.
+        terminateOn[AlreadyConfirmed].
+        terminateOn[DoesNotExist])
       _ ← terminate
     } yield ()
 
-    def waitForDebitedAccount = firstOf(
+    def waitForDebitedAccount = firstOf(_.
       //TODO it does not help if we just add another retroactive subscription...
       //TODO we need to start after a specific time, else it triggers instantly
-      _.from(fromAccount).on[BalanceChanged].execute(main).
-        from(fromAccount).on[TxAborted].execute(main).
-        from(fromAccount).on[Opened].execute(main).
-        timeout(completeUntil)(abortTransaction)
-    )
+      from(fromAccount).on[BalanceChanged].execute(main).
+      from(fromAccount).on[TxAborted].execute(main).
+      from(fromAccount).on[Opened].execute(main).
+      timeout(completeUntil)(abortTransaction))
 
-    def waitForDepositAccount = firstOf(
-      _.from(toAccount).on[Opened].execute(main).
-        timeout(completeUntil)(abortTransaction)
-    )
+    def waitForDepositAccount = firstOf(_.
+      from(toAccount).on[Opened].execute(main).
+      timeout(completeUntil)(abortTransaction))
   }
 
 }
