@@ -147,11 +147,13 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     }""" shouldNot compile
   }
 
-  "ProcessSyntax.firstOf " should " accept a single selector with an execute (flatMap)" in {
+  "ProcessSyntax.firstOf " should " accept a single selector with an execute" in {
     val r = firstOf(_.
-      on(selectorOpened).execute((e: AggregateEvent[Account.type, Opened]) ⇒ terminate))
+      on(selectorOpened).execute(terminate))
     "r : ProcessMonad[Unit :+: CNil]" should compile
+  }
 
+  "ProcessSyntax.firstOf " should " accept a single selector with an execute (flatMap)" in {
     val r2 = firstOf(_.
       on(selectorOpened).flatMap((e: AggregateEvent[Account.type, Opened]) ⇒ terminate))
     "r2 : ProcessMonad[Unit :+: CNil]" should compile

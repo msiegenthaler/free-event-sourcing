@@ -66,15 +66,14 @@ object BlockFundsProcess {
     def waitForDebitedAccount = firstOf(
       //TODO it does not help if we just add another retroactive subscription...
       //TODO we need to start after a specific time, else it triggers instantly
-      //TODO maybe add a execute(ProcessMonad[_]) overload?
-      _.from(fromAccount).on[BalanceChanged].execute(_ ⇒ main).
-        from(fromAccount).on[TxAborted].execute(_ ⇒ main).
-        from(fromAccount).on[Opened].execute(_ ⇒ main).
+      _.from(fromAccount).on[BalanceChanged].execute(main).
+        from(fromAccount).on[TxAborted].execute(main).
+        from(fromAccount).on[Opened].execute(main).
         timeout(completeUntil)(abortTransaction)
     ).map(_ ⇒ ()) //TODO allow the methods to accept ProcessMonad[_]
 
     def waitForDepositAccount: ProcessMonad[Unit] = firstOf(
-      _.from(toAccount).on[Opened].execute(_ ⇒ main).
+      _.from(toAccount).on[Opened].execute(main).
         timeout(completeUntil)(abortTransaction)
     ).map(_ ⇒ ()) //TODO allow the methods to accept ProcessMonad[_]
   }

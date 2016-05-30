@@ -202,8 +202,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
       private[ProcessSyntax] def collect: A = paths
 
       final class OnBuilder[S <: WithEventType: EventSelector: ValidSelector] private[FirstOfBuilder] (selector: S) {
-        /** This is a flatMap */
-        def execute[R](body: S#Event ⇒ ProcessMonad[R]) = flatMap(body)
+        def execute[R](body: ProcessMonad[R]) = flatMap(_ ⇒ body)
 
         def map[R](f: S#Event ⇒ R) = flatMap(f.andThen(Monad[ProcessMonad].pure))
 
