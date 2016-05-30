@@ -29,7 +29,7 @@ object BlockFundsProcess {
     def fromAccount = created.event.from
     def toAccount = created.event.to
     def amount = created.event.amount
-    val completeUntil: Instant = ??? //TODO created.metadata.time.realTime?
+    val completeUntil = created.metadata.time.when
 
     def main: ProcessMonad[Unit] = for {
       //Block the money in the from account and announce it to the to account

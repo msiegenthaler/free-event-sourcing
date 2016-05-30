@@ -1,12 +1,14 @@
 package freeeventsourcing
 
 import scala.language.implicitConversions
-import simulacrum.typeclass
+import java.time.Instant
 
 trait EventId
 
 //TODO add a way to compare (before, concurrent, after)
-trait EventTime
+trait EventTime {
+  def when: Instant
+}
 
 case class EventMetadata(id: EventId, time: EventTime)
 

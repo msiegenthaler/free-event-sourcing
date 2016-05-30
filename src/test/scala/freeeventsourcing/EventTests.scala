@@ -1,5 +1,6 @@
 package freeeventsourcing
 
+import java.time.Instant
 import org.scalatest.{ FlatSpec, Matchers }
 
 class EventTests extends FlatSpec with Matchers {
@@ -13,4 +14,6 @@ class EventTests extends FlatSpec with Matchers {
 }
 
 case class MockEventId() extends EventId
-case class MockEventTime() extends EventTime
+case class MockEventTime() extends EventTime {
+  val when: Instant = Instant.now()
+}
