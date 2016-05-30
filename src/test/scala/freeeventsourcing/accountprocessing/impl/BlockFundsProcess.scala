@@ -51,17 +51,15 @@ object BlockFundsProcess {
 
       //Confirm the transaction
       _ ← on(tx).execute(Confirm())(
-        //TODO terminateOn syntax
-        _.catching[DoesNotExist](_ ⇒ terminate).
-          catching[AlreadyCanceled](_ ⇒ terminate)
+        _.terminateOn[DoesNotExist].
+        terminateOn[AlreadyCanceled]
       )
     } yield ()
 
     def abortTransaction = for {
       _ ← on(tx).execute(Cancel())(
-        //TODO add terminateOn[AlreadyConfirmed] syntax
-        _.catching[AlreadyConfirmed](_ ⇒ terminate).
-          catching[DoesNotExist](_ ⇒ terminate)
+        _.terminateOn[AlreadyConfirmed].
+        terminateOn[DoesNotExist]
       )
       _ ← terminate
     } yield ()

@@ -85,6 +85,17 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       )(())
   }
 
+  "ProcessSyntax.on().execute " should " should have an easy way to terminate the process if a command failes" in {
+    val cmd = BlockFunds(Transaction.Id(2), 1)
+    on(Account.Id(1)).execute(cmd)(
+      _.terminateOn[InsufficientFunds].
+        catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(1), cmd)(InsufficientFunds()),
+        Expect.end
+      )(())
+  }
+
   "ProcessSyntax.on().execute " should " execute the command and run the command handler that does nothing" in {
     val cmd = BlockFunds(Transaction.Id(1), 2)
     on(Account.Id(0)).execute(cmd)(
