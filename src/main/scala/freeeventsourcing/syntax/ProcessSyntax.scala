@@ -117,9 +117,12 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
       final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (handled: CommandErrorHandler[All]) {
         /** Handle the specified error. */
-        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: Selector[All, E]) = {
+        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: Selector[All, E]) =
           new Builder[All, ev.Rest](error ⇒ s(error).map(handler).getOrElse(handled(error)))
-        }
+
+        /** Same as #catching, but does ignores the error. */
+        def catched[E: HandleError[Unhandled, ?]: Selector[All, ?]](handler: ProcessMonad[Unit]) =
+          catching[E]((e: E) ⇒ handler)
 
         /** Terminate the process (see ProcessSyntax#terminate) if the specified error occurs. */
         def terminateOn[E: HandleError[Unhandled, ?]: Selector[All, ?]] =

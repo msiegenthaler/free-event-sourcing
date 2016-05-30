@@ -34,12 +34,11 @@ object BlockFundsProcess {
     def main: ProcessMonad[Unit] = for {
       //Block the money in the from account and announce it to the to account
       _ ← on(fromAccount).execute(BlockFunds(tx, amount))(
-        //TODO add a variant that directly takes ProcessMonad[_]?
-        _.catching[InsufficientFunds](_ ⇒ waitForDebitedAccount).
+        _.catched[InsufficientFunds](waitForDebitedAccount).
           catching[NotOpen](_ ⇒ waitForDebitedAccount)
       )
       _ ← on(toAccount).execute(AnnounceDeposit(tx, amount))(
-        _.catching[NotOpen](_ ⇒ waitForDepositAccount)
+        _.catched[NotOpen](waitForDepositAccount)
       )
 
       //Wait for confirmation of the successful blocking of the money in the from account
