@@ -15,7 +15,7 @@ import shapeless._
 import shapeless.ops.coproduct.{ Remove, Reverse, Selector, Unifier }
 
 /** Nice monadic syntax to write processes. */
-class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
+case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   type Action[+A] = ProcessAction[BC, A]
   type ProcessMonad[A] = Free[Action, A]
 
