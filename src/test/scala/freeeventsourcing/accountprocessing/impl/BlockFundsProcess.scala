@@ -40,8 +40,7 @@ object BlockFundsProcess {
 
       //Wait for confirmation of the successful blocking of the money in the from account
       _ ← firstOf(_.
-        //TODO we need to be able to filter that to our tx
-        from(fromAccount).on[Blocked].event.
+        from(fromAccount).when[Blocked].matches(_.event.by == tx).select.event.
         timeout(completeUntil)(abortTransaction))
 
       //Confirm the transaction

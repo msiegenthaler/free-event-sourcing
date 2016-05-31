@@ -3,6 +3,7 @@ package freeeventsourcing.syntax
 import java.time.Instant
 import cats.Monad
 import freeeventsourcing._
+import freeeventsourcing.EventSelector.ops._
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -227,6 +228,16 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       from(Account.Id(1)).on[Opened].event.
       from(Transaction.Id(1)).on[Created].event)
     "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Transaction.type, Created] :+: CNil]" should compile
+  }
+
+  "ProcessSyntax.firstOf " should " allow to specify additional criterias for events and selectors" in {
+    val r = firstOf(_.
+      from(Account.Id(1)).when[Opened].matches(_.event.owner == "Mario").select.event.
+      from(Transaction.Id(0)).when[Created].after(MockEventTime()).select.event.
+      on(selectorClosed.after(MockEventTime())).event)
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: " +
+      "AggregateEvent[Transaction.type, Created] :+: " +
+      "AggregateEvent[Account.type, Closed] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " allow to mix selectors and events from aggregates" in {

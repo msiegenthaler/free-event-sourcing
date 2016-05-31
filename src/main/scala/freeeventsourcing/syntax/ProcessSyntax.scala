@@ -4,8 +4,9 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
-import freeeventsourcing.{ eventselector, support, _ }
-import freeeventsourcing.EventSelector._
+import freeeventsourcing.EventSelector.WithEventType
+import freeeventsourcing._
+import freeeventsourcing.EventSelector.ops._
 import freeeventsourcing.ProcessAction.FirstOf.{ Alternative, Alternatives }
 import freeeventsourcing.ProcessAction._
 import freeeventsourcing.eventselector.AggregateEventSelector
@@ -233,9 +234,27 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
       final class FromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def on[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
+        def on[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) =
+          when[E].select
+
+        /** Advanced selection of an element (filter, after). */
+        def when[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          FirstOfBuilder.this.on(selector)
+          new SelectorBuilder(selector)
+        }
+        //TODO add a test
+
+        final class SelectorBuilder[S <: WithEventType: EventSelector: ValidSelector] private[FromAggregateBuilder] (selector: S) {
+          /** Select only events that happened after the specified time. */
+          def after(time: EventTime) =
+            new SelectorBuilder(selector.after(time))
+          /** Select only events that match the predicate. */
+          def matches(predicate: S#Event ⇒ Boolean) =
+            matchMetadata((e, m) ⇒ predicate(e))
+          /** Select only events that match the predicate - include the metadata into the decision. */
+          def matchMetadata[E](predicate: (S#Event, EventMetadata) ⇒ Boolean) =
+            new SelectorBuilder(selector.where((e, m) ⇒ if (predicate(e, m)) Some(e) else None))
+          def select = FirstOfBuilder.this.on(selector)
         }
       }
     }
