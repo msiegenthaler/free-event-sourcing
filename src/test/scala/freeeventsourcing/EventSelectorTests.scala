@@ -13,19 +13,19 @@ class EventSelectorTests extends FlatSpec with Matchers {
   }
 
   def mockMetadata = EventMetadata(MockEventId(), MockEventTime())
-  val openedForMario = EventWithMetadata(AggregateEvent.create(Account)(Account.Id(1), Opened("Mario")), mockMetadata)
-  val openedForMaya = EventWithMetadata(AggregateEvent.create(Account)(Account.Id(1), Opened("Maya")), mockMetadata)
+  val openedForMario = AggregateEvent.create(Account)(Account.Id(1), Opened("Mario"))
+  val openedForMaya = AggregateEvent.create(Account)(Account.Id(1), Opened("Maya"))
 
   "EventSelector " should " let pass matching events" in {
-    selectorOpened.select(openedForMario) shouldBe Some(openedForMario.payload)
+    selectorOpened.select(openedForMario, mockMetadata) shouldBe Some(openedForMario)
   }
 
   "EventSelector.where " should " let pass matching events" in {
-    selectorMario.select(openedForMario) shouldBe Some(openedForMario.payload)
+    selectorMario.select(openedForMario, mockMetadata) shouldBe Some(openedForMario)
   }
 
   "EventSelector.where " should " not let pass non-matching events" in {
-    selectorMario.select(openedForMaya) shouldBe None
+    selectorMario.select(openedForMaya, mockMetadata) shouldBe None
   }
 
   "EventSelector.where " should " have same topic as the underlying" in {

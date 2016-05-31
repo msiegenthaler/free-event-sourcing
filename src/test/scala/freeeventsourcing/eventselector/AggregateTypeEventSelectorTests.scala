@@ -13,10 +13,10 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
   val router = AggregateTypeEventSelector.Router.forAggregateType(Account)
 
   def mockMetadata = EventMetadata(MockEventId(), MockEventTime())
-  val openedEvent = EventWithMetadata(AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario")), mockMetadata)
+  val openedEvent = AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario"))
 
   "AggregateTypeEventSelector.Router " should " produce the same topic as the matching AggregateTypeEventSelector" in {
-    val toIndex = router.apply(openedEvent)
+    val toIndex = router.apply(EventWithMetadata(openedEvent, mockMetadata))
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
@@ -25,7 +25,7 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
   }
 
   "AggregateTypeEventSelector.Router " should " produce a different topic than an AggregateTypeEventSelector that does not match the event type" in {
-    val toIndex = router.apply(openedEvent)
+    val toIndex = router.apply(EventWithMetadata(openedEvent, mockMetadata))
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
@@ -34,7 +34,7 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
   }
 
   "AggregateTypeEventSelector.Router " should " produce a different topic than an AggregateTypeEventSelector that does not match the aggregate type" in {
-    val toIndex = router.apply(openedEvent)
+    val toIndex = router.apply(EventWithMetadata(openedEvent, mockMetadata))
     toIndex.size shouldBe 1
     val indexed = toIndex.head
 
@@ -69,19 +69,19 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
 
   "AggregateTypeEventSelector.select " should " match a correct event" in {
     val s = AggregateTypeEventSelector(Account)[Opened]
-    s.select(openedEvent) shouldBe Some(openedEvent.payload)
+    s.select(openedEvent, mockMetadata) shouldBe Some(openedEvent)
   }
 
   "AggregateTypeEventSelector.select " should " not match a wrong event type" in {
     val s = AggregateTypeEventSelector(Account)[Closed]
-    s.select(EventWithMetadata(Opened("Mario"), mockMetadata)) shouldBe None
-    s.select(EventWithMetadata(Closed(), mockMetadata)) shouldBe None
-    s.select(openedEvent) shouldBe None
+    s.select(Opened("Mario"), mockMetadata) shouldBe None
+    s.select(Closed(), mockMetadata) shouldBe None
+    s.select(openedEvent, mockMetadata) shouldBe None
   }
 
   "AggregateTypeEventSelector.select " should " not match a wrong aggregate type" in {
     val s = AggregateTypeEventSelector(Transaction)[Created]
-    s.select(openedEvent) shouldBe None
+    s.select(openedEvent, mockMetadata) shouldBe None
   }
 
   "AggregateTypeEventSelector.topic " should " be under aggregate and contain the type" in {

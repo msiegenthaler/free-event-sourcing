@@ -30,10 +30,10 @@ object AggregateEventSelector {
 
   implicit def eventSelectorInstance[A <: Aggregate, E <: A#Event: AggregateEventType[A, ?]: Typeable] = {
     new EventSelector[AggregateEventSelector[A, E]] {
-      def select(selector: AggregateEventSelector[A, E], event: EventWithMetadata[_]) = event.payload match {
+      def select(selector: AggregateEventSelector[A, E], event: Any, metadata: EventMetadata) = event match {
         case AggregateEvent(selector.aggregateType, selector.aggregate, evt) ⇒
           Typeable[E].cast(evt).map(e ⇒
-            EventWithMetadata(AggregateEvent(selector.aggregateType, selector.aggregate, e), event.metadata))
+            AggregateEvent(selector.aggregateType, selector.aggregate, e))
         case _ ⇒ None
       }
       def topic(selector: AggregateEventSelector[A, E]) = selector.topic
