@@ -14,9 +14,27 @@ import simulacrum.typeclass
    *  Only events on this topic will be delivered to the selector's select method.
    */
   def topic(selector: S): EventTopic
+
+  /** Apply an additional filter/transformation to the event selector. */
+  def where[E](selector: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]): EventSelector.Filtered[S, E] =
+    EventSelector.Filtered(selector, predicate)
 }
 object EventSelector {
   type WithEventType = { type Event }
+
+  case class Filtered[S <: WithEventType, E](base: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]) {
+    type Event = E
+  }
+  object Filtered {
+    implicit def eventSelector[S <: WithEventType: EventSelector, E]: EventSelector[Filtered[S, E]] = {
+      import EventSelector.ops._
+      new EventSelector[Filtered[S, E]] {
+        def select(selector: Filtered[S, E], event: EventWithMetadata[_]) =
+          selector.base.select(event).flatMap(e ⇒ selector.predicate(e, event.metadata))
+        def topic(selector: Filtered[S, E]) = selector.base.topic
+      }
+    }
+  }
 }
 
 /** Topic for specific class of events. Ie all events from a certain aggregate type or for a specific aggregate. */
