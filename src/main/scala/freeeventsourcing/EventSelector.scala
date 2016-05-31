@@ -8,7 +8,7 @@ import simulacrum.typeclass
 /** Selects a specific subset of events. */
 @typeclass trait EventSelector[S <: EventSelector.WithEventType] {
   /** Checks if the event received on the topic matches this selector. */
-  def select(selector: S, event: EventWithMetadata[_]): Option[EventWithMetadata[S#Event]]
+  def select(selector: S, event: EventWithMetadata[_]): Option[S#Event]
 
   /** Topics are used for more efficient filtering of events.
    *  Only events on this topic will be delivered to the selector's select method.

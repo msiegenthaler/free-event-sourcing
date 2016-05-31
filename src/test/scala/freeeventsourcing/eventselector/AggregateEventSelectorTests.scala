@@ -75,7 +75,7 @@ class AggregateEventSelectorTests extends FlatSpec with Matchers {
 
   "AggregateEventSelector.select " should " match a correct event" in {
     val s = AggregateEventSelector(Account)(Account.Id(1))[Opened]
-    s.select(openedEvent) shouldBe Some(openedEvent)
+    s.select(openedEvent) shouldBe Some(openedEvent.payload)
   }
 
   "AggregateEventSelector.select " should " not match a wrong event type" in {
