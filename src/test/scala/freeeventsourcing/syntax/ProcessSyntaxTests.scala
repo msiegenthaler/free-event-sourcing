@@ -43,9 +43,9 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.awaitMetadata " should " result in a Await action" in {
-    awaitMetadata(selectorOpened) should runFromWithResult(
+    awaitMetadata(selectorOpened).map(_.payload) should runFromWithResult(
       Expect.awaitEvent(selectorOpened)(openedEvent)
-    )(EventWithMetadata(openedEvent, metadata))
+    )(openedEvent)
   }
 
   "ProcessSyntax " should " have a nice syntax to wait for events from aggregates " in {
