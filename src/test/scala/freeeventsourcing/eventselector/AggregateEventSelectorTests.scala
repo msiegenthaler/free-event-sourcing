@@ -6,14 +6,15 @@ import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
 import freeeventsourcing.utils.CompositeName
-import freeeventsourcing.{ AggregateEvent, EventSelector, EventTopic }
+import freeeventsourcing._
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, HNil }
 
 class AggregateEventSelectorTests extends FlatSpec with Matchers {
   val router = AggregateEventSelector.Router.forAggregateType(Account)
 
-  val openedEvent = AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario"))
+  def mockMetadata = EventMetadata(MockEventId(), MockEventTime())
+  val openedEvent = EventWithMetadata(AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario")), mockMetadata)
 
   "AggregateEventSelector.Router " should " produce the same topic as the matching AggregateEventSelector" in {
     val toIndex = router.apply(openedEvent)
@@ -79,8 +80,8 @@ class AggregateEventSelectorTests extends FlatSpec with Matchers {
 
   "AggregateEventSelector.select " should " not match a wrong event type" in {
     val s = AggregateEventSelector(Account)(Account.Id(1))[Closed]
-    s.select(Opened("Mario")) shouldBe None
-    s.select(Closed()) shouldBe None
+    s.select(EventWithMetadata(Opened("Mario"), mockMetadata)) shouldBe None
+    s.select(EventWithMetadata(Closed(), mockMetadata)) shouldBe None
     s.select(openedEvent) shouldBe None
   }
 

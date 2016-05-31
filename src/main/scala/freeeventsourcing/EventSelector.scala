@@ -8,11 +8,7 @@ import simulacrum.typeclass
 /** Selects a specific subset of events. */
 @typeclass trait EventSelector[S <: EventSelector.WithEventType] {
   /** Checks if the event received on the topic matches this selector. */
-  def select(selector: S, event: Any): Option[S#Event]
-
-  /** Same as select, but returns the an event with metadata. */
-  def selectWithMetadata(selector: S, event: Any, metadata: EventMetadata): Option[EventWithMetadata[S#Event]] =
-    select(selector, event).map(EventWithMetadata(_, metadata))
+  def select(selector: S, event: EventWithMetadata[_]): Option[EventWithMetadata[S#Event]]
 
   /** Topics are used for more efficient filtering of events.
    *  Only events on this topic will be delivered to the selector's select method.
@@ -30,12 +26,12 @@ case class EventTopic(composedTopic: CompositeName) extends AnyVal {
 
 /** Responsible for routing events to the correct topics. */
 object EventRouter {
-  type EventRouter = Any ⇒ Set[EventTopic]
+  type EventRouter = EventWithMetadata[Any] ⇒ Set[EventTopic]
 
   def apply(f: PartialFunction[Any, EventTopic]): EventRouter =
     option(f.lift)
   def option(f: Any ⇒ Option[EventTopic]): EventRouter =
-    e ⇒ f(e).toSet
+    e ⇒ f(e.payload).toSet
   def multi(f: PartialFunction[Any, Set[EventTopic]]): EventRouter =
-    e ⇒ f.lift(e).getOrElse(Set.empty)
+    e ⇒ f.lift(e.payload).getOrElse(Set.empty)
 }

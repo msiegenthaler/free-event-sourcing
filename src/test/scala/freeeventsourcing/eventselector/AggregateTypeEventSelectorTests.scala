@@ -12,7 +12,8 @@ import org.scalatest.{ FlatSpec, Matchers }
 class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
   val router = AggregateTypeEventSelector.Router.forAggregateType(Account)
 
-  val openedEvent = AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario"))
+  def mockMetadata = EventMetadata(MockEventId(), MockEventTime())
+  val openedEvent = EventWithMetadata(AggregateEvent[Account.type, Opened](Account, Account.Id(1), Opened("Mario")), mockMetadata)
 
   "AggregateTypeEventSelector.Router " should " produce the same topic as the matching AggregateTypeEventSelector" in {
     val toIndex = router.apply(openedEvent)
@@ -73,8 +74,8 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
 
   "AggregateTypeEventSelector.select " should " not match a wrong event type" in {
     val s = AggregateTypeEventSelector(Account)[Closed]
-    s.select(Opened("Mario")) shouldBe None
-    s.select(Closed()) shouldBe None
+    s.select(EventWithMetadata(Opened("Mario"), mockMetadata)) shouldBe None
+    s.select(EventWithMetadata(Closed(), mockMetadata)) shouldBe None
     s.select(openedEvent) shouldBe None
   }
 

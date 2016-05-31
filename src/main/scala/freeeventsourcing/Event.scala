@@ -12,7 +12,7 @@ trait EventTime {
 
 case class EventMetadata(id: EventId, time: EventTime)
 
-case class EventWithMetadata[E](payload: E, metadata: EventMetadata)
+case class EventWithMetadata[+E](payload: E, metadata: EventMetadata)
 object EventWithMetadata {
   implicit def toEvent[E](ewm: EventWithMetadata[E]): E =
     ewm.payload
