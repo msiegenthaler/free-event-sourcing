@@ -3,6 +3,7 @@ package freeeventsourcing.eventselector
 import freeeventsourcing._
 import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing.EventSelector.ops._
+import freeeventsourcing.EventTime.Zero
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing.{ Account, Transaction }
@@ -88,5 +89,10 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
     val s = AggregateTypeEventSelector(Account)[Opened]
     val expected = CompositeName.root / "aggregateType" / "Account" / "Opened"
     s.topic shouldBe EventTopic(expected)
+  }
+
+  "AggregateTypeEventSelector.startTime " should " be Zero" in {
+    val s = AggregateTypeEventSelector(Account)[Opened]
+    s.startTime shouldBe Zero
   }
 }

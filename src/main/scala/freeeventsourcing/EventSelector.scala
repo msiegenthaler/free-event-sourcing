@@ -2,6 +2,7 @@ package freeeventsourcing
 
 import scala.language.implicitConversions
 import scala.collection.immutable.Set
+import freeeventsourcing.EventSelector.ops._
 import freeeventsourcing.utils.CompositeName
 import simulacrum.typeclass
 
@@ -15,23 +16,49 @@ import simulacrum.typeclass
    */
   def topic(selector: S): EventTopic
 
+  /** Only events after this time are relevant to the selector. */
+  def startTime(selector: S): EventTime
+
+  /** Only match events that occured after the (casual) time specified.
+   *  Note that in a concurrent, distributed system the notation of 'after' is not the same as the regular wall clock.
+   *  See EventTime for further details.
+   */
+  def after(selector: S, time: EventTime)(implicit s: EventSelector[S]): EventSelector.AfterSelector[S] =
+    EventSelector.AfterSelector(selector, selector.startTime.later(time))
+
   /** Apply an additional filter/transformation to the event selector. */
-  def where[E](selector: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]): EventSelector.Filtered[S, E] =
-    EventSelector.Filtered(selector, predicate)
+  def where[E](selector: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]): EventSelector.FilteredSelector[S, E] =
+    EventSelector.FilteredSelector(selector, predicate)
 }
 object EventSelector {
   type WithEventType = { type Event }
 
-  case class Filtered[S <: WithEventType, E](base: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]) {
+  case class FilteredSelector[S <: WithEventType, E](base: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]) {
     type Event = E
   }
-  object Filtered {
-    implicit def eventSelector[S <: WithEventType: EventSelector, E]: EventSelector[Filtered[S, E]] = {
-      import EventSelector.ops._
-      new EventSelector[Filtered[S, E]] {
-        def select(selector: Filtered[S, E], event: Any, metadata: EventMetadata) =
+  object FilteredSelector {
+    implicit def eventSelector[S <: WithEventType: EventSelector, E]: EventSelector[FilteredSelector[S, E]] = {
+      new EventSelector[FilteredSelector[S, E]] {
+        def select(selector: FilteredSelector[S, E], event: Any, metadata: EventMetadata) =
           selector.base.select(event, metadata).flatMap(e ⇒ selector.predicate(e, metadata))
-        def topic(selector: Filtered[S, E]) = selector.base.topic
+        def topic(selector: FilteredSelector[S, E]) = selector.base.topic
+        def startTime(selector: FilteredSelector[S, E]) = selector.base.startTime
+      }
+    }
+  }
+
+  case class AfterSelector[S <: WithEventType](base: S, startTime: EventTime) {
+    type Event = S#Event
+  }
+  object AfterSelector {
+    implicit def eventSelector[S <: WithEventType: EventSelector]: EventSelector[AfterSelector[S]] = {
+      new EventSelector[AfterSelector[S]] {
+        def select(selector: AfterSelector[S], event: Any, metadata: EventMetadata) = {
+          if (metadata.time after startTime(selector)) selector.base.select(event, metadata)
+          else None
+        }
+        def startTime(selector: AfterSelector[S]) = selector.startTime
+        def topic(selector: AfterSelector[S]) = selector.base.topic
       }
     }
   }

@@ -37,6 +37,7 @@ object AggregateEventSelector {
         case _ ⇒ None
       }
       def topic(selector: AggregateEventSelector[A, E]) = selector.topic
+      def startTime(selector: AggregateEventSelector[A, E]) = EventTime.Zero
     }
   }
 
