@@ -29,6 +29,10 @@ import simulacrum.typeclass
   /** Apply an additional filter/transformation to the event selector. */
   def where[E](selector: S, predicate: (S#Event, EventMetadata) ⇒ Option[E]): EventSelector.FilteredSelector[S, E] =
     EventSelector.FilteredSelector(selector, predicate)
+
+  /** Filter out some events (utility method for simple 'where' calls). */
+  def filter(selector: S, predicate: S#Event ⇒ Boolean) =
+    where(selector, (e, m) ⇒ if (predicate(e)) Some(e) else None)
 }
 object EventSelector {
   type WithEventType = { type Event }

@@ -39,6 +39,18 @@ class EventSelectorTests extends FlatSpec with Matchers {
     selectorMario.topic shouldBe selectorOpened.topic
   }
 
+  "EventSelector.filter " should " let pass matching events" in {
+    selectorOpened.filter(_.event.owner == "Mario").select(openedForMario, mockMetadata) shouldBe Some(openedForMario)
+  }
+
+  "EventSelector.filter " should " not let pass non-matching events" in {
+    selectorMario.filter(_.event.owner == "Mario").select(openedForMaya, mockMetadata) shouldBe None
+  }
+
+  "EventSelector.filter " should " have same topic as the underlying" in {
+    selectorMario.filter(_.event.owner == "Mario").topic shouldBe selectorOpened.topic
+  }
+
   "EventSelector.after(t1) " should " change the startTime to t1 for selectors that had Zero" in {
     selectorOpened.startTime shouldBe Zero
     val s = selectorOpened.after(t1)
