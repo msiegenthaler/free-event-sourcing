@@ -33,7 +33,7 @@ object BlockFundsProcess {
     def process = main(EventTime.Zero)
 
     private[this] def main(t: EventTime): ProcessMonad[Unit] = for {
-      //Block the money in the from account and announce it to the to account
+      //Block the money in the from-account and announce it to the to-account
       _ ← on(fromAccount).execute(BlockFunds(tx, amount))(_.
         catched[InsufficientFunds](waitForDebitedAccount(t)).
         catched[NotOpen](waitForDebitedAccount(t)))
