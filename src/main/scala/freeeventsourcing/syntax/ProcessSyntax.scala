@@ -242,7 +242,6 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
           new SelectorBuilder(selector)
         }
-        //TODO add a test
 
         final class SelectorBuilder[S <: WithEventType: EventSelector: ValidSelector] private[FromAggregateBuilder] (selector: S) {
           /** Select only events that happened after the specified time. */
