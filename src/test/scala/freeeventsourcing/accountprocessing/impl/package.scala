@@ -18,7 +18,7 @@ package object impl {
 
     BoundedContextImplementation(
       AccountProcessing,
-      BlockFundsProcess.process :: Nil
+      BlockFundsProcess :: Nil
     )
   }
 }
