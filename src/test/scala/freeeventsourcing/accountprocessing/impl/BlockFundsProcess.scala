@@ -17,48 +17,56 @@ import freeeventsourcing.syntax.ProcessHelper
  */
 object BlockFundsProcess extends ProcessHelper(AccountProcessing, "Test")(AggregateTypeEventSelector(Transaction)[Created]) {
   protected[this] case class Instance(created: Event) extends ProcessInstance {
-    def process = main(EventTime.Zero)
-
     import syntax._
     def txId = created.aggregate
     def tx = created.event
     val completeUntil = created.metadata.time.when.plus(1, ChronoUnit.DAYS)
 
-    def main(t: EventTime): ProcessMonad[Unit] = for {
-      //Block the money in the from-account and announce it to the to-account
-      _ ← on(tx.from).execute(BlockFunds(txId, tx.amount))(_.
-        catched[InsufficientFunds](waitForDebitedAccount(t)).
-        catched[NotOpen](waitForDebitedAccount(t)))
-      _ ← on(tx.to).execute(AnnounceDeposit(txId, tx.amount))(_.
-        catched[NotOpen](waitForDepositAccount(t)))
+    def process = for {
+      _ ← blockMoney(EventTime.Zero)
+      _ ← announceMoney(EventTime.Zero)
+      _ ← confirm
+    } yield ()
 
-      //Wait for confirmation of the successful blocking of the money in the from account
+    /** Block the money in the account to be debited. */
+    def blockMoney(time: EventTime): ProcessMonad[Unit] = {
+      def wait = firstOf(_.
+        from(tx.from).when[BalanceChanged].after(time).select.flatMapMetadata(e ⇒ blockMoney(e.metadata.time)).
+        from(tx.from).when[TxAborted].after(time).select.flatMapMetadata(e ⇒ blockMoney(e.metadata.time)).
+        from(tx.from).when[Opened].after(time).select.flatMapMetadata(e ⇒ blockMoney(e.metadata.time)).
+        timeout(completeUntil)(abort))
+
+      on(tx.from).execute(BlockFunds(txId, tx.amount))(_.
+        catched[InsufficientFunds](wait).
+        catched[NotOpen](wait))
+    }
+
+    /** Announce the pending deposit to the receiving account. */
+    def announceMoney(time: EventTime): ProcessMonad[Unit] = {
+      def wait = firstOf(_.
+        from(tx.to).on[Opened].flatMapMetadata(e ⇒ announceMoney(e.metadata.time)).
+        timeout(completeUntil)(abort))
+
+      on(tx.to).execute(AnnounceDeposit(txId, tx.amount))(_.
+        catched[NotOpen](wait))
+    }
+
+    /** Wait for confirmation from the debited account and then confirm the transaction */
+    def confirm = for {
       _ ← firstOf(_.
         from(tx.from).when[Blocked].matches(_.event.by == txId).select.event.
-        timeout(completeUntil)(abortTransaction))
-
-      //Confirm the transaction
+        timeout(completeUntil)(abort))
       _ ← on(txId).execute(Confirm())(_.
         terminateOn[DoesNotExist].
         terminateOn[AlreadyCanceled])
     } yield ()
 
-    def abortTransaction = for {
+    /** Abort the transaction and terminate the process. */
+    def abort = for {
       _ ← on(txId).execute(Cancel())(_.
         terminateOn[AlreadyConfirmed].
         terminateOn[DoesNotExist])
       _ ← terminate
     } yield ()
-
-    //TODO the time handling is a bit clumsy, we need to pass that though everywhere
-    def waitForDebitedAccount(time: EventTime) = firstOf(_.
-      from(tx.from).when[BalanceChanged].after(time).select.flatMapMetadata(e ⇒ main(e.metadata.time)).
-      from(tx.from).when[TxAborted].after(time).select.flatMapMetadata(e ⇒ main(e.metadata.time)).
-      from(tx.from).when[Opened].after(time).select.flatMapMetadata(e ⇒ main(e.metadata.time)).
-      timeout(completeUntil)(abortTransaction))
-
-    def waitForDepositAccount(time: EventTime) = firstOf(_.
-      from(tx.to).on[Opened].execute(main(time)).
-      timeout(completeUntil)(abortTransaction))
   }
 }
