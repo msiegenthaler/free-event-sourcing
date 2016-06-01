@@ -32,7 +32,7 @@ object BlockFundsProcess {
 
     def process = main(EventTime.Zero)
 
-    def main(t: EventTime): ProcessMonad[Unit] = for {
+    private[this] def main(t: EventTime): ProcessMonad[Unit] = for {
       //Block the money in the from account and announce it to the to account
       _ ← on(fromAccount).execute(BlockFunds(tx, amount))(_.
         catched[InsufficientFunds](waitForDebitedAccount(t)).
@@ -51,7 +51,7 @@ object BlockFundsProcess {
         terminateOn[AlreadyCanceled])
     } yield ()
 
-    def abortTransaction = for {
+    private[this] def abortTransaction = for {
       _ ← on(tx).execute(Cancel())(_.
         terminateOn[AlreadyConfirmed].
         terminateOn[DoesNotExist])
@@ -59,13 +59,13 @@ object BlockFundsProcess {
     } yield ()
 
     //TODO the time handling is a bit clumsy, we need to pass that though everywhere
-    def waitForDebitedAccount(time: EventTime) = firstOf(_.
+    private[this] def waitForDebitedAccount(time: EventTime) = firstOf(_.
       from(fromAccount).when[BalanceChanged].after(time).select.flatMapMetadata(e ⇒ main(e.metadata.time)).
       from(fromAccount).when[TxAborted].after(time).select.flatMapMetadata(e ⇒ main(e.metadata.time)).
       from(fromAccount).when[Opened].after(time).select.flatMapMetadata(e ⇒ main(e.metadata.time)).
       timeout(completeUntil)(abortTransaction))
 
-    def waitForDepositAccount(time: EventTime) = firstOf(_.
+    private[this] def waitForDepositAccount(time: EventTime) = firstOf(_.
       from(toAccount).on[Opened].execute(main(time)).
       timeout(completeUntil)(abortTransaction))
   }
