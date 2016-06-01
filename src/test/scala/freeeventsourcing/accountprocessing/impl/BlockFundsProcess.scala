@@ -1,7 +1,9 @@
 package freeeventsourcing.accountprocessing.impl
 
 import java.time.temporal.ChronoUnit
+import cats.syntax.all._
 import freeeventsourcing._
+import freeeventsourcing.EventTime.Zero
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -22,11 +24,7 @@ object BlockFundsProcess extends ProcessHelper(AccountProcessing, "Test")(Aggreg
     def tx = created.event
     val completeUntil = created.metadata.time.when.plus(1, ChronoUnit.DAYS)
 
-    def process = for {
-      _ ← blockMoney(EventTime.Zero)
-      _ ← announceMoney(EventTime.Zero)
-      _ ← confirm
-    } yield ()
+    def process = blockMoney(Zero) >> announceMoney(Zero) >> confirm
 
     /** Block the money in the account to be debited. */
     def blockMoney(time: EventTime): ProcessMonad[Unit] = {
