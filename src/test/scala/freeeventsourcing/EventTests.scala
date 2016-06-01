@@ -57,7 +57,7 @@ class EventTests extends FlatSpec with Matchers {
 }
 
 case class MockEventId() extends EventId
-case class MockEventTime(t: Long = MockEventTime.timer.incrementAndGet) extends EventTime {
+case class MockEventTime(t: Long = MockEventTime.nextT) extends EventTime {
   val when: Instant = Instant.now()
   def before(other: EventTime) = other match {
     case Zero              ⇒ false
@@ -77,5 +77,6 @@ case class MockEventTime(t: Long = MockEventTime.timer.incrementAndGet) extends 
   }
 }
 object MockEventTime {
-  private val timer = new AtomicLong(0)
+  private[this] val timer = new AtomicLong(0)
+  def nextT = timer.incrementAndGet()
 }
