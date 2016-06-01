@@ -17,7 +17,7 @@ import freeeventsourcing.syntax.ProcessHelper
 /** Blocks the funds in the debited account and confirms/aborts the tx based on the result.
  *  Updating the accounts then happens in the separate TransactionResultProcess.
  */
-object BlockFundsProcess extends ProcessHelper(AccountProcessing, "Test")(AggregateTypeEventSelector(Transaction)[Created]) {
+object BlockFundsProcess extends ProcessHelper(AccountProcessing, "BlockFundsProcess")(AggregateTypeEventSelector(Transaction)[Created]) {
   protected[this] case class Instance(created: Event) extends ProcessInstance {
     import syntax._
     def txId = created.aggregate
