@@ -39,6 +39,7 @@ object SupportedBoundedContext {
           (d.aggregate, s)
         }.toMap
       }
+      def processes = impl.processes
     }
   }
 
