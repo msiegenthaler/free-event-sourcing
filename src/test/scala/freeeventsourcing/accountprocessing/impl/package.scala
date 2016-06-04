@@ -16,6 +16,9 @@ package object impl {
       handleCommand = TransactionHandler
     )
 
-    BoundedContextImplementation(AccountProcessing)
+    BoundedContextImplementation(
+      AccountProcessing,
+      BlockFundsProcess :: Nil
+    )
   }
 }

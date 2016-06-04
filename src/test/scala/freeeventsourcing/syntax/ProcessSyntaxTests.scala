@@ -3,6 +3,7 @@ package freeeventsourcing.syntax
 import java.time.Instant
 import cats.Monad
 import freeeventsourcing._
+import freeeventsourcing.EventSelector.ops._
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -19,7 +20,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   val support = new ProcessTestSupport(AccountProcessing)
   import support._
-  import ProcessTests._
+  import ProcessActionTests._
 
   val metadata = EventMetadata(MockEventId(), MockEventTime())
 
@@ -43,9 +44,9 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
   }
 
   "ProcessSyntax.awaitMetadata " should " result in a Await action" in {
-    awaitMetadata(selectorOpened) should runFromWithResult(
+    awaitMetadata(selectorOpened).map(_.payload) should runFromWithResult(
       Expect.awaitEvent(selectorOpened)(openedEvent)
-    )(EventWithMetadata(openedEvent, metadata))
+    )(openedEvent)
   }
 
   "ProcessSyntax " should " have a nice syntax to wait for events from aggregates " in {
@@ -85,11 +86,43 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       )(())
   }
 
+  "ProcessSyntax.on().execute " should " should have an easy way to terminate the process if a command failes" in {
+    val cmd = BlockFunds(Transaction.Id(2), 1)
+    on(Account.Id(1)).execute(cmd)(
+      _.terminateOn[InsufficientFunds].
+        catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(1), cmd)(InsufficientFunds()),
+        Expect.end
+      )(())
+  }
+
+  "ProcessSyntax.on().execute " should " should have an alternative syntax if the error itself is not needed" in {
+    val cmd = BlockFunds(Transaction.Id(2), 1)
+    on(Account.Id(1)).execute(cmd)(
+      _.catched[InsufficientFunds](terminate).
+        catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(1), cmd)(InsufficientFunds()),
+        Expect.end
+      )(())
+  }
+
   "ProcessSyntax.on().execute " should " execute the command and run the command handler that does nothing" in {
     val cmd = BlockFunds(Transaction.Id(1), 2)
     on(Account.Id(0)).execute(cmd)(
       _.catching[InsufficientFunds](_ ⇒ noop).
         catching[NotOpen](_ ⇒ terminate)
+    ) should runFromWithResult(
+        Expect.commandFailed(Account, Account.Id(0), cmd)(InsufficientFunds())
+      )(())
+  }
+
+  "ProcessSyntax.on().execute " should " also catch if the ProcessMonad is not unit" in {
+    val cmd = BlockFunds(Transaction.Id(1), 2)
+    on(Account.Id(0)).execute(cmd)(
+      _.catching[InsufficientFunds](_ ⇒ noop.map(_ ⇒ "hi")).
+        catched[NotOpen](noop.map(_ ⇒ "ho"))
     ) should runFromWithResult(
         Expect.commandFailed(Account, Account.Id(0), cmd)(InsufficientFunds())
       )(())
@@ -125,11 +158,13 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
     }""" shouldNot compile
   }
 
-  "ProcessSyntax.firstOf " should " accept a single selector with an execute (flatMap)" in {
+  "ProcessSyntax.firstOf " should " accept a single selector with an execute" in {
     val r = firstOf(_.
-      on(selectorOpened).execute((e: AggregateEvent[Account.type, Opened]) ⇒ terminate))
+      on(selectorOpened).execute(terminate))
     "r : ProcessMonad[Unit :+: CNil]" should compile
+  }
 
+  "ProcessSyntax.firstOf " should " accept a single selector with an execute (flatMap)" in {
     val r2 = firstOf(_.
       on(selectorOpened).flatMap((e: AggregateEvent[Account.type, Opened]) ⇒ terminate))
     "r2 : ProcessMonad[Unit :+: CNil]" should compile
@@ -149,7 +184,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   "ProcessSyntax.firstOf " should " accept a single selector with a map with metadata" in {
     val r = firstOf(_.
-      on(selectorOpened).mapMetadata(_.event.event.owner))
+      on(selectorOpened).mapMetadata(_.payload.event.owner))
     "r : ProcessMonad[String :+: CNil]" should compile
 
     val r2 = firstOf(_.
@@ -193,6 +228,16 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
       from(Account.Id(1)).on[Opened].event.
       from(Transaction.Id(1)).on[Created].event)
     "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: AggregateEvent[Transaction.type, Created] :+: CNil]" should compile
+  }
+
+  "ProcessSyntax.firstOf " should " allow to specify additional criterias for events and selectors" in {
+    val r = firstOf(_.
+      from(Account.Id(1)).when[Opened].matches(_.event.owner == "Mario").select.event.
+      from(Transaction.Id(0)).when[Created].after(MockEventTime()).select.event.
+      on(selectorClosed.after(MockEventTime())).event)
+    "r : ProcessMonad[AggregateEvent[Account.type, Opened] :+: " +
+      "AggregateEvent[Transaction.type, Created] :+: " +
+      "AggregateEvent[Account.type, Closed] :+: CNil]" should compile
   }
 
   "ProcessSyntax.firstOf " should " allow to mix selectors and events from aggregates" in {

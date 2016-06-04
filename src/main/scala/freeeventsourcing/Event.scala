@@ -1,48 +1,39 @@
 package freeeventsourcing
 
 import scala.language.implicitConversions
-import scala.collection.immutable.Set
-import freeeventsourcing.utils.CompositeName
-import simulacrum.typeclass
+import java.time.Instant
 
 trait EventId
 
-//TODO add a way to compare (before, concurrent, after)
-trait EventTime
+/** Logical/causual time. Is used to compare the event times.
+ *  Since we are dealing with concurrent, distributed systems a lot of events will be 'undecidable', since
+ *  they occur at different places and there might not be a global time. What is guaranteed:
+ *  - all events e1,e2 that occured on the same aggregate have a stable and definied order (e2 after e1, e1 before e2)
+ *  - for an event e1 that triggers another event e2 (via a process): e1 before e2, e2 after e1.
+ */
+trait EventTime {
+  def when: Instant
+  def before(other: EventTime): Boolean
+  def after(other: EventTime): Boolean
+  def earlier(other: EventTime): EventTime
+  def later(other: EventTime): EventTime
+}
+object EventTime {
+  /** Earliest time possible */
+  object Zero extends EventTime {
+    val when = Instant.ofEpochMilli(Long.MinValue)
+    def before(other: EventTime) = other != Zero
+    def after(other: EventTime) = false
+    def earlier(other: EventTime) = this
+    def later(other: EventTime) = other
+    override def toString = "zero"
+  }
+}
 
 case class EventMetadata(id: EventId, time: EventTime)
 
-case class EventWithMetadata[E](event: E, metadata: EventMetadata)
-
-/** Selects a specific subset of events. */
-@typeclass trait EventSelector[S <: EventSelector.WithEventType] {
-  /** Checks if the event received on the topic matches this selector. */
-  def select(selector: S, event: Any): Option[S#Event]
-
-  /** Same as select, but returns the an event with metadata. */
-  def selectWithMetadata(selector: S, event: Any, metadata: EventMetadata): Option[EventWithMetadata[S#Event]] =
-    select(selector, event).map(EventWithMetadata(_, metadata))
-
-  /** Topics are used for more efficient filtering of events. Only events on this topic will be delivered to the selector. */
-  def topic(selector: S): EventTopic
-}
-object EventSelector {
-  type WithEventType = { type Event }
-}
-
-/** Topic for specific class of events. Ie all events from a certain aggregate type or for a specific aggregate. */
-case class EventTopic(composedTopic: CompositeName) extends AnyVal {
-  def topic = composedTopic.serialize
-}
-
-/** Responsible for routing events to the correct topics. */
-object EventRouter {
-  type EventRouter = Any ⇒ Set[EventTopic]
-
-  def apply(f: PartialFunction[Any, EventTopic]): EventRouter =
-    option(f.lift)
-  def option(f: Any ⇒ Option[EventTopic]): EventRouter =
-    e ⇒ f(e).toSet
-  def multi(f: PartialFunction[Any, Set[EventTopic]]): EventRouter =
-    e ⇒ f.lift(e).getOrElse(Set.empty)
+case class EventWithMetadata[+E](payload: E, metadata: EventMetadata)
+object EventWithMetadata {
+  implicit def toEvent[E](ewm: EventWithMetadata[E]): E =
+    ewm.payload
 }

@@ -4,7 +4,7 @@ import java.time.Instant
 import cats.data.{ State, StateT, Xor, XorT }
 import cats.{ Monad, ~> }
 import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.Process.ProcessMonad
+import freeeventsourcing.ProcessDefinition.ProcessMonad
 import freeeventsourcing.ProcessAction.FirstOf.Alternatives
 import freeeventsourcing.ProcessAction._
 import org.scalatest.matchers.{ MatchResult, Matcher }
@@ -48,9 +48,6 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
       ExpectCommand(aggregateType, aggregate, command, Xor.left(i(result)))
     def end = ExpectEnd
   }
-
-  case class MockEventId() extends EventId
-  case class MockEventTime() extends EventTime
 
   case class ProcessMatcher(expectations: List[Expectation], checkResult: Any ⇒ String Xor Unit) extends Matcher[M[_]] {
     def apply(process: M[_]) = {

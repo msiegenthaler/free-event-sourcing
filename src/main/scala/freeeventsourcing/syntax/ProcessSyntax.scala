@@ -4,27 +4,29 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
+import freeeventsourcing.EventSelector.WithEventType
 import freeeventsourcing._
-import freeeventsourcing.EventSelector._
+import freeeventsourcing.EventSelector.ops._
 import freeeventsourcing.ProcessAction.FirstOf.{ Alternative, Alternatives }
 import freeeventsourcing.ProcessAction._
+import freeeventsourcing.eventselector.AggregateEventSelector
 import freeeventsourcing.support.{ AggregateFromId, ValidAggregate }
 import freeeventsourcing.utils.StringSerializable
 import shapeless._
 import shapeless.ops.coproduct.{ Remove, Reverse, Selector, Unifier }
 
 /** Nice monadic syntax to write processes. */
-class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
+case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   type Action[+A] = ProcessAction[BC, A]
   type ProcessMonad[A] = Free[Action, A]
 
-  type ValidSelector[S] = freeeventsourcing.support.ValidSelector[BC, S]
+  type ValidSelector[S] = support.ValidSelector[BC, S]
 
   import Builders._
 
   /** Await an event using a selector. The event must be from this bounded context. */
   def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
-    awaitMetadata(selector).map(_.event)
+    awaitMetadata(selector).map(_.payload)
 
   /** Await an event (including its metadata) using a selector. The event must be from this bounded context. */
   def awaitMetadata[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
@@ -96,7 +98,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     final class FromAggregateBuilder[A <: Aggregate] private[ProcessSyntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
       def await[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) =
-        awaitMetadata.map(_.event.event)
+        awaitMetadata.map(_.payload.event)
 
       /** Await an event (including its metdata) from the aggregate. */
       def awaitMetadata[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
@@ -115,9 +117,17 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
       type EmptyBuilder[E <: Coproduct] = Builder[E, E]
 
       final class Builder[All <: Coproduct, Unhandled <: Coproduct] private[CommandErrorHandler] (handled: CommandErrorHandler[All]) {
-        def catching[E](handler: E ⇒ ProcessMonad[Unit])(implicit ev: HandleError[Unhandled, E], s: Selector[All, E]) = {
-          new Builder[All, ev.Rest](error ⇒ s(error).map(handler).getOrElse(handled(error)))
-        }
+        /** Handle the specified error. */
+        def catching[E](handler: E ⇒ ProcessMonad[_])(implicit ev: HandleError[Unhandled, E], s: Selector[All, E]) =
+          new Builder[All, ev.Rest](error ⇒ s(error).map(e ⇒ handler(e).map(_ ⇒ ())).getOrElse(handled(error)))
+
+        /** Same as #catching, but does ignores the error. */
+        def catched[E: HandleError[Unhandled, ?]: Selector[All, ?]](handler: ProcessMonad[_]) =
+          catching[E]((e: E) ⇒ handler)
+
+        /** Terminate the process (see ProcessSyntax#terminate) if the specified error occurs. */
+        def terminateOn[E: HandleError[Unhandled, ?]: Selector[All, ?]] =
+          catching((_: E) ⇒ terminate)
 
         /** Return the fully constructed error handler. Can only be called if all cases have been handled */
         private[ProcessSyntax] def errorHandler(implicit ev: AllErrorsHandled[Unhandled]) = handled
@@ -193,8 +203,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
       private[ProcessSyntax] def collect: A = paths
 
       final class OnBuilder[S <: WithEventType: EventSelector: ValidSelector] private[FirstOfBuilder] (selector: S) {
-        /** This is a flatMap */
-        def execute[R](body: S#Event ⇒ ProcessMonad[R]) = flatMap(body)
+        def execute[R](body: ProcessMonad[R]) = flatMap(_ ⇒ body)
 
         def map[R](f: S#Event ⇒ R) = flatMap(f.andThen(Monad[ProcessMonad].pure))
 
@@ -210,7 +219,7 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
         def terminate = flatMap(_ ⇒ ProcessSyntax.this.terminate)
 
         def flatMap[R](body: S#Event ⇒ ProcessMonad[R]) =
-          flatMapMetadata(e ⇒ body(e.event))
+          flatMapMetadata(e ⇒ body(e.payload))
 
         def flatMapMetadata[R](body: EventWithMetadata[S#Event] ⇒ ProcessMonad[R]): FirstOfBuilder[SwitchPath.Aux[EventWithMetadata[S#Event], R] :: A] = {
           val path = new SwitchPath {
@@ -225,9 +234,26 @@ class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
       final class FromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def on[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
+        def on[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) =
+          when[E].select
+
+        /** Advanced selection of an element (filter, after). */
+        def when[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
-          FirstOfBuilder.this.on(selector)
+          new SelectorBuilder(selector)
+        }
+
+        final class SelectorBuilder[S <: WithEventType: EventSelector: ValidSelector] private[FromAggregateBuilder] (selector: S) {
+          /** Select only events that happened after the specified time. */
+          def after(time: EventTime) =
+            new SelectorBuilder(selector.after(time))
+          /** Select only events that match the predicate. */
+          def matches(predicate: S#Event ⇒ Boolean) =
+            matchMetadata((e, m) ⇒ predicate(e))
+          /** Select only events that match the predicate - include the metadata into the decision. */
+          def matchMetadata[E](predicate: (S#Event, EventMetadata) ⇒ Boolean) =
+            new SelectorBuilder(selector.where((e, m) ⇒ if (predicate(e, m)) Some(e) else None))
+          def select = FirstOfBuilder.this.on(selector)
         }
       }
     }

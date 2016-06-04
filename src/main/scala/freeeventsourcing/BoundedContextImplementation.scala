@@ -13,13 +13,19 @@ import freeeventsourcing.BoundedContextImplementation.BCAggregateInfo
 
   def aggregateInfo: List[BCAggregateInfo[BC]]
 
+  def processes: List[ProcessDefinition[BC]]
+
   @implicitNotFound("The aggregate ${A} does not exist in this bounded context.")
   type MemberAggregate[A <: Aggregate] = Selector[BC#Aggregates, A]
 }
 
 object BoundedContextImplementation {
-  def apply[BC <: BoundedContext](bc: BC)(implicit f: AggregateImplementationsEv[bc.Aggregates], l: AggregateInfoEv[BC]): BoundedContextImplementation[BC] = {
+  def apply[BC <: BoundedContext](bc: BC, processes: List[ProcessDefinition[BC]])(
+    implicit
+    f: AggregateImplementationsEv[bc.Aggregates], l: AggregateInfoEv[BC]
+  ): BoundedContextImplementation[BC] = {
     val implMap = bc.aggregates.foldLeft(HMap.empty[BiMapToImpl])(FoldToImplMap)
+    def p = processes
     new BoundedContextImplementation[BC] {
       val boundedContext = bc
       def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A) = {
@@ -28,6 +34,7 @@ object BoundedContextImplementation {
             s"This should have been prevented at the type level.")
         }
       }
+      val processes = p
       val aggregateInfo = {
         def aggregates: BC#Aggregates = bc.aggregates
         aggregates.foldLeft(List.empty[BCAggregateInfo[BC]])(FoldToAggregateInfo)(l)

@@ -2,7 +2,7 @@ package freeeventsourcing.accountprocessing
 
 import shapeless.{ ::, HNil }
 import freeeventsourcing.accountprocessing.Account.Event.Closed
-import freeeventsourcing.{ AggregateEventSelector, BoundedContext }
+import freeeventsourcing.BoundedContext
 
 object AccountProcessing extends BoundedContext {
   val name = "account processing"

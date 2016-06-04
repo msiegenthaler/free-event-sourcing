@@ -1,16 +1,11 @@
 package freeeventsourcing
 
 import java.time.Instant
-import cats.free.Free
 import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.Process.ProcessMonad
 import freeeventsourcing.ProcessAction.FirstOf.Alternatives
+import freeeventsourcing.ProcessDefinition.ProcessMonad
 import freeeventsourcing.support.{ ValidAggregate, ValidSelector }
 import shapeless.{ :+:, CNil, Coproduct }
-
-object Process {
-  type ProcessMonad[BC <: BoundedContext, A] = Free[ProcessAction[BC, ?], A]
-}
 
 /** A 'step' of a process. Is used inside the free monad (see ProcessMonad). */
 sealed trait ProcessAction[BC <: BoundedContext, +A]

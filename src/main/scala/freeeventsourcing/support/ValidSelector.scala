@@ -1,10 +1,16 @@
 package freeeventsourcing.support
 
 import scala.annotation.implicitNotFound
-import freeeventsourcing.{ AggregateEventSelector, BoundedContext }
+import freeeventsourcing.BoundedContext
+import freeeventsourcing.EventSelector.{ AfterSelector, FilteredSelector, WithEventType }
+import freeeventsourcing.eventselector.AggregateEventSelector
 
 @implicitNotFound("${S} is not a valid EventSelector for this bounded context (${BC}).")
-sealed trait ValidSelector[BC <: BoundedContext, S]
+trait ValidSelector[BC <: BoundedContext, S]
+
 object ValidSelector {
-  implicit def aggregate[BC <: BoundedContext, S](implicit ev: AggregateEventSelector.ValidFor[S, BC#Aggregates]) = new ValidSelector[BC, S] {}
+  implicit def afterOfValid[BC <: BoundedContext, S <: WithEventType: ValidSelector[BC, ?]] =
+    new ValidSelector[BC, AfterSelector[S]] {}
+  implicit def filteredOfValid[BC <: BoundedContext, S <: WithEventType: ValidSelector[BC, ?], E] =
+    new ValidSelector[BC, FilteredSelector[S, E]] {}
 }
