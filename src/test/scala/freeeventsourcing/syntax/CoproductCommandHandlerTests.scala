@@ -27,13 +27,11 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
   "CoproductCommandHandler " should " allow handling commands" in {
     object H extends CoproductCommandHandler[Command, String, Event] {
       def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
-      implicit val first = at[FirstCommand] { cmd ⇒
-        s: String ⇒
-          Xor.right(Event1() :: Nil)
+      implicit val first = at[FirstCommand] { cmd ⇒ s: String ⇒
+        Xor.right(Event1() :: Nil)
       }
-      implicit val second = at[SecondCommand] { cmd ⇒
-        s: String ⇒
-          Xor.right(Seq.empty)
+      implicit val second = at[SecondCommand] { cmd ⇒ s: String ⇒
+        Xor.right(Seq.empty)
       }
     }
   }
