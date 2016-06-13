@@ -103,6 +103,15 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
     call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("hi")))
   }
 
+  "MonadicCommandHandlerSyntax " should " allow to access the command via implicit conversion" in {
+    object H extends BaseH {
+      implicit val first = onM[FirstCommand] { c ⇒
+        c.emit(Event3(c.arg))
+      }
+    }
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("hi")))
+  }
+
   "MonadicCommandHandlerSyntax " should " allow to access the command in a monad" in {
     object H extends BaseH {
       implicit val first = onM[FirstCommand](c ⇒ for {

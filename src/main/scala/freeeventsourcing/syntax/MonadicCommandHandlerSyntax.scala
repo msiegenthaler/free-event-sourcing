@@ -1,5 +1,6 @@
 package freeeventsourcing.syntax
 
+import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import cats.Monad
@@ -24,6 +25,8 @@ trait MonadicCommandHandlerSyntax { self: Poly1 ⇒
 
   /** Needed to allow usage of ResultM inside the for comprehension. */
   protected[this] implicit def eventListMonoid = listMonoid[Event]
+
+  protected[this] implicit def onCallToCommand[C <: Command](call: OnCallM[C]): C = call.command
 
   protected[this] class OnCallM[C <: Command](val command: C, val state: State) {
     type M1[A] = Xor[C#Error, A]
