@@ -4,7 +4,7 @@ import scala.collection.immutable.Seq
 import cats.data.Xor
 import freeeventsourcing.AggregateCommand
 import shapeless.poly.Case1
-import shapeless.{:+:, CNil, Poly1}
+import shapeless.{ :+:, CNil, Poly1 }
 
 trait CommandHandlerSyntaxTests {
   case class ErrorOne(a: String)
@@ -23,6 +23,7 @@ trait CommandHandlerSyntaxTests {
   object Event {
     case class Event1() extends Event
     case class Event2() extends Event
+    case class Event3(v: String) extends Event
   }
 
   trait BaseS extends Poly1 {
