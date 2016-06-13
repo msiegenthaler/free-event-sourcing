@@ -11,11 +11,7 @@ import shapeless.Poly1
 import shapeless.ops.coproduct.Inject
 
 /** Syntactic support for writing command handlers in monadic style. */
-trait MonadicCommandHandlerSyntax { self: Poly1 ⇒
-  protected type Command <: AggregateCommand
-  protected type Event
-  protected type State
-
+trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] { self: Poly1 ⇒
   protected type ResultM[C <: Command, A] = WriterT[Xor[C#Error, ?], List[Event], A]
 
   protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): self.Case.Aux[C, State ⇒ C#Error Xor Seq[Event]] = self.at { c ⇒ s: State ⇒

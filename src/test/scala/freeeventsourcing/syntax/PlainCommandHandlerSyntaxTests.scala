@@ -3,10 +3,10 @@ package freeeventsourcing.syntax
 import scala.collection.immutable.Seq
 import cats.data.Xor
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.Coproduct
+import shapeless.{ Coproduct, Poly1 }
 
 class PlainCommandHandlerSyntaxTests extends FlatSpec with Matchers with CommandHandlerSyntaxTests {
-  trait BaseH extends BaseS with PlainCommandHandlerSyntax
+  trait BaseH extends Poly1 with PlainCommandHandlerSyntax[Command, Event, String]
   import Command._
   import Event._
 

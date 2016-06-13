@@ -26,16 +26,10 @@ trait CommandHandlerSyntaxTests {
     case class Event3(v: String) extends Event
   }
 
-  trait BaseS extends Poly1 {
-    type State = String
-    type Event = CommandHandlerSyntaxTests.this.Event
-    type Command = CommandHandlerSyntaxTests.this.Command
-  }
-
-  def call[T <: BaseS, C <: Command, O](t: T, value: C)(state: t.State)(
+  def call[T, C <: Command, O](t: T, value: C)(state: String)(
     implicit
-    c: Case1.Aux[T, C, t.State ⇒ value.Error Xor Seq[t.Event]]
-  ): value.Error Xor Seq[t.Event] = {
+    c: Case1.Aux[T, C, String ⇒ value.Error Xor Seq[Event]]
+  ): value.Error Xor Seq[Event] = {
     c.apply(value).apply(state)
   }
 }
