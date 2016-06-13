@@ -2,45 +2,13 @@ package freeeventsourcing.syntax
 
 import scala.collection.immutable.Seq
 import cats.data.Xor
-import freeeventsourcing.AggregateCommand
 import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ :+:, CNil, Coproduct, Generic, Poly1 }
-import shapeless.poly.Case1
+import shapeless.Coproduct
 
-class PlainCommandHandlerSyntaxTests extends FlatSpec with Matchers {
-  case class ErrorOne(a: String)
-
-  sealed trait Command extends AggregateCommand
-  object Command {
-    case class FirstCommand(arg: String) extends Command {
-      type Error = ErrorOne :+: CNil
-    }
-    case class SecondCommand(arg: Int) extends Command {
-      type Error = CNil
-    }
-  }
-
-  sealed trait Event
-  object Event {
-    case class Event1() extends Event
-    case class Event2() extends Event
-  }
-
+class PlainCommandHandlerSyntaxTests extends FlatSpec with Matchers with CommandHandlerSyntaxTests {
+  trait BaseH extends BaseS with PlainCommandHandlerSyntax
   import Command._
   import Event._
-
-  trait BaseH extends Poly1 with PlainCommandHandlerSyntax {
-    type State = String
-    type Event = PlainCommandHandlerSyntaxTests.this.Event
-    type Command = PlainCommandHandlerSyntaxTests.this.Command
-  }
-
-  def call[T <: BaseH, C <: Command, O](t: T, value: C)(state: t.State)(
-    implicit
-    c: Case1.Aux[T, C, t.State ⇒ value.Error Xor Seq[t.Event]]
-  ): value.Error Xor Seq[t.Event] = {
-    c.apply(value).apply(state)
-  }
 
   "PlainCommandHandlerSyntax " should " allow for no-op" in {
     object H extends BaseH {
