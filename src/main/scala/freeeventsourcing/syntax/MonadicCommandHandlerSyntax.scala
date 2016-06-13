@@ -3,7 +3,7 @@ package freeeventsourcing.syntax
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import cats.Monad
-import cats.data.{WriterT, Xor}
+import cats.data.{ WriterT, Xor }
 import cats.std.list._
 import freeeventsourcing.AggregateCommand
 import shapeless.Poly1
