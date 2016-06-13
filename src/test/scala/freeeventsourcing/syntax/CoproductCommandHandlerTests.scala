@@ -31,7 +31,7 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
         Xor.right(Event1() :: Nil)
       }
       implicit val second = at[SecondCommand] { cmd ⇒ s: String ⇒
-        Xor.right(Seq.empty)
+        Xor.right(Nil)
       }
     }
   }

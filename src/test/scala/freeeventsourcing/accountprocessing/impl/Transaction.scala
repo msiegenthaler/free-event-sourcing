@@ -1,6 +1,7 @@
 package freeeventsourcing.accountprocessing.impl
 
 import cats.data.Xor
+import scala.collection.immutable.Seq
 import freeeventsourcing.accountprocessing.Account
 import freeeventsourcing.accountprocessing.Transaction.Command._
 import freeeventsourcing.accountprocessing.Transaction.Event._

@@ -1,6 +1,7 @@
 package freeeventsourcing.syntax
 
 import scala.annotation.implicitNotFound
+import scala.collection.immutable.Seq
 import cats.data.Xor
 import shapeless.ops.coproduct.Folder
 import shapeless.{ Coproduct, Generic, Poly1 }
