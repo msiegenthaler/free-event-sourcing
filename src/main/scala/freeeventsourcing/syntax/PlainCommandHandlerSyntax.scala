@@ -17,6 +17,7 @@ trait PlainCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
   }
 
   protected[this] final class OnCall[C <: Command] private[PlainCommandHandlerSyntax] (val command: C, val state: State) {
+    def cmd = command
     def ignore: Result[C] = Xor.right(Seq.empty)
     def success(events: Event*) = Xor.right(events.toList)
     def fail[E](error: E)(implicit i: Inject[C#Error, E]) = Xor.left(i(error))

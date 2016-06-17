@@ -37,6 +37,7 @@ trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
 
     /** Get the command. Sometimes easier to use than simply #command. */
     def commandM = Monad[M].pure(command)
+    def cmd = command
 
     /** Get the state. Sometimes easier to use than simply #state. */
     def stateM = Monad[M].pure(state)
