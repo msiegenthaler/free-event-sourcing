@@ -4,6 +4,7 @@ import cats.data.Xor
 import scala.collection.immutable.Seq
 import freeeventsourcing.accountprocessing.Account
 import freeeventsourcing.accountprocessing.Transaction.Command._
+import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
 import freeeventsourcing.accountprocessing.Transaction._
 import freeeventsourcing.syntax.{ CoproductCommandHandler, MatchEventApplicator }
@@ -22,17 +23,24 @@ object TransactionState {
 private object TransactionHandler extends CoproductCommandHandler[Command, Option[TransactionState], Event] {
   def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
-  implicit val create = at[Create] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val create = onM[Create](c ⇒ for {
+    _ ← c.assertThat(c.state.isEmpty)(AlreadyExists())
+    _ ← c.emit(Created(c.cmd.from, c.cmd.to, c.cmd.amount))
+  } yield ())
 
-  implicit val confirm = at[Confirm] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val confirm = onM[Confirm](c ⇒ for {
+    _ ← c.assertThat(c.state.isDefined)(DoesNotExist())
+    state = c.state.get
+    _ ← c.failIf(state.state == TxState.Canceled)(AlreadyCanceled())
+    _ ← c.emitIf(state.state == TxState.Unconfirmed)(Confirmed())
+  } yield ())
 
-  implicit val cancel = at[Cancel] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val cancel = onM[Cancel](c ⇒ for {
+    _ ← c.assertThat(c.state.isDefined)(DoesNotExist())
+    state = c.state.get
+    _ ← c.failIf(state.state == TxState.Confirmed)(AlreadyConfirmed())
+    _ ← c.emitIf(state.state == TxState.Unconfirmed)(Canceled())
+  } yield ())
 }
 
 private object TransactionApplicator extends MatchEventApplicator[Event, Option[TransactionState]] {
