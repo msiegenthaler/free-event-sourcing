@@ -18,7 +18,7 @@ object AccountState {
   def initial(id: Id) = AccountState(None, false, 0, Map.empty)
 }
 
-private object AccountHandler extends CoproductCommandHandler[Command, AccountState, Event] {
+private object AccountHandler extends CoproductCommandHandler[Command, Event, AccountState] {
   def handle[C <: Command](command: C, state: AccountState) = doHandle(command).apply(state)
 
   implicit val open = onM[Open](c ⇒ for {

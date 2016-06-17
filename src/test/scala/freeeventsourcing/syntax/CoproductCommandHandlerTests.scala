@@ -28,7 +28,7 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
   import Event._
 
   "CoproductCommandHandler " should " allow handling commands" in {
-    object H extends CoproductCommandHandler[Command, String, Event] {
+    object H extends CoproductCommandHandler[Command, Event, String] {
       def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
       implicit val first = commandCase[FirstCommand] { cmd ⇒ s: String ⇒
@@ -43,7 +43,7 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
   }
 
   "CoproductCommandHandler " should " allow handling commands with errors" in {
-    object H extends CoproductCommandHandler[Command, String, Event] {
+    object H extends CoproductCommandHandler[Command, Event, String] {
       def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
       implicit val first = commandCase[FirstCommand] { cmd ⇒ s: String ⇒
@@ -60,7 +60,7 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
 
   "CoproductCommandHandler " should " fail to compile if no commands are handled" in {
     """
-      | object H extends CoproductCommandHandler[Command, String, Event] {
+      | object H extends CoproductCommandHandler[Command, Event, String] {
       |   def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
       | }
     """.stripMargin shouldNot compile
@@ -68,7 +68,7 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
 
   "CoproductCommandHandler " should " fail to compile if not all commands are handled" in {
     """
-      |    object H extends CoproductCommandHandler[Command, String, Event] {
+      |    object H extends CoproductCommandHandler[Command, Event, String] {
       |      def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
       |      implicit val first = commandCase[FirstCommand] { cmd ⇒
       |        s: String ⇒

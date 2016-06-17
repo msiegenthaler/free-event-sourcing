@@ -20,7 +20,7 @@ object TransactionState {
   def initial(id: Id) = Option.empty[TransactionState]
 }
 
-private object TransactionHandler extends CoproductCommandHandler[Command, Option[TransactionState], Event] {
+private object TransactionHandler extends CoproductCommandHandler[Command, Event, Option[TransactionState]] {
   def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
   implicit val create = onM[Create](c ⇒ for {
