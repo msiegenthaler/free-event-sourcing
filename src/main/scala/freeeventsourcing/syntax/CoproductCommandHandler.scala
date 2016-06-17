@@ -2,10 +2,12 @@ package freeeventsourcing.syntax
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
+import scala.reflect.ClassTag
 import cats.data.Xor
 import freeeventsourcing.AggregateCommand
 import freeeventsourcing.AggregateImplementation.CommandHandler
-import shapeless.{ :+:, CNil, Coproduct, Generic, HMap, Poly1 }
+import freeeventsourcing.syntax.CoproductCommandHandler.CommandType
+import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
 
 //TODO fix parameter order
 trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
@@ -22,11 +24,11 @@ trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
     implicit
     g: Generic.Aux[Cmd, CP],
     m: CommandMap[Cmd],
-    me: CommandToCommandCase[C, C ⇒ Handler[C]]
+    me: CommandToCommandCase[CommandType[C], C ⇒ Handler[C]]
   ): Handler[C] = {
-    m.get(command)
+    m.get(CommandType.fromInstance(command))
       .map(_.apply(command))
-      .getOrElse(throw new AssertionError("Unhandled command: Should be a compile error."))
+      .getOrElse(throw new AssertionError("Unhandled command: Probably an invalid command structure."))
   }
 
   protected[this] def commandCase[C <: Cmd](f: C ⇒ Handler[C]): CommandCase[C] = f
@@ -34,7 +36,7 @@ trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
   protected type CommandCase[C <: Cmd] = C ⇒ Handler[C]
 
   protected[this] class CommandToCommandCase[K, V] private[CoproductCommandHandler] ()
-  protected[this] implicit final def cmdToError[C <: Cmd] = new CommandToCommandCase[C, C ⇒ Handler[C]]
+  protected[this] implicit final def cmdToError[C <: Cmd] = new CommandToCommandCase[CommandType[C], C ⇒ Handler[C]]
   @implicitNotFound("Not all commands (subclasses of sealed trait ${C}) are handled.")
   protected type CommandMap[C <: AggregateCommand] = HMap[CommandToCommandCase]
 
@@ -50,9 +52,17 @@ trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
     implicit def cnil = new CommandMapBuilder[CNil] {
       def get = HMap.empty
     }
-    implicit def lr[L <: Cmd, R <: Coproduct](implicit l: CommandCase[L], r: CommandMapBuilder[R]) = new CommandMapBuilder[L :+: R] {
-      //TODO
-      def get = r.get + (???, ???)
+    implicit def lr[L <: Cmd: ClassTag, R <: Coproduct](implicit l: CommandCase[L], r: CommandMapBuilder[R]) = new CommandMapBuilder[L :+: R] {
+      def get = r.get + (CommandType.fromType[L], l)
     }
+  }
+}
+object CoproductCommandHandler {
+  case class CommandType[C <: AggregateCommand] private (tpe: String)
+  object CommandType {
+    def fromInstance[C <: AggregateCommand](command: C): CommandType[C] =
+      CommandType(command.getClass.getName)
+    def fromType[C <: AggregateCommand](implicit t: ClassTag[C]): CommandType[C] =
+      CommandType(t.runtimeClass.getName)
   }
 }
