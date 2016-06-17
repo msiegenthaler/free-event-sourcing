@@ -10,7 +10,7 @@ import freeeventsourcing.syntax.CoproductCommandHandler.CommandType
 import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
 
 trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
-    extends CommandHandler[S, Command, Event]
+    extends CommandHandler[Command, Event, S]
     with PlainCommandHandlerSyntax[Command, Event, S] with MonadicCommandHandlerSyntax[Command, Event, S] {
   protected type State = S
   protected type Handler[C <: Command] = State ⇒ C#Error Xor Seq[Event]
