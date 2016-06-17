@@ -7,8 +7,9 @@ import freeeventsourcing.AggregateCommand
 import freeeventsourcing.AggregateImplementation.CommandHandler
 import shapeless.{ :+:, CNil, Coproduct, Generic, HMap, Poly1 }
 
+//TODO fix parameter order
 trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
-  extends CommandHandler[S, Cmd, Evt] { //with PlainCommandHandlerSyntax with MonadicCommandHandlerSyntax {
+    extends CommandHandler[S, Cmd, Evt] with PlainCommandHandlerSyntax[Cmd, Evt, S] with MonadicCommandHandlerSyntax[Cmd, Evt, S] {
   protected type State = S
   protected type Handler[C <: Cmd] = State ⇒ C#Error Xor Seq[Evt]
 
@@ -18,22 +19,19 @@ trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
   final override def apply[C <: Cmd](command: C, state: State) = handle(command, state).map(_.toList)
 
   def doHandle[C <: Cmd, CP <: Coproduct](command: C)(
-    implicit g: Generic.Aux[Cmd, CP],
+    implicit
+    g: Generic.Aux[Cmd, CP],
     m: CommandMap[Cmd],
-    me: CommandToCommandCase[C, C ⇒ Handler[C]]): Handler[C] = {
+    me: CommandToCommandCase[C, C ⇒ Handler[C]]
+  ): Handler[C] = {
     m.get(command)
       .map(_.apply(command))
       .getOrElse(throw new AssertionError("Unhandled command: Should be a compile error."))
   }
 
-  protected[this] def commandCase[C <: Cmd](f: C ⇒ Handler[C]) = new CommandCase[C] {
-    def handle(command: C) = f(command)
-  }
+  protected[this] def commandCase[C <: Cmd](f: C ⇒ Handler[C]): CommandCase[C] = f
 
-  /** Handles a command subtype. */
-  protected[this] sealed trait CommandCase[C <: Cmd] {
-    def handle(command: C): Handler[C]
-  }
+  protected type CommandCase[C <: Cmd] = C ⇒ Handler[C]
 
   protected[this] class CommandToCommandCase[K, V] private[CoproductCommandHandler] ()
   protected[this] implicit final def cmdToError[C <: Cmd] = new CommandToCommandCase[C, C ⇒ Handler[C]]
@@ -53,6 +51,7 @@ trait CoproductCommandHandler[Cmd <: AggregateCommand, S, Evt]
       def get = HMap.empty
     }
     implicit def lr[L <: Cmd, R <: Coproduct](implicit l: CommandCase[L], r: CommandMapBuilder[R]) = new CommandMapBuilder[L :+: R] {
+      //TODO
       def get = r.get + (???, ???)
     }
   }

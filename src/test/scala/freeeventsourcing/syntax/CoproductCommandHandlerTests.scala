@@ -31,13 +31,11 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
     object H extends CoproductCommandHandler[Command, String, Event] {
       def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
-      implicit val first = commandCase[FirstCommand] { cmd ⇒
-        s: String ⇒
-          Xor.right(Event1() :: Nil)
+      implicit val first = commandCase[FirstCommand] { cmd ⇒ s: String ⇒
+        Xor.right(Event1() :: Nil)
       }
-      implicit val second = commandCase[SecondCommand] { cmd ⇒
-        s: String ⇒
-          Xor.right(Nil)
+      implicit val second = commandCase[SecondCommand] { cmd ⇒ s: String ⇒
+        Xor.right(Nil)
       }
     }
   }
@@ -46,14 +44,12 @@ class CoproductCommandHandlerTests extends FlatSpec with Matchers {
     object H extends CoproductCommandHandler[Command, String, Event] {
       def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 
-      implicit val first = commandCase[FirstCommand] { cmd ⇒
-        s: String ⇒
-          val e = Coproduct[FirstCommand#Error](ErrorTwo())
-          Xor.left(e)
+      implicit val first = commandCase[FirstCommand] { cmd ⇒ s: String ⇒
+        val e = Coproduct[FirstCommand#Error](ErrorTwo())
+        Xor.left(e)
       }
-      implicit val second = commandCase[SecondCommand] { cmd ⇒
-        s: String ⇒
-          Xor.right(Nil)
+      implicit val second = commandCase[SecondCommand] { cmd ⇒ s: String ⇒
+        Xor.right(Nil)
       }
     }
   }

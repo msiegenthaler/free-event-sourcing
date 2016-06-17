@@ -8,10 +8,10 @@ import shapeless.Poly1
 import shapeless.ops.coproduct.Inject
 
 /** Syntactic support for writing command handlers. */
-trait PlainCommandHandlerSyntax[Command <: AggregateCommand, Event, State] { self: Poly1 ⇒
+trait PlainCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
   protected type Result[C <: Command] = C#Error Xor Seq[Event]
 
-  protected[this] def on[C <: Command](f: OnCall[C] ⇒ Result[C]): self.Case.Aux[C, State ⇒ Result[C]] = self.at { c ⇒ s: State ⇒
+  protected[this] def on[C <: Command](f: OnCall[C] ⇒ Result[C]): C ⇒ State ⇒ Result[C] = { c ⇒ s: State ⇒
     val call = new OnCall(c, s)
     f(call)
   }

@@ -28,7 +28,7 @@ trait CommandHandlerSyntaxTests {
 
   def call[T, C <: Command, O](t: T, value: C)(state: String)(
     implicit
-    c: Case1.Aux[T, C, String ⇒ value.Error Xor Seq[Event]]
+    c: C ⇒ String ⇒ value.Error Xor Seq[Event]
   ): value.Error Xor Seq[Event] = {
     c.apply(value).apply(state)
   }
