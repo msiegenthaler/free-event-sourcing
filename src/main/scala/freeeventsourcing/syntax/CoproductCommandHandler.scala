@@ -9,6 +9,24 @@ import freeeventsourcing.AggregateImplementation.CommandHandler
 import freeeventsourcing.syntax.CoproductCommandHandler.CommandType
 import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
 
+/** Helps writing command handlers in with one method per command type.
+ *  Usage: Define an implicit val per command type using either 'on' or 'onM'.
+ *  Example:
+ *  <code>
+ *   private object TransactionHandler extends CoproductCommandHandler[Command, Event, Option[TransactionState]] {
+ *    def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
+ *
+ *    implicit val create = onM[Create](c ⇒ for {
+ *      _ ← c.assertThat(c.state.isEmpty)(AlreadyExists())
+ *      _ ← c.emit(Created(c.cmd.from, c.cmd.to, c.cmd.amount))
+ *    } yield ())
+ *
+ *    implicit val confirm = on[Confirm] { c ⇒
+ *      c.success(Confirmed())
+ *    }
+ *  }
+ *  </code>
+ */
 trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
     extends CommandHandler[Command, Event, S]
     with PlainCommandHandlerSyntax[Command, Event, S] with MonadicCommandHandlerSyntax[Command, Event, S] {
@@ -31,9 +49,7 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
       .getOrElse(throw new AssertionError("Unhandled command: Probably an invalid command structure."))
   }
 
-  protected[this] def commandCase[C <: Command](f: C ⇒ Handler[C]): CommandCase[C] = f
-
-  protected type CommandCase[C <: Command] = C ⇒ Handler[C]
+  protected[this] def commandCase[C <: Command](f: C ⇒ Handler[C]): C ⇒ Handler[C] = f
 
   protected[this] class CommandToCommandCase[K, V] private[CoproductCommandHandler] ()
   protected[this] implicit final def cmdToError[C <: Command] = new CommandToCommandCase[CommandType[C], C ⇒ Handler[C]]
@@ -52,7 +68,7 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
     implicit def cnil = new CommandMapBuilder[CNil] {
       def get = HMap.empty
     }
-    implicit def lr[L <: Command: ClassTag, R <: Coproduct](implicit l: CommandCase[L], r: CommandMapBuilder[R]) = new CommandMapBuilder[L :+: R] {
+    implicit def lr[L <: Command: ClassTag, R <: Coproduct](implicit l: L ⇒ Handler[L], r: CommandMapBuilder[R]) = new CommandMapBuilder[L :+: R] {
       def get = r.get + (CommandType.fromType[L], l)
     }
   }
