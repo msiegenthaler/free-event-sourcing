@@ -1,44 +1,63 @@
 package freeeventsourcing.accountprocessing.impl
 
 import cats.data.Xor
+import scala.collection.immutable.Seq
 import freeeventsourcing.accountprocessing.Account.Command._
+import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
 import freeeventsourcing.accountprocessing.Account._
 import freeeventsourcing.accountprocessing.Transaction
 import freeeventsourcing.syntax.{ CoproductCommandHandler, CoproductEventApplicator }
 
 case class PendingTx(id: Transaction.Id, amount: Long, isDebit: Boolean)
-final case class AccountState(owner: Option[String], open: Boolean, balance: Long, pending: Map[Transaction.Id, PendingTx])
+final case class AccountState(owner: Option[String], open: Boolean, balance: Long, pending: Map[Transaction.Id, PendingTx]) {
+  def unblockedBalance = balance - pendingAmount
+  def pendingAmount = pending.values.filter(_.isDebit).map(_.amount).sum
+}
 object AccountState {
   def initial(id: Id) = AccountState(None, false, 0, Map.empty)
 }
 
-private object AccountHandler extends CoproductCommandHandler[Command, AccountState, Event] {
+private object AccountHandler extends CoproductCommandHandler[Command, Event, AccountState] {
   def handle[C <: Command](command: C, state: AccountState) = doHandle(command).apply(state)
 
-  implicit val open = at[Open] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val open = onM[Open](c ⇒ for {
+    _ ← c.failIf(c.state.open)(AlreadyOpen())
+    _ ← c.emit(Opened(c.cmd.owner))
+  } yield ())
 
-  implicit val block = at[BlockFunds] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val block = onM[BlockFunds](c ⇒ for {
+    _ ← c.assertThat(c.state.open)(NotOpen())
+    _ ← c.assertThat(c.state.unblockedBalance > c.cmd.amount)(InsufficientFunds())
+    _ ← c.emit(Blocked(c.cmd.tx, c.cmd.amount))
+  } yield ())
 
-  implicit val deposit = at[AnnounceDeposit] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val deposit = onM[AnnounceDeposit](c ⇒ for {
+    _ ← c.assertThat(c.state.open)(NotOpen())
+    _ ← c.emit(Announced(c.cmd.tx, c.cmd.amount))
+  } yield ())
 
-  implicit val confirmTx = at[ConfirmTransaction] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val confirmTx = onM[ConfirmTransaction](c ⇒ for {
+    _ ← c.assertThat(c.state.open)(NotOpen())
+    txO = c.state.pending.get(c.cmd.tx)
+    _ ← c.assertThat(txO.isDefined)(TxNotFound(c.cmd.tx))
+    tx = txO.get
+    delta = if (tx.isDebit) -tx.amount else tx.amount
+    _ ← c.emit(BalanceChanged(c.state.balance + delta, tx.id, tx.amount))
+  } yield ())
 
-  implicit val cancelTx = at[CancelTransaction] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val cancelTx = onM[CancelTransaction](c ⇒ for {
+    _ ← c.assertThat(c.state.open)(NotOpen())
+    _ ← c.assertThat(c.state.pending.contains(c.cmd.tx))(TxNotFound(c.cmd.tx))
+    _ ← c.emit(TxAborted(c.cmd.tx))
+  } yield ())
 
-  implicit val close = at[Close] { _ ⇒ _: State ⇒
-    Xor.right(Seq.empty) //TODO
-  }
+  implicit val close = onM[Close](c ⇒ for {
+    _ ← c.assertThat(c.state.open)(NotOpen())
+    _ ← c.assertThat(c.state.pending.isEmpty)(HasPendingTx(c.state.pending.keys.toList))
+    _ ← c.assertThat(c.state.balance == 0)(NotEmpty())
+    _ ← c.emit(Closed())
+  } yield ())
 }
 
 private object AccountApplicator extends CoproductEventApplicator[Event, AccountState] {

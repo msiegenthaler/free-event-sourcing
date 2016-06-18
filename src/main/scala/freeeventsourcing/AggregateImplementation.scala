@@ -23,7 +23,7 @@ object AggregateImplementation {
   )(
     seed: forAggregate.Id ⇒ State,
     applyEvent: (forAggregate.Event, State) ⇒ State,
-    handleCommand: CommandHandler[State, forAggregate.Command, forAggregate.Event]
+    handleCommand: CommandHandler[forAggregate.Command, forAggregate.Event, State]
   ): AggregateImplementation[forAggregate.Aggregate] = {
     type S = State
     def seed2 = seed
@@ -38,7 +38,7 @@ object AggregateImplementation {
     }
   }
 
-  trait CommandHandler[State, Command <: AggregateCommand, Event] {
+  trait CommandHandler[Command <: AggregateCommand, Event, State] {
     def apply[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
   }
 }
