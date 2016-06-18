@@ -1,8 +1,9 @@
 package freeeventsourcing.syntax
 
+import scala.language.existentials
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
-import scala.reflect.ClassTag
+import scala.reflect.{ classTag, ClassTag }
 import cats.data.Xor
 import freeeventsourcing.AggregateCommand
 import freeeventsourcing.AggregateImplementation.CommandHandler
@@ -74,11 +75,11 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
   }
 }
 object CoproductCommandHandler {
-  case class CommandType[C <: AggregateCommand] private (tpe: String)
+  final case class CommandType[C <: AggregateCommand] private (private val tpe: Class[_ <: C])
   object CommandType {
     def fromInstance[C <: AggregateCommand](command: C): CommandType[C] =
-      CommandType(command.getClass.getName)
-    def fromType[C <: AggregateCommand](implicit t: ClassTag[C]): CommandType[C] =
-      CommandType(t.runtimeClass.getName)
+      new CommandType(command.getClass)
+    def fromType[C <: AggregateCommand: ClassTag]: CommandType[C] =
+      new CommandType(classTag[C].runtimeClass.asInstanceOf[Class[C]])
   }
 }
