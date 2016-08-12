@@ -9,7 +9,7 @@ import shapeless.{ HNil, :: }
 
 case class Example(a: Int)
 
-class StringSerializableSpec extends PropSpec with PropertyChecks with ShouldMatchers {
+class StringSerializableSpec extends PropSpec with PropertyChecks with Matchers {
 
   property("has identity instance for string") {
     forAll { (a: String) ⇒

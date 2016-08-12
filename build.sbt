@@ -18,8 +18,8 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.8"
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.8"
 
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.12.5" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.13.2" % "test"
 
 
 import com.typesafe.sbt.SbtScalariform.ScalariformKeys
