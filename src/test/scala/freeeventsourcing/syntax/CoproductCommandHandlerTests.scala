@@ -1,13 +1,13 @@
 package freeeventsourcing.syntax
 
 import cats.data.Xor
-import freeeventsourcing.api.AggregateCommand
+import freeeventsourcing.api.{ AggregateCommand, DomainEvent }
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ :+:, CNil, Coproduct }
 
 class CoproductCommandHandlerTests extends FlatSpec with Matchers {
 
-  sealed trait Event
+  sealed trait Event extends DomainEvent
   object Event {
     case class Event1(a: String) extends Event
   }
