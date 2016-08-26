@@ -1,18 +1,17 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
-import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.ProcessDefinition.ProcessMonad
-import freeeventsourcing.ProcessAction._
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
-import freeeventsourcing.eventselector.AggregateEventSelector
-import freeeventsourcing.support.{ ValidAggregate, ValidSelector }
+import freeeventsourcing.api.EventSelector.WithEventType
+import freeeventsourcing.api.ProcessAction._
+import freeeventsourcing.api.ProcessDefinition.ProcessMonad
+import freeeventsourcing.api.eventselector.{ AggregateEventSelector, ValidSelector }
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.CNil
+import ProcessActionTests._
 
 class ProcessActionTests extends FlatSpec with Matchers {
-  import ProcessActionTests._
   type AP = AccountProcessing.type
 
   def awaitEvent[S <: WithEventType: EventSelector](selector: S)(implicit ev: ValidSelector[AP, S]) =

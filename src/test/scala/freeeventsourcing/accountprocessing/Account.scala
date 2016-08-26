@@ -1,7 +1,7 @@
 package freeeventsourcing.accountprocessing
 
 import shapeless.{ :+:, CNil }
-import freeeventsourcing.{ Aggregate, AggregateCommand }
+import freeeventsourcing.api.{ Aggregate, AggregateCommand }
 
 object Account extends Aggregate {
   val name = "Account"

@@ -2,7 +2,7 @@ package freeeventsourcing.akka
 
 import scala.language.implicitConversions
 import akka.actor.{ Actor, ActorRef }
-import freeeventsourcing.{ Aggregate, AggregateCommand, BoundedContext }
+import freeeventsourcing.api.{ Aggregate, AggregateCommand, BoundedContext }
 
 object AkkaBoundedContext {
   case class ExecuteAggregateCommand(commandId: CommandId, aggregate: String, aggregateId: Any, command: AggregateCommand)

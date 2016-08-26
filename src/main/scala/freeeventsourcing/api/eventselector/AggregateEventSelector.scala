@@ -1,9 +1,9 @@
-package freeeventsourcing.eventselector
+package freeeventsourcing.api.eventselector
 
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
 import freeeventsourcing._
-import freeeventsourcing.support.ValidSelector
+import freeeventsourcing.api._
 import freeeventsourcing.utils.StringSerializable.ops._
 import freeeventsourcing.utils.{ =!=, CompositeName, StringSerializable }
 import shapeless.ops.hlist.Selector

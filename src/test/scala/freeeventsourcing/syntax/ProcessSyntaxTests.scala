@@ -3,7 +3,7 @@ package freeeventsourcing.syntax
 import java.time.Instant
 import cats.Monad
 import freeeventsourcing._
-import freeeventsourcing.EventSelector.ops._
+import freeeventsourcing.api.EventSelector.ops._
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -11,6 +11,7 @@ import freeeventsourcing.accountprocessing.Transaction.Command._
 import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
 import freeeventsourcing.accountprocessing.{ Account, AccountProcessing, Transaction }
+import freeeventsourcing.api._
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ :+:, CNil, Coproduct }
 
@@ -20,7 +21,7 @@ class ProcessSyntaxTests extends FlatSpec with Matchers {
 
   val support = new ProcessTestSupport(AccountProcessing)
   import support._
-  import ProcessActionTests._
+  import freeeventsourcing.api.ProcessActionTests._
 
   val metadata = EventMetadata(MockEventId(), MockEventTime())
 

@@ -5,7 +5,7 @@ import scala.annotation.implicitNotFound
 import shapeless.Typeable
 import simulacrum.typeclass
 import freeeventsourcing.utils.StringSerializable
-import freeeventsourcing.{ Aggregate, AggregateImplementation }
+import freeeventsourcing.api.{ Aggregate, AggregateImplementation }
 
 /** Typeclass for aggregates that are supported by this akka backend. */
 @implicitNotFound("Aggregate ${A} does not seem supported. Needed in the implicit scope are:\n a) AggregateImplementation[${A}]\n b) StringSerializer[${A}#Id]")

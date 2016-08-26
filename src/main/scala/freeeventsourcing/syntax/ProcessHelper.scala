@@ -1,9 +1,9 @@
 package freeeventsourcing.syntax
 
 import scala.language.implicitConversions
-import freeeventsourcing.{ BoundedContext, EventSelector, EventWithMetadata, ProcessDefinition }
-import freeeventsourcing.EventSelector._
-import freeeventsourcing.support.ValidSelector
+import freeeventsourcing.api.{ BoundedContext, EventSelector, EventWithMetadata, ProcessDefinition }
+import freeeventsourcing.api.EventSelector._
+import freeeventsourcing.api.eventselector.ValidSelector
 
 /** Helps defining a process definition with an easier syntax.
  *  <code>

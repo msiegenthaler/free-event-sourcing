@@ -4,13 +4,13 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
-import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing._
-import freeeventsourcing.EventSelector.ops._
-import freeeventsourcing.ProcessAction.FirstOf.{ Alternative, Alternatives }
-import freeeventsourcing.ProcessAction._
-import freeeventsourcing.eventselector.AggregateEventSelector
-import freeeventsourcing.support.{ AggregateFromId, ValidAggregate }
+import freeeventsourcing.api.EventSelector.WithEventType
+import freeeventsourcing.api.EventSelector.ops._
+import freeeventsourcing.api.ProcessAction.FirstOf.{ Alternative, Alternatives }
+import freeeventsourcing.api.ProcessAction._
+import freeeventsourcing.api._
+import freeeventsourcing.api.eventselector.AggregateEventSelector
+import freeeventsourcing.syntax.support.AggregateFromId
 import freeeventsourcing.utils.StringSerializable
 import shapeless._
 import shapeless.ops.coproduct.{ Remove, Reverse, Selector, Unifier }
@@ -20,7 +20,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   type Action[+A] = ProcessAction[BC, A]
   type ProcessMonad[A] = Free[Action, A]
 
-  type ValidSelector[S] = support.ValidSelector[BC, S]
+  type ValidSelector[S] = eventselector.ValidSelector[BC, S]
 
   import Builders._
 

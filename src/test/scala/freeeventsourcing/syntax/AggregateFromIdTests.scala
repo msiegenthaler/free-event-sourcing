@@ -1,8 +1,9 @@
-package freeeventsourcing.support
+package freeeventsourcing.syntax
 
-import org.scalatest.{ FlatSpec, Matchers }
-import shapeless.{ ::, HNil }
 import freeeventsourcing.accountprocessing.{ Account, Transaction }
+import freeeventsourcing.syntax.support.AggregateFromId
+import org.scalatest.{ FlatSpec, Matchers }
+import shapeless.HNil
 
 class AggregateFromIdTests extends FlatSpec with Matchers {
   val aggregates = Account :: Transaction :: HNil

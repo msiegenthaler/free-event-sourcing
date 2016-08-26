@@ -1,7 +1,7 @@
 package freeeventsourcing.akka
 
 import akka.actor.{ Actor, ActorRef, Props }
-import freeeventsourcing.{ Aggregate, AggregateCommand }
+import freeeventsourcing.api.{ Aggregate, AggregateCommand }
 
 object AkkaAggregateType {
   case class Execute(id: CommandId, aggregateId: Any, command: AggregateCommand)

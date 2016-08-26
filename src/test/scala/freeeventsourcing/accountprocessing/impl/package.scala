@@ -1,6 +1,6 @@
 package freeeventsourcing.accountprocessing
 
-import freeeventsourcing.{ AggregateImplementation, BoundedContextImplementation }
+import freeeventsourcing.api.{ AggregateImplementation, BoundedContextImplementation }
 
 package object impl {
   val accountProcessing = {

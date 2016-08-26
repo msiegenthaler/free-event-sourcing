@@ -1,4 +1,4 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
 import scala.language.implicitConversions
 import java.time.Instant
