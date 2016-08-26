@@ -5,9 +5,8 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import cats.Monad
 import cats.data.{ WriterT, Xor }
-import cats.std.list._
+import cats.instances.list._
 import freeeventsourcing.AggregateCommand
-import shapeless.Poly1
 import shapeless.ops.coproduct.Inject
 
 /** Syntactic support for writing command handlers in monadic style. */
@@ -20,7 +19,7 @@ trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
   }
 
   /** Needed to allow usage of ResultM inside the for comprehension. */
-  protected[this] implicit def eventListMonoid = listMonoid[Event]
+  protected[this] implicit def eventListMonoid = catsKernelStdMonoidForList[Event]
 
   protected[this] implicit def onCallToCommand[C <: Command](call: OnCallM[C]): C = call.command
 

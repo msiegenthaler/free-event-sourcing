@@ -12,7 +12,7 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.fu
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.2"
-libraryDependencies += "org.typelevel" %% "cats" % "0.6.1"
+libraryDependencies += "org.typelevel" %% "cats" % "0.7.0"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.9"
 libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.9"
