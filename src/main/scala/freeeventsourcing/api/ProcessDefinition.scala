@@ -1,9 +1,9 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
 import cats.free.Free
-import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.ProcessDefinition.ProcessMonad
-import freeeventsourcing.support.ValidSelector
+import freeeventsourcing.api.EventSelector.WithEventType
+import freeeventsourcing.api.ProcessDefinition.ProcessMonad
+import freeeventsourcing.api.eventselector.ValidSelector
 
 /** Defines a process. A process listens for events within a bounded context
  *  and triggers commands as the reaction to events or an event sequence.

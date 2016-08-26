@@ -3,7 +3,7 @@ package freeeventsourcing.accountprocessing.impl
 import java.time.temporal.ChronoUnit
 import cats.syntax.all._
 import freeeventsourcing._
-import freeeventsourcing.EventTime.Zero
+import freeeventsourcing.api.EventTime.Zero
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._
 import freeeventsourcing.accountprocessing.Account.Event._
@@ -11,7 +11,8 @@ import freeeventsourcing.accountprocessing.Transaction.Command._
 import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
 import freeeventsourcing.accountprocessing.{ AccountProcessing, Transaction }
-import freeeventsourcing.eventselector.AggregateTypeEventSelector
+import freeeventsourcing.api.EventTime
+import freeeventsourcing.api.eventselector.AggregateTypeEventSelector
 import freeeventsourcing.syntax.ProcessHelper
 
 /** Blocks the funds in the debited account and confirms/aborts the tx based on the result.

@@ -1,10 +1,10 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
 import java.time.Instant
-import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.ProcessAction.FirstOf.Alternatives
-import freeeventsourcing.ProcessDefinition.ProcessMonad
-import freeeventsourcing.support.{ ValidAggregate, ValidSelector }
+import freeeventsourcing.api.EventSelector.WithEventType
+import freeeventsourcing.api.ProcessAction.FirstOf.Alternatives
+import freeeventsourcing.api.ProcessDefinition.ProcessMonad
+import freeeventsourcing.api.eventselector.ValidSelector
 import shapeless.{ :+:, CNil, Coproduct }
 
 /** A 'step' of a process. Is used inside the free monad (see ProcessMonad). */

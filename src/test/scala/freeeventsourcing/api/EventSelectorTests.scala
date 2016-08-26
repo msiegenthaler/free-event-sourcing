@@ -1,11 +1,11 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
-import org.scalatest.{ FlatSpec, Matchers }
-import freeeventsourcing.EventSelector.ops._
-import freeeventsourcing.EventTime.Zero
-import freeeventsourcing.ProcessActionTests.selectorOpened
 import freeeventsourcing.accountprocessing.Account
 import freeeventsourcing.accountprocessing.Account.Event.Opened
+import freeeventsourcing.api.EventTime.Zero
+import org.scalatest.{ FlatSpec, Matchers }
+import ProcessActionTests._
+import EventSelector.ops._
 
 class EventSelectorTests extends FlatSpec with Matchers {
   val selectorMario = selectorOpened.where { (e, m) ⇒

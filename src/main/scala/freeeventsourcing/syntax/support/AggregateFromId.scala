@@ -1,9 +1,9 @@
-package freeeventsourcing.support
+package freeeventsourcing.syntax.support
 
 import scala.annotation.implicitNotFound
-import shapeless.{ HList, :: }
-import freeeventsourcing.Aggregate
-import freeeventsourcing.support.AggregateFromId.AggregateWithId
+import freeeventsourcing.api.Aggregate
+import freeeventsourcing.syntax.support.AggregateFromId.AggregateWithId
+import shapeless.{ ::, HList }
 
 /** Gets the aggregate from the type of the id. */
 @implicitNotFound("Aggregate for id type ${Id} not found in ${Aggregates}")

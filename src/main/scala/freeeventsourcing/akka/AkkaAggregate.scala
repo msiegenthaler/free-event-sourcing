@@ -3,7 +3,7 @@ package freeeventsourcing.akka
 import akka.actor.Props
 import akka.persistence.PersistentActor
 import cats.data.Xor
-import freeeventsourcing.{ Aggregate, AggregateCommand }
+import freeeventsourcing.api.{ Aggregate, AggregateCommand }
 
 /** Manages a single aggregate using a persistent actor.
  *  Only one actor may exist per aggregate (id), else inconsistencies will be created.

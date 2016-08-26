@@ -1,12 +1,12 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
 import java.time.Instant
-import cats.data.{ State, StateT, Xor, XorT }
-import cats.{ Monad, ~> }
-import freeeventsourcing.EventSelector.WithEventType
-import freeeventsourcing.ProcessDefinition.ProcessMonad
-import freeeventsourcing.ProcessAction.FirstOf.Alternatives
-import freeeventsourcing.ProcessAction._
+import cats.data.{ StateT, Xor }
+import cats.~>
+import freeeventsourcing.api.EventSelector.WithEventType
+import freeeventsourcing.api.ProcessAction.FirstOf.Alternatives
+import freeeventsourcing.api.ProcessAction._
+import freeeventsourcing.api.ProcessDefinition.ProcessMonad
 import org.scalatest.matchers.{ MatchResult, Matcher }
 import shapeless.Coproduct
 import shapeless.ops.coproduct.Inject

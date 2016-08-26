@@ -1,11 +1,11 @@
-package freeeventsourcing
+package freeeventsourcing.api
 
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
+import freeeventsourcing.api.BoundedContextImplementation.BCAggregateInfo
 import shapeless.ops.hlist.{ LeftFolder, Selector }
 import shapeless.{ HList, HMap, Poly2 }
 import simulacrum.typeclass
-import freeeventsourcing.BoundedContextImplementation.BCAggregateInfo
 
 @typeclass trait BoundedContextImplementation[BC <: BoundedContext] {
   val boundedContext: BC

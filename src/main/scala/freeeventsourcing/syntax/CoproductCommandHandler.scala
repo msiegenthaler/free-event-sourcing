@@ -3,10 +3,10 @@ package freeeventsourcing.syntax
 import scala.language.existentials
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
-import scala.reflect.{ classTag, ClassTag }
+import scala.reflect.{ ClassTag, classTag }
 import cats.data.Xor
-import freeeventsourcing.AggregateCommand
-import freeeventsourcing.AggregateImplementation.CommandHandler
+import freeeventsourcing.api.AggregateImplementation.CommandHandler
+import freeeventsourcing.api.AggregateCommand
 import freeeventsourcing.syntax.CoproductCommandHandler.CommandType
 import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
 

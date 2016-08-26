@@ -1,9 +1,8 @@
-package freeeventsourcing.support
+package freeeventsourcing.api.eventselector
 
 import scala.annotation.implicitNotFound
-import freeeventsourcing.BoundedContext
-import freeeventsourcing.EventSelector.{ AfterSelector, FilteredSelector, WithEventType }
-import freeeventsourcing.eventselector.AggregateEventSelector
+import freeeventsourcing.api.BoundedContext
+import freeeventsourcing.api.EventSelector.{ AfterSelector, FilteredSelector, WithEventType }
 
 @implicitNotFound("${S} is not a valid EventSelector for this bounded context (${BC}).")
 trait ValidSelector[BC <: BoundedContext, S]

@@ -3,7 +3,7 @@ package freeeventsourcing.syntax
 import scala.language.implicitConversions
 import scala.collection.immutable.Seq
 import cats.data.Xor
-import freeeventsourcing.AggregateCommand
+import freeeventsourcing.api.AggregateCommand
 import shapeless.Poly1
 import shapeless.ops.coproduct.Inject
 
