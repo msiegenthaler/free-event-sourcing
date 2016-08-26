@@ -9,13 +9,13 @@ scalacOptions += "-deprecation"
 javacOptions in Compile ++= Seq("-source", "1.8", "-target", "1.8")
 
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.8.0")
 
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.1"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.2"
 libraryDependencies += "org.typelevel" %% "cats" % "0.6.1"
 
-libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.8"
-libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.8"
+libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4.9"
+libraryDependencies += "com.typesafe.akka" %% "akka-persistence" % "2.4.9"
 
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.0" % "test"
