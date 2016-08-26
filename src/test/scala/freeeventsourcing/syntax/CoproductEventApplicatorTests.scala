@@ -6,8 +6,8 @@ import org.scalatest.{ FlatSpec, Matchers }
 class CoproductEventApplicatorTests extends FlatSpec with Matchers {
   sealed trait Event extends DomainEvent
   object Event {
-    final case class Event1(a: String) extends Event
-    final case class Event2(a: String) extends Event
+    case class Event1(a: String) extends Event
+    case class Event2(a: String) extends Event
   }
   import Event._
 
