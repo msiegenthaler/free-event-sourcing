@@ -44,11 +44,10 @@ class AggregateTypeEventSelectorTests extends FlatSpec with Matchers {
       val name = "Bla"
       case class Id()
       sealed trait Command extends AggregateCommand
-      sealed trait Event
+      sealed trait Event extends DomainEvent
       object Event {
-        case class Opened(owner: String) extends Event
+        final case class Opened(owner: String) extends Event
       }
-
     }
 
     val selector = AggregateTypeEventSelector(Bla)[Bla.Event.Opened]

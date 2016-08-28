@@ -1,9 +1,10 @@
 package freeeventsourcing.syntax
 
+import freeeventsourcing.api.DomainEvent
 import org.scalatest.{ FlatSpec, Matchers }
 
 class CoproductEventApplicatorTests extends FlatSpec with Matchers {
-  sealed trait Event
+  sealed trait Event extends DomainEvent
   object Event {
     case class Event1(a: String) extends Event
     case class Event2(a: String) extends Event

@@ -60,13 +60,13 @@ object ProcessActionTests {
   object TestAggregate extends Aggregate {
     val name = "Test Aggregate"
     case class Id(id: Int)
-    sealed trait Event
+    sealed trait Event extends DomainEvent
     object Event {
-      case class MyEvent(value: String) extends Event
+      final case class MyEvent(value: String) extends Event
     }
     sealed trait Command extends AggregateCommand
     object Command {
-      case class MyCommand(value: String) extends Command {
+      final case class MyCommand(value: String) extends Command {
         type Error = CNil
       }
     }

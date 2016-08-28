@@ -2,7 +2,7 @@ package freeeventsourcing.syntax
 
 import scala.collection.immutable.Seq
 import cats.data.Xor
-import freeeventsourcing.api.AggregateCommand
+import freeeventsourcing.api.{ AggregateCommand, DomainEvent }
 import shapeless.poly.Case1
 import shapeless.{ :+:, CNil, Poly1 }
 
@@ -19,7 +19,7 @@ trait CommandHandlerSyntaxTests {
     }
   }
 
-  sealed trait Event
+  sealed trait Event extends DomainEvent
   object Event {
     case class Event1() extends Event
     case class Event2() extends Event

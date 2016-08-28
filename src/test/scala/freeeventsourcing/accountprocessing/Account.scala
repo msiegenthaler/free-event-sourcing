@@ -1,14 +1,14 @@
 package freeeventsourcing.accountprocessing
 
 import shapeless.{ :+:, CNil }
-import freeeventsourcing.api.{ Aggregate, AggregateCommand }
+import freeeventsourcing.api.{ Aggregate, AggregateCommand, DomainEvent }
 
 object Account extends Aggregate {
   val name = "Account"
 
   final case class Id(id: Long)
 
-  sealed trait Event
+  sealed trait Event extends DomainEvent
   object Event {
     final case class Opened(owner: String) extends Event
     final case class Blocked(by: Transaction.Id, amount: Long) extends Event

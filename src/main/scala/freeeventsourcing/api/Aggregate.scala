@@ -1,10 +1,11 @@
 package freeeventsourcing.api
 
+import freeeventsourcing.utils.ADT
 import shapeless.Coproduct
 
 trait Aggregate { self ⇒
   type Id
-  type Event
+  type Event <: DomainEvent
   type Command <: AggregateCommand
 
   /** Convenience definition for object (xx.Aggregate instead of xx.type). */
@@ -13,4 +14,4 @@ trait Aggregate { self ⇒
   val name: String
 }
 
-trait AggregateCommand { type Error <: Coproduct }
+trait AggregateCommand extends ADT { type Error <: Coproduct }

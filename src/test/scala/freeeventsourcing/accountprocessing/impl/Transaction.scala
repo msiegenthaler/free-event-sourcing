@@ -8,12 +8,13 @@ import freeeventsourcing.accountprocessing.Transaction.Error._
 import freeeventsourcing.accountprocessing.Transaction.Event._
 import freeeventsourcing.accountprocessing.Transaction._
 import freeeventsourcing.syntax.{ CoproductCommandHandler, MatchEventApplicator }
+import freeeventsourcing.utils.ADT
 
-sealed trait TxState
+sealed trait TxState extends ADT
 object TxState {
-  case object Unconfirmed extends TxState
-  case object Confirmed extends TxState
-  case object Canceled extends TxState
+  final case object Unconfirmed extends TxState
+  final case object Confirmed extends TxState
+  final case object Canceled extends TxState
 }
 final case class TransactionState(from: Account.Id, to: Account.Id, amount: Long, state: TxState)
 object TransactionState {
