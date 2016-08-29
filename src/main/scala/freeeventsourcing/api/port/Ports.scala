@@ -7,6 +7,15 @@ import freeeventsourcing.api.BoundedContext
 /** The interface into the domain model. */
 trait Ports[BC <: BoundedContext] {
   def commandPort: CommandPort
-  def incomingEventPort
+  def incomingEventPort: IncomingEventPort[_]
   // TODO and so on...
+}
+
+trait XX {
+  trait Adapter {
+    //TODO this is not so nice.. now we have all kinds of problems relating to lifecycle management
+    def shutdown: Unit
+  }
+
+  def registerAdapter(factory: Ports[_] => Adapter): Unit
 }
