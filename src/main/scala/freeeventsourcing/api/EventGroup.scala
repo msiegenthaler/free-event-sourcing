@@ -5,7 +5,7 @@ package freeeventsourcing.api
 trait EventGroup {
   val name: String
 
-  /** Base type of events that are received from this port. */
+  /** Base type of events in this group. */
   type Event <: DomainEvent
 }
 
