@@ -1,7 +1,7 @@
 package freeeventsourcing.syntax.support
 
 import scala.annotation.implicitNotFound
-import freeeventsourcing.api.Aggregate
+import freeeventsourcing.api.domainmodel.Aggregate
 import freeeventsourcing.syntax.support.AggregateFromId.AggregateWithId
 import shapeless.{ ::, HList }
 

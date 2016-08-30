@@ -6,7 +6,7 @@ import shapeless.ops.hlist.LeftFolder
 import shapeless.{ HList, HMap, Poly2, Typeable }
 import simulacrum.typeclass
 import freeeventsourcing.akka.SupportedBoundedContext.AggregateMap
-import freeeventsourcing.api.{ Aggregate, BoundedContext, BoundedContextImplementation }
+import freeeventsourcing.api.domainmodel.{ Aggregate, BoundedContext, BoundedContextImplementation }
 import freeeventsourcing.utils.StringSerializable
 
 @typeclass trait SupportedBoundedContext[BC <: BoundedContext] extends BoundedContextImplementation[BC] {

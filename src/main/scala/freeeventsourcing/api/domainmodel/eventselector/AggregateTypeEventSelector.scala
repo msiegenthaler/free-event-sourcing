@@ -1,10 +1,11 @@
-package freeeventsourcing.api.eventselector
+package freeeventsourcing.api.domainmodel.eventselector
 
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
-import freeeventsourcing.api.eventselector.AggregateEventSelector.ConcreteEvent
 import freeeventsourcing._
 import freeeventsourcing.api._
+import freeeventsourcing.api.domainmodel._
+import freeeventsourcing.api.domainmodel.eventselector.AggregateEventSelector.ConcreteEvent
 import freeeventsourcing.utils.CompositeName
 import shapeless.ops.hlist.Selector
 import shapeless.{ HList, Typeable }

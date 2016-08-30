@@ -1,10 +1,10 @@
-package freeeventsourcing.api
+package freeeventsourcing.api.domainmodel
 
 import scala.language.implicitConversions
 import scala.collection.immutable.Set
+import freeeventsourcing.api.domainmodel.EventSelector.ops._
 import freeeventsourcing.utils.CompositeName
 import simulacrum.typeclass
-import EventSelector.ops._
 
 /** Selects a specific subset of events. */
 @typeclass trait EventSelector[S <: EventSelector.WithEventType] {

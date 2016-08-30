@@ -1,8 +1,8 @@
-package freeeventsourcing.api
+package freeeventsourcing.api.domainmodel
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
-import freeeventsourcing.api.EventTime.Zero
+import freeeventsourcing.api.domainmodel.EventTime.Zero
 import org.scalatest.{ FlatSpec, Matchers }
 
 class EventTests extends FlatSpec with Matchers {

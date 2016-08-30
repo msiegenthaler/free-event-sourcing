@@ -6,7 +6,7 @@ import scala.collection.immutable.Seq
 import cats.Monad
 import cats.data.{ WriterT, Xor }
 import cats.instances.list._
-import freeeventsourcing.api.AggregateCommand
+import freeeventsourcing.api.domainmodel.AggregateCommand
 import shapeless.ops.coproduct.Inject
 
 /** Syntactic support for writing command handlers in monadic style. */

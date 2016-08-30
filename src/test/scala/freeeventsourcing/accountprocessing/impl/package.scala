@@ -1,6 +1,6 @@
 package freeeventsourcing.accountprocessing
 
-import freeeventsourcing.api.{ AggregateImplementation, BoundedContextImplementation }
+import freeeventsourcing.api.domainmodel.{ AggregateImplementation, BoundedContextImplementation }
 
 package object impl {
   val accountProcessing = {

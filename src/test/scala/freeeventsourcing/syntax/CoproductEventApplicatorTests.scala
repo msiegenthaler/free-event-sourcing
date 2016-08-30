@@ -1,6 +1,6 @@
 package freeeventsourcing.syntax
 
-import freeeventsourcing.api.DomainEvent
+import freeeventsourcing.api.domainmodel.DomainEvent
 import org.scalatest.{ FlatSpec, Matchers }
 
 class CoproductEventApplicatorTests extends FlatSpec with Matchers {

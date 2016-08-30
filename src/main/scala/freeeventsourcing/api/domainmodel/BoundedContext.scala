@@ -1,4 +1,4 @@
-package freeeventsourcing.api
+package freeeventsourcing.api.domainmodel
 
 import shapeless.HList
 

@@ -4,12 +4,13 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
-import freeeventsourcing.api.EventSelector.WithEventType
-import freeeventsourcing.api.EventSelector.ops._
-import freeeventsourcing.api.ProcessAction.FirstOf.{ Alternative, Alternatives }
-import freeeventsourcing.api.ProcessAction._
-import freeeventsourcing.api._
-import freeeventsourcing.api.eventselector.AggregateEventSelector
+import freeeventsourcing.api.domainmodel.EventSelector.WithEventType
+import freeeventsourcing.api.domainmodel.EventSelector.ops._
+import freeeventsourcing.api.domainmodel.ProcessAction.FirstOf.{ Alternative, Alternatives }
+import freeeventsourcing.api.domainmodel.ProcessAction._
+import freeeventsourcing.api.{ domainmodel, _ }
+import freeeventsourcing.api.domainmodel._
+import freeeventsourcing.api.domainmodel.eventselector.AggregateEventSelector
 import freeeventsourcing.syntax.support.AggregateFromId
 import freeeventsourcing.utils.StringSerializable
 import shapeless._
@@ -20,7 +21,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   type Action[+A] = ProcessAction[BC, A]
   type ProcessMonad[A] = Free[Action, A]
 
-  type ValidSelector[S] = eventselector.ValidSelector[BC, S]
+  type ValidSelector[S] = domainmodel.eventselector.ValidSelector[BC, S]
 
   import Builders._
 

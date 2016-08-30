@@ -1,14 +1,16 @@
 package freeeventsourcing.api.eventselector
 
-import freeeventsourcing.api.EventSelector.WithEventType
-import freeeventsourcing.api.EventSelector.ops._
-import freeeventsourcing.api.EventTime.Zero
+import freeeventsourcing.api.domainmodel.EventSelector.WithEventType
+import freeeventsourcing.api.domainmodel.EventSelector.ops._
+import freeeventsourcing.api.domainmodel.EventTime.Zero
 import freeeventsourcing.accountprocessing.Account.Event.{ Closed, Opened }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing._
 import freeeventsourcing.utils.CompositeName
 import freeeventsourcing._
 import freeeventsourcing.api._
+import freeeventsourcing.api.domainmodel._
+import freeeventsourcing.api.domainmodel.eventselector.AggregateEventSelector
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ ::, HNil }
 
