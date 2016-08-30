@@ -20,7 +20,7 @@ import shapeless.ops.coproduct.Inject
  *  waitUntil(i) should runFromWithResult(Expect.waitUntil(i))(())
  *  </code>
  */
-class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
+class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
   /** Matcher to check if the process monad results in the expected actions. */
   def runFrom(expectations: Expectation*) =
     ProcessMatcher(expectations.toList, _ ⇒ Xor.right(()))
@@ -69,8 +69,8 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
     }
   }
 
-  type Action[+A] = ProcessAction[BC, A]
-  type M[A] = ProcessMonad[BC, A]
+  type Action[+A] = ProcessAction[DM, A]
+  type M[A] = ProcessMonad[DM, A]
 
   sealed trait Expectation extends ADT
   object Expectation {
@@ -157,7 +157,7 @@ class ProcessTestSupport[BC <: BoundedContext](boundedContext: BC) {
       private[this] def compare[A]: Comparer[A] =
         awaitEvent[A] orElse waitUnit[A] orElse firstOf[A] orElse execute[A] orElse end[A]
 
-      private[this] def fromAlts(alt: Alternatives[BC]): List[FirstOfOption] = alt match {
+      private[this] def fromAlts(alt: Alternatives[DM]): List[FirstOfOption] = alt match {
         case FirstOf.Empty() ⇒
           Nil
         case FirstOf.Alternative(a @ AwaitEvent(selector), tail) ⇒

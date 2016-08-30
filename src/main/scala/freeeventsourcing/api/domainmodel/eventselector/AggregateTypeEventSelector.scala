@@ -47,8 +47,8 @@ object AggregateTypeEventSelector {
       new ValidFor[AggregateTypeEventSelector[A, E], AS] {}
   }
 
-  implicit def validSelector[BC <: BoundedContext, S](implicit ev: ValidFor[S, BC#Aggregates]) =
-    new ValidSelector[BC, S] {}
+  implicit def validSelector[DM <: DomainModel, S](implicit ev: ValidFor[S, DM#Aggregates]) =
+    new ValidSelector[DM, S] {}
 
   object Router {
     def forAggregateType[A <: Aggregate: ClassTag](aggregateType: A) = EventRouter {

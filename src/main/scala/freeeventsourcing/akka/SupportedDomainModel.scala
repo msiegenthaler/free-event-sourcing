@@ -5,29 +5,29 @@ import scala.annotation.implicitNotFound
 import shapeless.ops.hlist.LeftFolder
 import shapeless.{ HList, HMap, Poly2, Typeable }
 import simulacrum.typeclass
-import freeeventsourcing.akka.SupportedBoundedContext.AggregateMap
-import freeeventsourcing.api.domainmodel.{ Aggregate, BoundedContext, BoundedContextImplementation }
+import freeeventsourcing.akka.SupportedDomainModel.AggregateMap
+import freeeventsourcing.api.domainmodel.{ Aggregate, DomainModel, DomainModelImplementation }
 import freeeventsourcing.utils.StringSerializable
 
-@typeclass trait SupportedBoundedContext[BC <: BoundedContext] extends BoundedContextImplementation[BC] {
+@typeclass trait SupportedDomainModel[DM <: DomainModel] extends DomainModelImplementation[DM] {
   def aggregates: AggregateMap
 }
-object SupportedBoundedContext {
-  implicit def derive[BC <: BoundedContext](implicit
-    impl: BoundedContextImplementation[BC],
-    ef: AggregateExtensions[BC#Aggregates]): SupportedBoundedContext[BC] = {
-    val aggregates: BC#Aggregates = impl.boundedContext.aggregates
+object SupportedDomainModel {
+  implicit def derive[DM <: DomainModel](implicit
+    impl: DomainModelImplementation[DM],
+    ef: AggregateExtensions[DM#Aggregates]): SupportedDomainModel[DM] = {
+    val aggregates: DM#Aggregates = impl.domainModel.aggregates
     val exts = aggregates.foldLeft(HMap.empty[BiMapAggregateExtensions])(FoldToExtMap)
 
-    new SupportedBoundedContext[BC] {
-      val boundedContext: BC = impl.boundedContext
+    new SupportedDomainModel[DM] {
+      val domainModel: DM = impl.domainModel
       def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A) = impl.forAggregate(aggregate)
       def aggregateInfo = impl.aggregateInfo
       val aggregates: AggregateMap = {
         impl.aggregateInfo.map { d ⇒
           val ext = exts.get(d.aggregate).getOrElse {
             throw new IllegalStateException(s"Implementation extendsion for aggregate ${d.aggregate.name} not found in the " +
-              s"bounded context ${impl.boundedContext.name}. This should have been prevented at the type level.")
+              s"bounded context ${impl.domainModel.name}. This should have been prevented at the type level.")
           }
           val s = SupportedAggregate.derive[d.A](
             d.implementation,

@@ -2,58 +2,58 @@ package freeeventsourcing.api.domainmodel
 
 import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
-import freeeventsourcing.api.domainmodel.BoundedContextImplementation.BCAggregateInfo
+import freeeventsourcing.api.domainmodel.DomainModelImplementation.DMAggregateInfo
 import shapeless.ops.hlist.{ LeftFolder, Selector }
 import shapeless.{ HList, HMap, Poly2 }
 import simulacrum.typeclass
 
-@typeclass trait BoundedContextImplementation[BC <: BoundedContext] {
-  val boundedContext: BC
+@typeclass trait DomainModelImplementation[DM <: DomainModel] {
+  val domainModel: DM
   def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A): AggregateImplementation[A]
 
-  def aggregateInfo: List[BCAggregateInfo[BC]]
+  def aggregateInfo: List[DMAggregateInfo[DM]]
 
-  def processes: List[ProcessDefinition[BC]]
+  def processes: List[ProcessDefinition[DM]]
 
   @implicitNotFound("The aggregate ${A} does not exist in this bounded context.")
-  type MemberAggregate[A <: Aggregate] = Selector[BC#Aggregates, A]
+  type MemberAggregate[A <: Aggregate] = Selector[DM#Aggregates, A]
 }
 
-object BoundedContextImplementation {
-  def apply[BC <: BoundedContext](bc: BC, processes: List[ProcessDefinition[BC]])(
+object DomainModelImplementation {
+  def apply[DM <: DomainModel](dm: DM, processes: List[ProcessDefinition[DM]])(
     implicit
-    f: AggregateImplementationsEv[bc.Aggregates], l: AggregateInfoEv[BC]
-  ): BoundedContextImplementation[BC] = {
-    val implMap = bc.aggregates.foldLeft(HMap.empty[BiMapToImpl])(FoldToImplMap)
+    f: AggregateImplementationsEv[dm.Aggregates], l: AggregateInfoEv[DM]
+  ): DomainModelImplementation[DM] = {
+    val implMap = dm.aggregates.foldLeft(HMap.empty[BiMapToImpl])(FoldToImplMap)
     def p = processes
-    new BoundedContextImplementation[BC] {
-      val boundedContext = bc
+    new DomainModelImplementation[DM] {
+      val domainModel = dm
       def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A) = {
         implMap.get(aggregate).getOrElse {
-          throw new IllegalStateException(s"Implementation for aggregate ${aggregate.name} not found in the bounded context ${bc.name}. " +
+          throw new IllegalStateException(s"Implementation for aggregate ${aggregate.name} not found in the bounded context ${domainModel.name}. " +
             s"This should have been prevented at the type level.")
         }
       }
       val processes = p
       val aggregateInfo = {
-        def aggregates: BC#Aggregates = bc.aggregates
-        aggregates.foldLeft(List.empty[BCAggregateInfo[BC]])(FoldToAggregateInfo)(l)
+        def aggregates: DM#Aggregates = domainModel.aggregates
+        aggregates.foldLeft(List.empty[DMAggregateInfo[DM]])(FoldToAggregateInfo)(l)
       }
     }
   }
 
-  trait BCAggregateInfo[BC <: BoundedContext] {
+  trait DMAggregateInfo[DM <: DomainModel] {
     type A <: Aggregate
     val aggregate: A
     def implementation: AggregateImplementation[A]
-    def memberEvidence: Selector[BC#Aggregates, A]
+    def memberEvidence: Selector[DM#Aggregates, A]
   }
 
   @implicitNotFound("Not all aggregates have an implementation. An AggregateImplementation[A] must be in implicit scope for all aggregates in ${Aggregates}")
   type AggregateImplementationsEv[Aggregates <: HList] = LeftFolder.Aux[Aggregates, HMap[BiMapToImpl], FoldToImplMap.type, HMap[BiMapToImpl]]
 
-  @implicitNotFound("Not all aggregates extend the Aggregate trait in bounded context ${BC}.")
-  type AggregateInfoEv[BC <: BoundedContext] = LeftFolder.Aux[BC#Aggregates, List[BCAggregateInfo[BC]], FoldToAggregateInfo.type, List[BCAggregateInfo[BC]]]
+  @implicitNotFound("Not all aggregates extend the Aggregate trait in bounded context ${DM}.")
+  type AggregateInfoEv[DM <: DomainModel] = LeftFolder.Aux[DM#Aggregates, List[DMAggregateInfo[DM]], FoldToAggregateInfo.type, List[DMAggregateInfo[DM]]]
 
   sealed trait BiMapToImpl[A, AI]
   implicit def aggregateToImpl[A <: Aggregate]: BiMapToImpl[A, AggregateImplementation[A]] =
@@ -68,9 +68,9 @@ object BoundedContextImplementation {
   }
 
   object FoldToAggregateInfo extends Poly2 {
-    implicit def aggregate[AG <: Aggregate, BC <: BoundedContext](implicit impl: AggregateImplementation[AG], ev: Selector[BC#Aggregates, AG]) = {
-      at[List[BCAggregateInfo[BC]], AG] { (acc, a) ⇒
-        val data = new BCAggregateInfo[BC] {
+    implicit def aggregate[AG <: Aggregate, DM <: DomainModel](implicit impl: AggregateImplementation[AG], ev: Selector[DM#Aggregates, AG]) = {
+      at[List[DMAggregateInfo[DM]], AG] { (acc, a) ⇒
+        val data = new DMAggregateInfo[DM] {
           type A = AG
           val aggregate = a
           def implementation = impl

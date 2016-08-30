@@ -1,6 +1,6 @@
 package freeeventsourcing.accountprocessing
 
-import freeeventsourcing.api.domainmodel.{ AggregateImplementation, BoundedContextImplementation }
+import freeeventsourcing.api.domainmodel.{ AggregateImplementation, DomainModelImplementation }
 
 package object impl {
   val accountProcessing = {
@@ -16,7 +16,7 @@ package object impl {
       handleCommand = TransactionHandler
     )
 
-    BoundedContextImplementation(
+    DomainModelImplementation(
       AccountProcessing,
       BlockFundsProcess :: Nil
     )

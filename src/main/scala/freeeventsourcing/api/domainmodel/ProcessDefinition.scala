@@ -8,30 +8,30 @@ import freeeventsourcing.api.domainmodel.eventselector.ValidSelector
 /** Defines a process. A process listens for events within a bounded context
  *  and triggers commands as the reaction to events or an event sequence.
  */
-sealed trait ProcessDefinition[BC <: BoundedContext] {
+sealed trait ProcessDefinition[DM <: DomainModel] {
   val name: String
-  val boundedContext: BC
+  val domainModel: DM
 
   def initiator: Initiator
   type Initiator <: WithEventType
-  implicit def initiatorSelector: ValidSelector[BC, Initiator]
+  implicit def initiatorSelector: ValidSelector[DM, Initiator]
 
-  def body(initialEvent: EventWithMetadata[Initiator#Event]): ProcessMonad[BC, Unit]
+  def body(initialEvent: EventWithMetadata[Initiator#Event]): ProcessMonad[DM, Unit]
 }
 object ProcessDefinition {
   /** Create a new process definition. */
-  def apply[BC <: BoundedContext, S <: WithEventType: ValidSelector[BC, ?]](
-    in: BC, name_ : String
-  )(initiator_ : S)(body_ : EventWithMetadata[S#Event] ⇒ ProcessMonad[BC, _]) = {
-    new ProcessDefinition[BC] {
+  def apply[DM <: DomainModel, S <: WithEventType: ValidSelector[DM, ?]](
+    in: DM, name_ : String
+  )(initiator_ : S)(body_ : EventWithMetadata[S#Event] ⇒ ProcessMonad[DM, _]) = {
+    new ProcessDefinition[DM] {
       val name = name_
-      val boundedContext = in
+      val domainModel = in
       val initiator = initiator_
       type Initiator = S
-      val initiatorSelector = implicitly[ValidSelector[BC, S]]
+      val initiatorSelector = implicitly[ValidSelector[DM, S]]
       def body(initialEvent: EventWithMetadata[Initiator#Event]) = body(initialEvent)
     }
   }
 
-  type ProcessMonad[BC <: BoundedContext, A] = Free[ProcessAction[BC, ?], A]
+  type ProcessMonad[DM <: DomainModel, A] = Free[ProcessAction[DM, ?], A]
 }
