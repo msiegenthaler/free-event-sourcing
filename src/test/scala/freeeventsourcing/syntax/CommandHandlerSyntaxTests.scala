@@ -2,7 +2,7 @@ package freeeventsourcing.syntax
 
 import scala.collection.immutable.Seq
 import cats.data.Xor
-import freeeventsourcing.api.{ AggregateCommand, DomainEvent }
+import freeeventsourcing.api.domainmodel.{ AggregateCommand, DomainEvent }
 import shapeless.poly.Case1
 import shapeless.{ :+:, CNil, Poly1 }
 

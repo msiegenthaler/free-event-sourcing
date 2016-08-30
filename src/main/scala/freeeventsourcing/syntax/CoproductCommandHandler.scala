@@ -5,8 +5,8 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import scala.reflect.{ ClassTag, classTag }
 import cats.data.Xor
-import freeeventsourcing.api.AggregateImplementation.CommandHandler
-import freeeventsourcing.api.AggregateCommand
+import freeeventsourcing.api.domainmodel.AggregateImplementation.CommandHandler
+import freeeventsourcing.api.domainmodel.AggregateCommand
 import freeeventsourcing.syntax.CoproductCommandHandler.CommandType
 import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
 

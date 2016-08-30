@@ -1,10 +1,10 @@
-package freeeventsourcing.api
+package freeeventsourcing.api.domainmodel
 
 import freeeventsourcing.accountprocessing.Account.Command.BlockFunds
 import freeeventsourcing.accountprocessing.Account.Error.{ InsufficientFunds, NotOpen }
 import freeeventsourcing.accountprocessing.Transaction.Event.Created
 import freeeventsourcing.accountprocessing.{ AccountProcessing, Transaction }
-import freeeventsourcing.api.eventselector.AggregateTypeEventSelector
+import freeeventsourcing.api.domainmodel.eventselector.AggregateTypeEventSelector
 import freeeventsourcing.syntax.ProcessSyntax
 import org.scalatest.{ FlatSpec, Matchers }
 

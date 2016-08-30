@@ -1,10 +1,11 @@
-package freeeventsourcing.api.eventselector
+package freeeventsourcing.api.domainmodel.eventselector
 
 import scala.annotation.implicitNotFound
 import scala.reflect.ClassTag
-import freeeventsourcing.api.eventselector.AggregateEventSelector.ConcreteEvent
 import freeeventsourcing._
 import freeeventsourcing.api._
+import freeeventsourcing.api.domainmodel._
+import freeeventsourcing.api.domainmodel.eventselector.AggregateEventSelector.ConcreteEvent
 import freeeventsourcing.utils.CompositeName
 import shapeless.ops.hlist.Selector
 import shapeless.{ HList, Typeable }
@@ -46,8 +47,8 @@ object AggregateTypeEventSelector {
       new ValidFor[AggregateTypeEventSelector[A, E], AS] {}
   }
 
-  implicit def validSelector[BC <: BoundedContext, S](implicit ev: ValidFor[S, BC#Aggregates]) =
-    new ValidSelector[BC, S] {}
+  implicit def validSelector[DM <: DomainModel, S](implicit ev: ValidFor[S, DM#Aggregates]) =
+    new ValidSelector[DM, S] {}
 
   object Router {
     def forAggregateType[A <: Aggregate: ClassTag](aggregateType: A) = EventRouter {

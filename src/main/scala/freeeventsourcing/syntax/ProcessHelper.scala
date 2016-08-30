@@ -1,9 +1,9 @@
 package freeeventsourcing.syntax
 
 import scala.language.implicitConversions
-import freeeventsourcing.api.{ BoundedContext, EventSelector, EventWithMetadata, ProcessDefinition }
-import freeeventsourcing.api.EventSelector._
-import freeeventsourcing.api.eventselector.ValidSelector
+import freeeventsourcing.api.domainmodel.{ DomainModel, EventSelector, EventWithMetadata, ProcessDefinition }
+import freeeventsourcing.api.domainmodel.EventSelector._
+import freeeventsourcing.api.domainmodel.eventselector.ValidSelector
 
 /** Helps defining a process definition with an easier syntax.
  *  <code>
@@ -15,21 +15,21 @@ import freeeventsourcing.api.eventselector.ValidSelector
  *   }
  *  </code>
  */
-abstract class ProcessHelper[BC <: BoundedContext, S <: WithEventType: EventSelector: ValidSelector[BC, ?]](boundedContext: BC, name: String)(selector: S) {
-  val definition: ProcessDefinition[BC] = ProcessDefinition(boundedContext, name)(selector)(e ⇒ Instance(e).process)
+abstract class ProcessHelper[DM <: DomainModel, S <: WithEventType: EventSelector: ValidSelector[DM, ?]](domainModel: DM, name: String)(selector: S) {
+  val definition: ProcessDefinition[DM] = ProcessDefinition(domainModel, name)(selector)(e ⇒ Instance(e).process)
 
   protected type Event = EventWithMetadata[S#Event]
   protected type Instance <: ProcessInstance
   protected[this] val Instance: Event ⇒ Instance
 
   protected[this] abstract class ProcessInstance {
-    protected[this] val syntax = ProcessSyntax(boundedContext)
-    def process: ProcessDefinition.ProcessMonad[BC, _]
+    protected[this] val syntax = ProcessSyntax(domainModel)
+    def process: ProcessDefinition.ProcessMonad[DM, _]
   }
 }
 object ProcessHelper {
-  implicit def helperToDefinition[BC <: BoundedContext](h: ProcessHelper[BC, _]): ProcessDefinition[BC] =
+  implicit def helperToDefinition[DM <: DomainModel](h: ProcessHelper[DM, _]): ProcessDefinition[DM] =
     h.definition
-  implicit def helperListToDefinitionList[BC <: BoundedContext](hs: List[ProcessHelper[BC, _]]): List[ProcessDefinition[BC]] =
+  implicit def helperListToDefinitionList[DM <: DomainModel](hs: List[ProcessHelper[DM, _]]): List[ProcessDefinition[DM]] =
     hs.map(helperToDefinition)
 }

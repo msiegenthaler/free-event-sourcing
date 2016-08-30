@@ -1,7 +1,7 @@
 package freeeventsourcing.accountprocessing
 
+import freeeventsourcing.api.domainmodel.{ Aggregate, AggregateCommand, DomainEvent }
 import shapeless.{ :+:, CNil }
-import freeeventsourcing.api.{ Aggregate, AggregateCommand, DomainEvent }
 
 object Transaction extends Aggregate {
   val name = "Transaction"

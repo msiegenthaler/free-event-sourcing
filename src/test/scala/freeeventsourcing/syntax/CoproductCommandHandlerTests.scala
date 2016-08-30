@@ -1,7 +1,7 @@
 package freeeventsourcing.syntax
 
 import cats.data.Xor
-import freeeventsourcing.api.{ AggregateCommand, DomainEvent }
+import freeeventsourcing.api.domainmodel.{ AggregateCommand, DomainEvent }
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ :+:, CNil, Coproduct }
 

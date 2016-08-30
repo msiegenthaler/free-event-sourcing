@@ -4,49 +4,50 @@ import java.time.Instant
 import scala.annotation.implicitNotFound
 import cats.Monad
 import cats.free.Free
-import freeeventsourcing.api.EventSelector.WithEventType
-import freeeventsourcing.api.EventSelector.ops._
-import freeeventsourcing.api.ProcessAction.FirstOf.{ Alternative, Alternatives }
-import freeeventsourcing.api.ProcessAction._
-import freeeventsourcing.api._
-import freeeventsourcing.api.eventselector.AggregateEventSelector
+import freeeventsourcing.api.domainmodel.EventSelector.WithEventType
+import freeeventsourcing.api.domainmodel.EventSelector.ops._
+import freeeventsourcing.api.domainmodel.ProcessAction.FirstOf.{ Alternative, Alternatives }
+import freeeventsourcing.api.domainmodel.ProcessAction._
+import freeeventsourcing.api.{ domainmodel, _ }
+import freeeventsourcing.api.domainmodel._
+import freeeventsourcing.api.domainmodel.eventselector.AggregateEventSelector
 import freeeventsourcing.syntax.support.AggregateFromId
 import freeeventsourcing.utils.StringSerializable
 import shapeless._
 import shapeless.ops.coproduct.{ Remove, Reverse, Selector, Unifier }
 
 /** Nice monadic syntax to write processes. */
-case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
-  type Action[+A] = ProcessAction[BC, A]
+case class ProcessSyntax[DM <: DomainModel](domainModel: DM) {
+  type Action[+A] = ProcessAction[DM, A]
   type ProcessMonad[A] = Free[Action, A]
 
-  type ValidSelector[S] = eventselector.ValidSelector[BC, S]
+  type ValidSelector[S] = domainmodel.eventselector.ValidSelector[DM, S]
 
   import Builders._
 
-  /** Await an event using a selector. The event must be from this bounded context. */
+  /** Await an event using a selector. The event must be from this bounded context (domain model). */
   def await[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
     awaitMetadata(selector).map(_.payload)
 
   /** Await an event (including its metadata) using a selector. The event must be from this bounded context. */
   def awaitMetadata[S <: WithEventType: EventSelector: ValidSelector](selector: S) =
-    lift(AwaitEvent[BC, S](selector))
+    lift(AwaitEvent[DM, S](selector))
 
   /** Send commands to a specific aggregate. */
-  def on[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-    val aggregateType = afi.aggregate(boundedContext.aggregates)
+  def on[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, DM#Aggregates]) = {
+    val aggregateType = afi.aggregate(domainModel.aggregates)
     new OnAggregateBuilder[afi.Out](aggregateType, aggregate)
   }
 
   /** Await events from a specific aggregate. */
-  def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-    val aggregateType = afi.aggregate(boundedContext.aggregates)
+  def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, DM#Aggregates]) = {
+    val aggregateType = afi.aggregate(domainModel.aggregates)
     new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
   }
 
   /** Wait until the specified date/time. If the time has already passed it will still be called. */
   def waitUntil(when: Instant) =
-    lift[Unit](WaitUntil[BC](when))
+    lift[Unit](WaitUntil[DM](when))
 
   /** Wait for multiple events and run the path of the first event. */
   def firstOf[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(
@@ -55,7 +56,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   ): ProcessMonad[r.Out] = {
     val paths = b(new FirstOfBuilder(HNil)).collect
     val alternatives = switch.alternatives(paths)
-    lift[alternatives.Events](FirstOf[BC, alternatives.type](alternatives))
+    lift[alternatives.Events](FirstOf[DM, alternatives.type](alternatives))
       .flatMap(e ⇒ switch.effectFor(paths)(e).map(_.reverse))
   }
 
@@ -63,12 +64,12 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
   def firstOfUnified[Paths <: HList, R <: Coproduct](b: FirstOfBuilder[HNil] ⇒ FirstOfBuilder[Paths])(implicit switch: Switch.Aux[Paths, R], u: Unifier[R]) = {
     val paths = b(new FirstOfBuilder(HNil)).collect
     val alternatives = switch.alternatives(paths)
-    lift[alternatives.Events](FirstOf[BC, alternatives.type](alternatives))
+    lift[alternatives.Events](FirstOf[DM, alternatives.type](alternatives))
       .flatMap(e ⇒ switch.effectFor(paths)(e).map(r ⇒ u(r)))
   }
 
   /** Terminate this process instance. */
-  def terminate = lift[Unit](End[BC]())
+  def terminate = lift[Unit](End[DM]())
 
   /** Lifts a value into the monad. Same as Monad.pure(v). */
   def value[A](v: A) = Monad[ProcessMonad].pure(v)
@@ -78,7 +79,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
   /////////////////////////////////////////////////////
 
-  private[this] def lift[A](action: ProcessAction[BC, A]) = Free.liftF[ProcessAction[BC, ?], A](action)
+  private[this] def lift[A](action: ProcessAction[DM, A]) = Free.liftF[ProcessAction[DM, ?], A](action)
 
   /** Internas used by the above functions. Need to be public but are not meant to be used directly. */
   object Builders {
@@ -87,21 +88,21 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
       /** Execute a command on the aggregate. */
       def execute[R <: Coproduct](command: A#Command)(
         catches: CommandErrorHandler.EmptyBuilder[command.Error] ⇒ CommandErrorHandler.Builder[command.Error, R]
-      )(implicit ev: ValidAggregate[BC, A], ev2: AllErrorsHandled[R]) = {
+      )(implicit ev: ValidAggregate[DM, A], ev2: AllErrorsHandled[R]) = {
         val builder = CommandErrorHandler.builder[command.Error]
         val errorHandler = catches(builder).errorHandler
-        lift[Unit](Execute[BC, A, command.type](aggregateType, aggregate, command, errorHandler))
+        lift[Unit](Execute[DM, A, command.type](aggregateType, aggregate, command, errorHandler))
       }
     }
 
     /** Helper class for from. */
     final class FromAggregateBuilder[A <: Aggregate] private[ProcessSyntax] (aggregateType: A, aggregate: A#Id) {
       /** Await an event from the aggregate. */
-      def await[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) =
+      def await[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[DM, A], s: StringSerializable[A#Id]) =
         awaitMetadata.map(_.payload.event)
 
       /** Await an event (including its metdata) from the aggregate. */
-      def awaitMetadata[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
+      def awaitMetadata[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[DM, A], s: StringSerializable[A#Id]) = {
         val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
         ProcessSyntax.this.awaitMetadata(selector)
       }
@@ -138,7 +139,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     sealed trait SwitchPath {
       type Event
       type Result
-      val action: Await[BC, Event]
+      val action: Await[DM, Event]
       def effect(event: Event): ProcessMonad[Result]
     }
     object SwitchPath {
@@ -147,7 +148,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
     /** All options of a firstOf. */
     sealed trait Switch[Paths <: HList] {
       type Events <: Coproduct
-      type A <: Alternatives[BC]
+      type A <: Alternatives[DM]
       type Result <: Coproduct
       def effectFor(paths: Paths)(event: A#Events): ProcessMonad[Result]
       def alternatives(paths: Paths): A
@@ -156,14 +157,14 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
       type Aux[P <: HList, R <: Coproduct] = Switch[P] { type Result = R }
 
       implicit def end = new Switch[HNil] {
-        type A = FirstOf.Empty[BC]
+        type A = FirstOf.Empty[DM]
         type Events = CNil
         type Result = CNil
         def effectFor(paths: HNil)(event: CNil) = throw new AssertionError("Cannot be reached, the compiler is supposed to prevent that")
         def alternatives(paths: HNil) = FirstOf.Empty()
       }
       implicit def head[E, R, T <: HList](implicit t: Switch[T]) = new Switch[SwitchPath.Aux[E, R] :: T] {
-        type A = Alternative[BC, E, t.A]
+        type A = Alternative[DM, E, t.A]
         type P = SwitchPath.Aux[E, R]
         type Events = P#Event :+: t.Events
         type Result = P#Result :+: t.Result
@@ -172,7 +173,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
           case Inr(otherEvent) ⇒ t.effectFor(paths.tail)(otherEvent).map(Inr(_))
         }
         def alternatives(paths: P :: T) = {
-          def alt[A, M <: Alternatives[BC]](await: Await[BC, A], more: M) = Alternative[BC, A, M](await, more)
+          def alt[A, M <: Alternatives[DM]](await: Await[DM, A], more: M) = Alternative[DM, A, M](await, more)
           alt(paths.head.action, t.alternatives(paths.tail))
         }
       }
@@ -183,8 +184,8 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
       def on[S <: WithEventType: EventSelector: ValidSelector](selector: S) = new OnBuilder(selector)
 
       /** Await event from a specific aggregate. */
-      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, BC#Aggregates]) = {
-        val aggregateType = afi.aggregate(boundedContext.aggregates)
+      def from[Id, A](aggregate: Id)(implicit afi: AggregateFromId[Id, DM#Aggregates]) = {
+        val aggregateType = afi.aggregate(domainModel.aggregates)
         new FromAggregateBuilder[afi.Out](aggregateType, aggregate)
       }
 
@@ -193,7 +194,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
         val path = new SwitchPath {
           type Event = Unit
           type Result = R
-          val action = WaitUntil[BC](when)
+          val action = WaitUntil[DM](when)
           def effect(event: Unit) = thenDo
 
         }
@@ -225,7 +226,7 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
           val path = new SwitchPath {
             type Event = EventWithMetadata[S#Event]
             type Result = R
-            val action = AwaitEvent[BC, S](OnBuilder.this.selector)
+            val action = AwaitEvent[DM, S](OnBuilder.this.selector)
             def effect(event: Event) = body(event)
           }
           new FirstOfBuilder(path :: paths)
@@ -234,11 +235,11 @@ case class ProcessSyntax[BC <: BoundedContext](boundedContext: BC) {
 
       final class FromAggregateBuilder[A <: Aggregate] private[FirstOfBuilder] (aggregateType: A, aggregate: A#Id) {
         /** Await an event from the aggregate. */
-        def on[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) =
+        def on[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[DM, A], s: StringSerializable[A#Id]) =
           when[E].select
 
         /** Advanced selection of an element (filter, after). */
-        def when[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[BC, A], s: StringSerializable[A#Id]) = {
+        def when[E <: A#Event: AggregateEventType[A, ?]: Typeable](implicit ev: ValidAggregate[DM, A], s: StringSerializable[A#Id]) = {
           val selector = AggregateEventSelector(aggregateType)(aggregate)[E]
           new SelectorBuilder(selector)
         }

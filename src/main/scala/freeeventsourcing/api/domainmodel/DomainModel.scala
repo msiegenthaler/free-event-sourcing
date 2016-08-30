@@ -1,8 +1,8 @@
-package freeeventsourcing.api
+package freeeventsourcing.api.domainmodel
 
 import shapeless.HList
 
-trait BoundedContext { self ⇒
+trait DomainModel { self ⇒
   val name: String
 
   type Aggregates <: HList
