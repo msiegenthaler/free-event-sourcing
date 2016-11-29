@@ -2,7 +2,6 @@ package freeeventsourcing.api.domainmodel
 
 import scala.language.implicitConversions
 import scala.collection.immutable.Seq
-import cats.data.Xor
 import simulacrum.typeclass
 
 @typeclass trait AggregateImplementation[A <: Aggregate] {
@@ -10,7 +9,7 @@ import simulacrum.typeclass
   type Event = A#Event
   type Command = A#Command
   type State
-  def handleCommand[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
+  def handleCommand[C <: Command](command: C, state: State): Either[C#Error, Seq[Event]]
   def applyEvent(event: Event, state: State): State
   def seed(id: Id): State
 
@@ -39,6 +38,6 @@ object AggregateImplementation {
   }
 
   trait CommandHandler[Command <: AggregateCommand, Event, State] {
-    def apply[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
+    def apply[C <: Command](command: C, state: State): Either[C#Error, Seq[Event]]
   }
 }

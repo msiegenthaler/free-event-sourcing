@@ -2,7 +2,6 @@ package freeeventsourcing.akka
 
 import akka.actor.Props
 import akka.persistence.PersistentActor
-import cats.data.Xor
 import freeeventsourcing.api.domainmodel.{ Aggregate, AggregateCommand }
 
 /** Manages a single aggregate using a persistent actor.
@@ -26,11 +25,11 @@ object AkkaAggregate {
     def receiveCommand = {
       case Execute(id, Command(command)) ⇒
         impl.handleCommand(command, state) match {
-          case Xor.Right(events) ⇒
+          case Right(events) ⇒
             persistAll(events)(applyEvent _)
             sender() ! CommandExecuted(id)
 
-          case Xor.Left(error) ⇒
+          case Left(error) ⇒
             sender() ! CommandFailed(id, error)
         }
 

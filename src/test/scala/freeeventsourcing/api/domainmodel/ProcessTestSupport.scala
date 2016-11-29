@@ -1,8 +1,10 @@
 package freeeventsourcing.api.domainmodel
 
 import java.time.Instant
-import cats.data.{ StateT, Xor }
+import cats.data.StateT
 import cats.~>
+import cats.syntax.either._
+import cats.instances.either._
 import freeeventsourcing.api.domainmodel.EventSelector.WithEventType
 import freeeventsourcing.api.domainmodel.ProcessAction.FirstOf.Alternatives
 import freeeventsourcing.api.domainmodel.ProcessAction._
@@ -12,7 +14,7 @@ import org.scalatest.matchers.{ MatchResult, Matcher }
 import shapeless.Coproduct
 import shapeless.ops.coproduct.Inject
 
-/** Supports writing expectations agains process definitions. Usage:
+/** Supports writing expectations against process definitions. Usage:
  *  <code>
  *  val support = new ProcessTestSupport(AccountProcessing)
  *  import support._
@@ -23,12 +25,12 @@ import shapeless.ops.coproduct.Inject
 class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
   /** Matcher to check if the process monad results in the expected actions. */
   def runFrom(expectations: Expectation*) =
-    ProcessMatcher(expectations.toList, _ ⇒ Xor.right(()))
+    ProcessMatcher(expectations.toList, _ ⇒ Right(()))
 
   /** Matcher to check if the process monad results in the expected actions and return the specified result. */
   def runFromWithResult(expectations: Expectation*)(toResult: Any) =
     ProcessMatcher(expectations.toList, r ⇒
-      if (r == toResult) Xor.right(()) else Xor.left(s"produced non matching result: ${r} instead of ${toResult}"))
+      if (r == toResult) Right(()) else Left(s"produced non matching result: ${r} instead of ${toResult}"))
 
   /** Helper methods to construct the expectations. */
   object Expect {
@@ -37,7 +39,7 @@ class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
       ExpectAwaitEvent(selector, EventWithMetadata(result, EventMetadata(MockEventId(), MockEventTime())))
     def waitUntil(instant: Instant) = ExpectWaitUntil(instant)
     def commandSuccessful[A <: Aggregate, C <: A#Command](aggregateType: A, aggregate: A#Id, command: C) =
-      ExpectCommand(aggregateType, aggregate, command, Xor.right(()))
+      ExpectCommand(aggregateType, aggregate, command, Right(()))
     def firstOf(selectors: FirstOfOption*)(resultIndex: Int, result: Any) = result match {
       case () ⇒ ExpectFirstOf(selectors.toList, resultIndex, ())
       case _  ⇒ ExpectFirstOf(selectors.toList, resultIndex, EventWithMetadata(result, EventMetadata(MockEventId(), MockEventTime())))
@@ -46,19 +48,19 @@ class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
       implicit
       i: Inject[C#Error, E]
     ) =
-      ExpectCommand(aggregateType, aggregate, command, Xor.left(i(result)))
+      ExpectCommand(aggregateType, aggregate, command, Left(i(result)))
     def end = ExpectEnd
   }
 
-  case class ProcessMatcher(expectations: List[Expectation], checkResult: Any ⇒ String Xor Unit) extends Matcher[M[_]] {
+  case class ProcessMatcher(expectations: List[Expectation], checkResult: Any ⇒ Either[String, Unit]) extends Matcher[M[_]] {
     def apply(process: M[_]) = {
       val x = process.foldMap(Implementation.Transform)
       val y = x
         .run(expectations)
         .leftMap(error ⇒ s"did not match the expectations: ${error}")
         .flatMap {
-          case (Nil, r)       ⇒ Xor.right(r)
-          case (remaining, _) ⇒ Xor.left(s"remaining expectations: ${remaining.mkString(", ")}")
+          case (Nil, r)       ⇒ Right(r)
+          case (remaining, _) ⇒ Left(s"remaining expectations: ${remaining.mkString(", ")}")
         }
         .flatMap(checkResult)
       new MatchResult(
@@ -78,7 +80,7 @@ class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
     case class ExpectWaitUntil(instant: Instant) extends Expectation
     case class ExpectFirstOf(of: List[FirstOfOption], resultIndex: Int, result: Any) extends Expectation
     case class ExpectCommand[A <: Aggregate, Cmd <: A#Command](
-      aggregateType: A, aggregate: A#Id, command: A#Command, result: Cmd#Error Xor Unit
+      aggregateType: A, aggregate: A#Id, command: A#Command, result: Either[Cmd#Error, Unit]
     ) extends Expectation
     case object ExpectEnd extends Expectation
   }
@@ -90,17 +92,17 @@ class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
   private[this] object Implementation {
     import Expectation._
 
-    type OrFail[A] = Xor[String, A]
+    type OrFail[A] = Either[String, A]
     type Expectations[A] = StateT[OrFail, List[Expectation], A]
     object Expectations {
       def next(received: String): Expectations[Expectation] = lift {
-        case h :: t ⇒ Xor.right((t, h))
-        case Nil    ⇒ Xor.left(s"No more expectations, but got ${received}")
+        case h :: t ⇒ Right((t, h))
+        case Nil    ⇒ Left(s"No more expectations, but got ${received}")
       }
 
       def check[A](action: Action[A]): Expectations[A] = next(action.toString).flatMap { exp ⇒
         compare.lift((action, exp)).getOrElse {
-          lifted(Xor.left(s"Expected ${exp} but got ${action}"))
+          lifted(Left(s"Expected ${exp} but got ${action}"))
         }
       }
 
@@ -168,11 +170,11 @@ class ProcessTestSupport[DM <: DomainModel](domainModel: DM) {
           fromAlts(tail) ::: fromAlts(alts)
       }
 
-      private[this] def ok[A](value: A) = lifted(Xor.right[String, A](value))
-      private[this] def fail[A](error: String) = lifted(Xor.left[String, A](error))
+      private[this] def ok[A](value: A) = lifted(Right[String, A](value))
+      private[this] def fail[A](error: String) = lifted(Left[String, A](error))
       private[this] def lift[A](f: List[Expectation] ⇒ OrFail[(List[Expectation], A)]) =
         StateT[OrFail, List[Expectation], A](f)
-      private[this] def lifted[A](x: String Xor A): Expectations[A] = lift(s ⇒ x.map(r ⇒ (s, r)))
+      private[this] def lifted[A](x: Either[String, A]): Expectations[A] = lift(s ⇒ x.map(r ⇒ (s, r)))
     }
 
     object Transform extends (Action ~> Expectations) {

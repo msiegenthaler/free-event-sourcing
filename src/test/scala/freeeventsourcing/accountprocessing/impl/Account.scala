@@ -1,6 +1,5 @@
 package freeeventsourcing.accountprocessing.impl
 
-import cats.data.Xor
 import scala.collection.immutable.Seq
 import freeeventsourcing.accountprocessing.Account.Command._
 import freeeventsourcing.accountprocessing.Account.Error._

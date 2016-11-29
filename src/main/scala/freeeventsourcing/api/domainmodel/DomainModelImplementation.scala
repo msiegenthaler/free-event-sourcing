@@ -7,7 +7,7 @@ import shapeless.ops.hlist.{ LeftFolder, Selector }
 import shapeless.{ HList, HMap, Poly2 }
 import simulacrum.typeclass
 
-@typeclass trait DomainModelImplementation[DM <: DomainModel] {
+@typeclass trait DomainModelImplementation[DM <: DomainModel] extends AnyRef {
   val domainModel: DM
   def forAggregate[A <: Aggregate: MemberAggregate](aggregate: A): AggregateImplementation[A]
 

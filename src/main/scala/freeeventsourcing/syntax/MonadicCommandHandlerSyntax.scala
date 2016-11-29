@@ -4,16 +4,17 @@ import scala.language.implicitConversions
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import cats.Monad
-import cats.data.{ WriterT, Xor }
+import cats.data.WriterT
 import cats.instances.list._
+import cats.instances.either._
 import freeeventsourcing.api.domainmodel.AggregateCommand
 import shapeless.ops.coproduct.Inject
 
 /** Syntactic support for writing command handlers in monadic style. */
 trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
-  protected type ResultM[C <: Command, A] = WriterT[Xor[C#Error, ?], List[Event], A]
+  protected type ResultM[C <: Command, A] = WriterT[Either[C#Error, ?], List[Event], A]
 
-  protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): C ⇒ State ⇒ C#Error Xor Seq[Event] = { c ⇒ s: State ⇒
+  protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): C ⇒ State ⇒ Either[C#Error, Seq[Event]] = { c ⇒ s: State ⇒
     val call = new OnCallM[C](c, s)
     f(call).run.map(_._1)
   }
@@ -24,7 +25,7 @@ trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
   protected[this] implicit def onCallToCommand[C <: Command](call: OnCallM[C]): C = call.command
 
   protected[this] class OnCallM[C <: Command](val command: C, val state: State) {
-    type M1[A] = Xor[C#Error, A]
+    type M1[A] = Either[C#Error, A]
     type M[A] = WriterT[M1, List[Event], A]
     @implicitNotFound("${E} is not a valid error for this command")
     type IsError[E] = Inject[C#Error, E]
@@ -46,7 +47,7 @@ trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
 
     /** Fail the command handling with the error. */
     def fail[Error](error: Error)(implicit inject: IsError[Error]): M[Unit] = {
-      val l: M1[Unit] = Xor.left(inject(error))
+      val l: M1[Unit] = Left(inject(error))
       WriterT.valueT(l)
     }
 
