@@ -23,4 +23,4 @@ jobs:
     passed: [build]
     trigger: true
   - task: build
-    file: source-repo/build/build.yaml
+    file: source-repo/build/test.yaml
