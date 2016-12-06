@@ -2,7 +2,7 @@ name := "free-event-sourcing"
 
 version := "1.0"
 
-scalaVersion := "2.12.0"
+scalaVersion := "2.12.1"
 scalacOptions += "-feature"
 scalacOptions += "-unchecked"
 scalacOptions += "-deprecation"
