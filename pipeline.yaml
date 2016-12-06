@@ -1,0 +1,25 @@
+#Concourse CI build configuration
+---
+resources:
+- name: source-repo
+  type: git
+  source:
+    uri: https://github.com/msiegenthaler/free-event-sourcing.git
+    branch: concourse
+
+
+jobs:
+
+- name: build
+  plan:
+  - get: source-repo
+    trigger: true
+  - task: build
+    file: source-repo/build/build.yaml
+
+- name: test
+  plan:
+  - get: source-repo
+    passed: [build]
+  - task: build
+    file: source-repo/build/build.yaml
