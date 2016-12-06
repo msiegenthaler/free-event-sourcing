@@ -5,8 +5,8 @@ import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import cats.Monad
 import cats.data.WriterT
-import cats.instances.list._
 import cats.instances.either._
+import cats.instances.list._
 import freeeventsourcing.api.domainmodel.AggregateCommand
 import shapeless.ops.coproduct.Inject
 
@@ -14,19 +14,22 @@ import shapeless.ops.coproduct.Inject
 trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
   protected type ResultM[C <: Command, A] = WriterT[Either[C#Error, ?], List[Event], A]
 
-  protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): C ⇒ State ⇒ Either[C#Error, Seq[Event]] = { c ⇒ s: State ⇒
-    val call = new OnCallM[C](c, s)
-    f(call).run.map(_._1)
+  protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): C ⇒ State ⇒ Either[C#Error, Seq[Event]] = { c ⇒
+    s: State ⇒
+      val call = new OnCallM[C](c, s)
+      f(call).run.map(_._1)
   }
 
   /** Needed to allow usage of ResultM inside the for comprehension. */
   protected[this] implicit def eventListMonoid = catsKernelStdMonoidForList[Event]
+  /** Else everybody using us will have to 'import cats.instances.either._' */
+  protected[this] implicit def commandResultMonad[C]: Monad[Either[C, ?]] = catsStdInstancesForEither[C]
 
   protected[this] implicit def onCallToCommand[C <: Command](call: OnCallM[C]): C = call.command
 
   protected[this] class OnCallM[C <: Command](val command: C, val state: State) {
-    type M1[A] = Either[C#Error, A]
-    type M[A] = WriterT[M1, List[Event], A]
+    type CommandResult[A] = Either[C#Error, A]
+    type M[A] = WriterT[CommandResult, List[Event], A]
     @implicitNotFound("${E} is not a valid error for this command")
     type IsError[E] = Inject[C#Error, E]
 
@@ -47,7 +50,7 @@ trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
 
     /** Fail the command handling with the error. */
     def fail[Error](error: Error)(implicit inject: IsError[Error]): M[Unit] = {
-      val l: M1[Unit] = Left(inject(error))
+      val l: CommandResult[Unit] = Left(inject(error))
       WriterT.valueT(l)
     }
 
