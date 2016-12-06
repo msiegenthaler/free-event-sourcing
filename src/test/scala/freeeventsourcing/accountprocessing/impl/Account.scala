@@ -18,13 +18,10 @@ object AccountState {
 }
 
 private object AccountHandler extends CoproductCommandHandler[Command, Event, AccountState] {
-  def handle[C <: Command](command: C, state: AccountState) = doHandle(command).apply(state)
-
   implicit val open = onM[Open](c ⇒ for {
     _ ← c.failIf(c.state.open)(AlreadyOpen())
     _ ← c.emit(Opened(c.cmd.owner))
   } yield ())
-
   implicit val block = onM[BlockFunds](c ⇒ for {
     _ ← c.assertThat(c.state.open)(NotOpen())
     _ ← c.assertThat(c.state.unblockedBalance > c.cmd.amount)(InsufficientFunds())
@@ -57,6 +54,8 @@ private object AccountHandler extends CoproductCommandHandler[Command, Event, Ac
     _ ← c.assertThat(c.state.balance == 0)(NotEmpty())
     _ ← c.emit(Closed())
   } yield ())
+
+  def handle[C <: Command](command: C, state: AccountState) = doHandle(command).apply(state)
 }
 
 private object AccountApplicator extends CoproductEventApplicator[Event, AccountState] {

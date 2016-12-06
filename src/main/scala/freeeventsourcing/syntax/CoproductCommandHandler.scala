@@ -33,7 +33,9 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
   protected type State = S
   protected type Handler[C <: Command] = State ⇒ Either[C#Error, Seq[Event]]
 
-  /** Always implement as: doHandle(command).apply(state). You need to implement the method because of the implicit resolution. */
+  /** Always implement as: doHandle(command).apply(state).
+    * You need to implement the method because of the implicit resolution.
+    * Important: The definition of handle needs to be after/below the implicit vals for the commands. */
   def handle[C <: Command](command: C, state: State): Either[C#Error, Seq[Event]]
 
   final override def apply[C <: Command](command: C, state: State) = handle(command, state).map(_.toList)
@@ -53,7 +55,7 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
 
   protected[this] class CommandToCommandCase[K, V] private[CoproductCommandHandler] ()
   protected[this] implicit final def cmdToError[C <: Command] = new CommandToCommandCase[CommandType[C], C ⇒ Handler[C]]
-  @implicitNotFound("Not all commands (subclasses of sealed trait ${C}) are handled.")
+  @implicitNotFound("Not all commands (subclasses of sealed trait ${C}) are handled. You need to put the definition after the declaration of implicit vals (aka the handlers).")
   protected type CommandMap[C <: AggregateCommand] = HMap[CommandToCommandCase]
 
   /** Build a map from Command to CommandCase from the Coproduct and our implicit CommandCases */
