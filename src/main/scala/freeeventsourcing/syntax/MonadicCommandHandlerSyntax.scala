@@ -14,10 +14,9 @@ import shapeless.ops.coproduct.Inject
 trait MonadicCommandHandlerSyntax[Command <: AggregateCommand, Event, State] {
   protected type ResultM[C <: Command, A] = WriterT[Either[C#Error, ?], List[Event], A]
 
-  protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): C ⇒ State ⇒ Either[C#Error, Seq[Event]] = { c ⇒
-    s: State ⇒
-      val call = new OnCallM[C](c, s)
-      f(call).run.map(_._1)
+  protected[this] def onM[C <: Command](f: OnCallM[C] ⇒ ResultM[C, Unit]): C ⇒ State ⇒ Either[C#Error, Seq[Event]] = { c ⇒ s: State ⇒
+    val call = new OnCallM[C](c, s)
+    f(call).run.map(_._1)
   }
 
   /** Needed to allow usage of ResultM inside the for comprehension. */

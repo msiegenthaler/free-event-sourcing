@@ -34,8 +34,9 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
   protected type Handler[C <: Command] = State ⇒ Either[C#Error, Seq[Event]]
 
   /** Always implement as: doHandle(command).apply(state).
-    * You need to implement the method because of the implicit resolution.
-    * Important: The definition of handle needs to be after/below the implicit vals for the commands. */
+   *  You need to implement the method because of the implicit resolution.
+   *  Important: The definition of handle needs to be after/below the implicit vals for the commands.
+   */
   def handle[C <: Command](command: C, state: State): Either[C#Error, Seq[Event]]
 
   final override def apply[C <: Command](command: C, state: State) = handle(command, state).map(_.toList)
