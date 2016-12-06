@@ -4,9 +4,8 @@ import scala.language.existentials
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Seq
 import scala.reflect.{ ClassTag, classTag }
-import cats.data.Xor
-import freeeventsourcing.api.domainmodel.AggregateImplementation.CommandHandler
 import freeeventsourcing.api.domainmodel.AggregateCommand
+import freeeventsourcing.api.domainmodel.AggregateImplementation.CommandHandler
 import freeeventsourcing.syntax.CoproductCommandHandler.CommandType
 import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
 
@@ -14,17 +13,17 @@ import shapeless.{ :+:, CNil, Coproduct, Generic, HMap }
  *  Usage: Define an implicit val per command type using either 'on' or 'onM'.
  *  Example:
  *  <code>
- *   private object TransactionHandler extends CoproductCommandHandler[Command, Event, Option[TransactionState]] {
- *    def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
+ *  private object TransactionHandler extends CoproductCommandHandler[Command, Event, Option[TransactionState]] {
+ *  def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
  *
- *    implicit val create = onM[Create](c ⇒ for {
- *      _ ← c.assertThat(c.state.isEmpty)(AlreadyExists())
- *      _ ← c.emit(Created(c.cmd.from, c.cmd.to, c.cmd.amount))
- *    } yield ())
+ *  implicit val create = onM[Create](c ⇒ for {
+ *  _ ← c.assertThat(c.state.isEmpty)(AlreadyExists())
+ *  _ ← c.emit(Created(c.cmd.from, c.cmd.to, c.cmd.amount))
+ *  } yield ())
  *
- *    implicit val confirm = on[Confirm] { c ⇒
+ *  implicit val confirm = on[Confirm] { c ⇒
  *      c.success(Confirmed())
- *    }
+ *  }
  *  }
  *  </code>
  */
@@ -32,10 +31,13 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
     extends CommandHandler[Command, Event, S]
     with PlainCommandHandlerSyntax[Command, Event, S] with MonadicCommandHandlerSyntax[Command, Event, S] {
   protected type State = S
-  protected type Handler[C <: Command] = State ⇒ C#Error Xor Seq[Event]
+  protected type Handler[C <: Command] = State ⇒ Either[C#Error, Seq[Event]]
 
-  /** Always implement as: doHandle(command).apply(state). You need to implement the method because of the implicit resolution. */
-  def handle[C <: Command](command: C, state: State): C#Error Xor Seq[Event]
+  /** Always implement as: doHandle(command).apply(state).
+   *  You need to implement the method because of the implicit resolution.
+   *  Important: The definition of handle needs to be after/below the implicit vals for the commands.
+   */
+  def handle[C <: Command](command: C, state: State): Either[C#Error, Seq[Event]]
 
   final override def apply[C <: Command](command: C, state: State) = handle(command, state).map(_.toList)
 
@@ -54,7 +56,7 @@ trait CoproductCommandHandler[Command <: AggregateCommand, Event, S]
 
   protected[this] class CommandToCommandCase[K, V] private[CoproductCommandHandler] ()
   protected[this] implicit final def cmdToError[C <: Command] = new CommandToCommandCase[CommandType[C], C ⇒ Handler[C]]
-  @implicitNotFound("Not all commands (subclasses of sealed trait ${C}) are handled.")
+  @implicitNotFound("Not all commands (subclasses of sealed trait ${C}) are handled. You need to put the definition after the declaration of implicit vals (aka the handlers).")
   protected type CommandMap[C <: AggregateCommand] = HMap[CommandToCommandCase]
 
   /** Build a map from Command to CommandCase from the Coproduct and our implicit CommandCases */

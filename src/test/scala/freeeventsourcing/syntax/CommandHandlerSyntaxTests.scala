@@ -1,9 +1,7 @@
 package freeeventsourcing.syntax
 
 import scala.collection.immutable.Seq
-import cats.data.Xor
 import freeeventsourcing.api.domainmodel.{ AggregateCommand, DomainEvent }
-import shapeless.poly.Case1
 import shapeless.{ :+:, CNil, Poly1 }
 
 trait CommandHandlerSyntaxTests {
@@ -28,8 +26,8 @@ trait CommandHandlerSyntaxTests {
 
   def call[T, C <: Command, O](t: T, value: C)(state: String)(
     implicit
-    c: C ⇒ String ⇒ value.Error Xor Seq[Event]
-  ): value.Error Xor Seq[Event] = {
+    c: C ⇒ String ⇒ Either[value.Error, Seq[Event]]
+  ): Either[value.Error, Seq[Event]] = {
     c.apply(value).apply(state)
   }
 }

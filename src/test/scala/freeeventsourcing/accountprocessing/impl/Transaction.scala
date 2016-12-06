@@ -1,6 +1,5 @@
 package freeeventsourcing.accountprocessing.impl
 
-import cats.data.Xor
 import scala.collection.immutable.Seq
 import freeeventsourcing.accountprocessing.Account
 import freeeventsourcing.accountprocessing.Transaction.Command._
@@ -22,8 +21,6 @@ object TransactionState {
 }
 
 private object TransactionHandler extends CoproductCommandHandler[Command, Event, Option[TransactionState]] {
-  def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
-
   implicit val create = onM[Create](c ⇒ for {
     _ ← c.assertThat(c.state.isEmpty)(AlreadyExists())
     _ ← c.emit(Created(c.cmd.from, c.cmd.to, c.cmd.amount))
@@ -42,6 +39,8 @@ private object TransactionHandler extends CoproductCommandHandler[Command, Event
     _ ← c.failIf(state.state == TxState.Confirmed)(AlreadyConfirmed())
     _ ← c.emitIf(state.state == TxState.Unconfirmed)(Canceled())
   } yield ())
+
+  def handle[C <: Command](command: C, state: State) = doHandle(command).apply(state)
 }
 
 private object TransactionApplicator extends MatchEventApplicator[Event, Option[TransactionState]] {

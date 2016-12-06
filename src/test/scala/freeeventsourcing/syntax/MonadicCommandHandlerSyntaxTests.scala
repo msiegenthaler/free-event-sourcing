@@ -1,7 +1,6 @@
 package freeeventsourcing.syntax
 
 import scala.collection.immutable.Seq
-import cats.data.Xor
 import org.scalatest.{ FlatSpec, Matchers }
 import shapeless.{ Coproduct, Poly1 }
 
@@ -16,7 +15,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _.ignore
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(Seq.empty)
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(Seq.empty)
   }
 
   "MonadicCommandHandlerSyntax " should " allow to emit a single event" in {
@@ -25,7 +24,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _.emit(Event1())
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event1()))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event1()))
   }
 
   "MonadicCommandHandlerSyntax " should " allow to conditionally emit a single event" in {
@@ -34,7 +33,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _.emitIf(true)(Event1())
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event1()))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event1()))
   }
 
   "MonadicCommandHandlerSyntax " should " allow to conditionally not emit a single event" in {
@@ -43,7 +42,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _.emitIf(false)(Event1())
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List())
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List())
   }
 
   "MonadicCommandHandlerSyntax " should " allow to emit multiple events in one call" in {
@@ -52,7 +51,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _.emit(Event1(), Event2())
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event1(), Event2()))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event1(), Event2()))
   }
 
   "MonadicCommandHandlerSyntax " should " collect events" in {
@@ -62,7 +61,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _ ← c.emit(Event2())
       } yield ())
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event1(), Event2()))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event1(), Event2()))
   }
 
   "MonadicCommandHandlerSyntax " should " allow for error" in {
@@ -72,7 +71,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
       }
     }
     val r = Coproduct[FirstCommand#Error](ErrorOne("X"))
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.left(r)
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Left(r)
   }
 
   "MonadicCommandHandlerSyntax " should " allow to access the state directly" in {
@@ -81,7 +80,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         c.emit(Event3(c.state))
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("state")))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event3("state")))
   }
 
   "MonadicCommandHandlerSyntax " should " allow to access the state in a monad" in {
@@ -91,7 +90,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _ ← c.emit(Event3(s))
       } yield ())
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("state")))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event3("state")))
   }
 
   "MonadicCommandHandlerSyntax " should " allow to access the command directly" in {
@@ -100,7 +99,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         c.emit(Event3(c.command.arg))
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("hi")))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event3("hi")))
   }
 
   "MonadicCommandHandlerSyntax " should " allow to access the command via implicit conversion" in {
@@ -109,7 +108,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         c.emit(Event3(c.arg))
       }
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("hi")))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event3("hi")))
   }
 
   "MonadicCommandHandlerSyntax " should " allow to access the command in a monad" in {
@@ -119,7 +118,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _ ← c.emit(Event3(cmd.arg))
       } yield ())
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event3("hi")))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event3("hi")))
   }
 
   "MonadicCommandHandlerSyntax.failIf " should " terminate if condition matches" in {
@@ -130,7 +129,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
       } yield ())
     }
     val r = Coproduct[FirstCommand#Error](ErrorOne("x"))
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.left(r)
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Left(r)
   }
 
   "MonadicCommandHandlerSyntax.failIf " should " continue if condition does not match" in {
@@ -140,7 +139,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _ ← c.emit(Event1())
       } yield ())
     }
-    call(H, FirstCommand("hi"))("not-state")(H.first) shouldBe Xor.right(List(Event1()))
+    call(H, FirstCommand("hi"))("not-state")(H.first) shouldBe Right(List(Event1()))
   }
 
   "MonadicCommandHandlerSyntax.assertThat " should " terminate if assertion does not match" in {
@@ -151,7 +150,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
       } yield ())
     }
     val r = Coproduct[FirstCommand#Error](ErrorOne("x"))
-    call(H, FirstCommand("hi"))("not-state")(H.first) shouldBe Xor.left(r)
+    call(H, FirstCommand("hi"))("not-state")(H.first) shouldBe Left(r)
   }
 
   "MonadicCommandHandlerSyntax.assertThat " should " continue if assertion matches" in {
@@ -161,7 +160,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _ ← c.emit(Event1())
       } yield ())
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event1()))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event1()))
   }
 
   "MonadicCommandHandlerSyntax " should " collect events before and after non matching" in {
@@ -172,7 +171,7 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
         _ ← c.emit(Event2())
       } yield ())
     }
-    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Xor.right(List(Event1(), Event2()))
+    call(H, FirstCommand("hi"))("state")(H.first) shouldBe Right(List(Event1(), Event2()))
   }
 
   "MonadicCommandHandlerSyntax " should " not emit events on error" in {
@@ -184,6 +183,6 @@ class MonadicCommandHandlerSyntaxTests extends FlatSpec with Matchers with Comma
       } yield ())
     }
     val r = Coproduct[FirstCommand#Error](ErrorOne("x"))
-    call(H, FirstCommand("hi"))("not-state")(H.first) shouldBe Xor.left(r)
+    call(H, FirstCommand("hi"))("not-state")(H.first) shouldBe Left(r)
   }
 }
