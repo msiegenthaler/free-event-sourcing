@@ -15,7 +15,7 @@ outputs:
   path: target
 
 run:
-  path: bin/sh
+  path: /bin/sh
   args:
   - -c
   - sbt -batch package && mv target/*.jar ../build-results
