@@ -11,12 +11,12 @@ inputs:
 - name: source-repo
 
 outputs:
-- name: build-results
+- name: test-results
   path: target
 
 run:
-  path: sbt
+  path: /bin/sh
   args:
-  - -batch
-  - test
+  - -c
+  - sbt -batch test && mv target/* ../test-results
   dir: source-repo

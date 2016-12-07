@@ -12,11 +12,10 @@ inputs:
 
 outputs:
 - name: build-results
-  path: target
 
 run:
   path: /bin/sh
   args:
   - -c
-  - sbt -batch package && mv target/*.jar ../build-results
+  - sbt -batch package && mv target/* ../build-results
   dir: source-repo
