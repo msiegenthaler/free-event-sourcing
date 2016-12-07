@@ -12,7 +12,6 @@ inputs:
 
 outputs:
 - name: test-results
-  path: target
 
 run:
   path: /bin/sh
